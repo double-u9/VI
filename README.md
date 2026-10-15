@@ -28,13 +28,14 @@
 - [🛡️ Deterministic Financial Guardrails](#️-deterministic-financial-guardrails)
 - [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow)
 - [📂 Project Structure](#-project-structure)
-- [⚡ Quick Start & Installation Guide](#-quick-start--installation-guide)
-  - [1. Prerequisites](#1-prerequisites)
-  - [2. Environment Configuration (.env)](#2-environment-configuration-env)
-  - [3. Running Locally with LM Studio (100% Offline)](#3-running-locally-with-lm-studio-100-offline)
-  - [4. Optional: Adding Gemini & Groq Cloud Keys](#4-optional-adding-gemini--groq-cloud-keys)
-  - [5. Windows PowerShell Setup & Troubleshooting](#5-windows-powershell-setup--troubleshooting)
-  - [6. Launching the Application](#6-launching-the-application)
+- [⚡ Quick Start & Step-by-Step Installation Guide](#-quick-start--step-by-step-installation-guide)
+  - [Step 1: System Prerequisites & Verification](#step-1-system-prerequisites--verification)
+  - [Step 2: Clone or Download the Repository](#step-2-clone-or-download-the-repository)
+  - [Step 3: Install Project Dependencies](#step-3-install-project-dependencies)
+  - [Step 4: Configure Environment Variables (.env)](#step-4-configure-environment-variables-env)
+  - [Step 5: Configure AI Model Engine (Local vs. Cloud)](#step-5-configure-ai-model-engine-local-vs-cloud)
+  - [Step 6: Launch Backend & Access Web Console](#step-6-launch-backend--access-web-console)
+- [🛠️ Comprehensive Troubleshooting & FAQs](#️-comprehensive-troubleshooting--faqs)
 - [💬 Interactive Test Scenarios](#-interactive-test-scenarios)
 - [🎨 Luxury Fintech Design System](#-luxury-fintech-design-system)
 - [🗺️ Future Roadmap](#️-future-roadmap)
@@ -230,97 +231,274 @@ VI/
 
 ---
 
-## ⚡ Quick Start & Installation Guide
+## ⚡ Quick Start & Step-by-Step Installation Guide
 
-### 1. Prerequisites
-* **[Node.js](https://nodejs.org/)** (v18.0.0 or higher recommended).
-* **Git** installed on your system.
-* *(Optional)* **[LM Studio](https://lmstudio.ai/)** or **[Ollama](https://ollama.ai/)** for running 100% local, offline models.
+Follow these sequential steps to run **فاي (VI)** locally on your machine in under 5 minutes.
+
+### Step 1: System Prerequisites & Verification
+
+Ensure your environment meets the minimum requirements before proceeding:
+
+| Prerequisite | Minimum Version | Recommended | Verification Command | Download Link |
+| :--- | :--- | :--- | :--- | :--- |
+| **Node.js** | `v18.0.0` | `v20.x LTS` or higher | `node -v` | [nodejs.org](https://nodejs.org/) |
+| **npm** | `v9.0.0` | `v10.x` or higher | `npm -v` | Included with Node.js |
+| **Git** | `v2.30+` | Latest stable | `git --version` | [git-scm.com](https://git-scm.com/) |
+| **Browser** | Modern Chromium | Chrome / Edge / Brave | — | Required for Web Speech API (`ar-IQ`) |
+
+> [!TIP]
+> Run the verification commands in your terminal (PowerShell, Command Prompt, or Bash) to confirm Node.js and Git are detected:
+> ```bash
+> node -v
+> npm -v
+> git --version
+> ```
 
 ---
 
-### 2. Environment Configuration (.env)
-Create a `.env` file in the project root by copying the template:
+### Step 2: Clone or Download the Repository
 
+Clone the repository directly from GitHub:
+
+```bash
+# Clone the repository
+git clone https://github.com/double-u9/VI.git
+
+# Enter the project directory
+cd VI
+```
+
+*(Alternatively, click the green **Code** button on GitHub -> **Download ZIP**, extract it, and open your terminal inside the extracted `VI` folder).*
+
+---
+
+### Step 3: Install Project Dependencies
+
+Install all required production dependencies (`express`, `cors`, `dotenv`, `openai`):
+
+```bash
+npm install
+```
+
+When finished, you will see a confirmation such as `added 65 packages in 2s`.
+
+---
+
+### Step 4: Configure Environment Variables (.env)
+
+The repository provides a secure template ([.env.example](.env.example)). Generate your actual local configuration file:
+
+**On Windows PowerShell:**
+```powershell
+Copy-Item .env.example .env
+```
+
+**On Windows Command Prompt (CMD):**
+```cmd
+copy .env.example .env
+```
+
+**On macOS / Linux (Bash):**
 ```bash
 cp .env.example .env
 ```
 
-Your `.env` file should look like this:
+#### Detailed Environment Variable Reference:
+
+Open your newly created `.env` file in VS Code or any text editor:
 
 ```env
-# Local LM Studio (Default port is 1234)
+# ==============================================================================
+# Model Providers Configuration & API Keys
+# ==============================================================================
+
+# 1. Local LM Studio (Default local offline port is 1234)
 LM_STUDIO_URL=http://127.0.0.1:1234/v1
 LOCAL_API_KEY=lm-studio
 
-# Optional Cloud Providers (Only required if you want to use them)
+# 2. Google Gemini Flash (Optional Cloud Provider)
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# 3. Groq Cloud (Optional Ultra-fast Cloud Provider)
 GROQ_API_KEY=your_groq_api_key_here
 
-# Server Port (defaults to 3000)
+# 4. Web Server Port (Defaults to 3000)
 PORT=3000
 ```
 
-> [!NOTE]
-> If you only plan to use **LM Studio**, you do **not** need any cloud API keys! The system runs 100% offline out of the box.
+| Environment Variable | Default Value | Role & Explanation | Required? |
+| :--- | :--- | :--- | :--- |
+| `LM_STUDIO_URL` | `http://127.0.0.1:1234/v1` | URL of the local OpenAI-compatible server running in LM Studio. | ✅ For Local Mode |
+| `LOCAL_API_KEY` | `lm-studio` | Dummy string required by the OpenAI client SDK when connecting locally. | ✅ For Local Mode |
+| `GEMINI_API_KEY` | *(Empty)* | API key for Google Gemini Flash inference. | Optional (Cloud) |
+| `GROQ_API_KEY` | *(Empty)* | API key for ultra-fast Groq LPU inference. | Optional (Cloud) |
+| `PORT` | `3000` | Local port for the Express backend and frontend UI. | Optional |
+
+> [!IMPORTANT]
+> **Zero Cost & 100% Privacy**: If you only plan to run **LM Studio**, you do **not need any cloud keys**! You can leave `GEMINI_API_KEY` and `GROQ_API_KEY` untouched or blank.
 
 ---
 
-### 3. Running Locally with LM Studio (100% Offline)
-1. Launch **LM Studio**.
-2. Download an instruction-tuned model with strong Arabic capabilities:
-   * **`Qwen2.5-7B-Instruct`** *(Recommended for exceptional Arabic comprehension and speed)*.
-   * **`Llama-3.1-8B-Instruct`** *(High-quality reasoning)*.
-3. In the **Developer / Local Server** tab (`<->` on the sidebar):
-   * Select your downloaded model from the top dropdown.
-   * Verify the port is set to **`1234`**.
-   * Click **Start Server**.
+### Step 5: Configure AI Model Engine (Local vs. Cloud)
+
+**فاي (VI)** supports two distinct operational modes. You can configure one or both:
+
+#### 🟢 Option A: 100% Offline Local Model with LM Studio (Recommended)
+
+Run everything locally with complete data privacy, zero internet reliance, and zero subscription costs:
+
+1. **Install LM Studio**: Download the free desktop app from **[lmstudio.ai](https://lmstudio.ai/)**.
+2. **Download an Arabic-Optimized Model**:
+   - In LM Studio, click the **Search (Magnifying Glass)** tab on the left.
+   - Search for **`Qwen2.5-7B-Instruct`** *(Recommended for superior Iraqi Arabic comprehension and rapid token generation)*.
+   - Click **Download** on the `Q4_K_M` or `Q5_K_M` quantization file.
+   - *Alternative Model*: **`Meta-Llama-3.1-8B-Instruct`** (`Q4_K_M`).
+3. **Start the Local Server**:
+   - Click the **Developer / Local Server (`<->`)** icon in LM Studio's left sidebar.
+   - In the top dropdown menu, select your downloaded model to load it into memory.
+   - Under server settings on the right panel, verify:
+     - **Port**: `1234`
+     - **CORS**: Enabled (checked)
+   - Click the green **Start Server** button.
+4. **Health Check (Verify Server is Live)**:
+   - Run this quick verification in PowerShell:
+     ```powershell
+     Invoke-RestMethod http://localhost:1234/v1/models
+     ```
+   - Or open `http://localhost:1234/v1/models` in your browser. You will see JSON confirming your model is active.
+
+#### ☁️ Option B: Cloud AI Engines (Instant Setup without Local Downloads)
+
+If your computer doesn't have sufficient RAM/VRAM to run local LLMs, you can activate high-speed cloud providers in seconds:
+
+* **Google Gemini Flash (Free Tier Available)**:
+  1. Visit **[Google AI Studio](https://aistudio.google.com/)**.
+  2. Click **Get API key** ➔ **Create API key**.
+  3. Copy your key and paste it in `.env`:
+     ```env
+     GEMINI_API_KEY=AIzaSy...
+     ```
+* **Groq Cloud (Sub-second LPU Speed)**:
+  1. Visit **[Groq Console](https://console.groq.com/keys)**.
+  2. Sign in with GitHub or Google and click **Create API Key**.
+  3. Copy your key and paste it in `.env`:
+     ```env
+     GROQ_API_KEY=gsk_...
+     ```
 
 ---
 
-### 4. Optional: Adding Gemini & Groq Cloud Keys
-* **Google Gemini**: Get a free API key at [Google AI Studio](https://aistudio.google.com/) and paste it as `GEMINI_API_KEY`.
-* **Groq Cloud**: Get a free API key at [Groq Console](https://console.groq.com/keys) and paste it as `GROQ_API_KEY`.
+### Step 6: Launch Backend & Access Web Console
+
+1. Start the financial agent server:
+   ```bash
+   npm start
+   ```
+   *(Or run: `node backend/server.js`)*
+
+2. You will see the initialization banner in your terminal:
+   ```text
+   ====================================================
+     AI Financial Agent Backend running on port 3000
+     Connected to LM Studio: http://127.0.0.1:1234/v1
+     Database File: C:\...\backend\mock_wallet_db.json
+   ====================================================
+   ```
+
+3. Open your web browser and navigate to:
+   👉 **`http://localhost:3000`**
+
+4. **Select Your Desired Model**:
+   Use the executive model switcher dropdown in the top header to choose between **LM Studio**, **Google Gemini**, or **Groq Cloud**. Any model change is instant and preserves your conversation state!
 
 ---
 
-### 5. Windows PowerShell Setup & Troubleshooting
-On a fresh Windows setup, PowerShell may restrict scripts or fail to recognize new Node.js paths. Apply these one-time fixes if needed:
+## 🛠️ Comprehensive Troubleshooting & FAQs
 
-* **If `node` or `npm` is not recognized**:
-  Refresh the terminal environment path without restarting:
-  ```powershell
-  $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+If you encounter any friction during setup or operation, consult these proven solutions:
+
+### 1. 🛑 Windows PowerShell Script Execution Blocked (`PSSecurityException`)
+* **Symptom**: Running `npm` or `node` scripts fails with:
+  ```text
+  File C:\...\npm.ps1 cannot be loaded because running scripts is disabled on this system.
   ```
-* **If running scripts is disabled (`PSSecurityException`)**:
-  Allow local script execution (does not require Administrator privileges):
+* **Cause**: Windows PowerShell restricts execution of unsigned `.ps1` script wrappers by default.
+* **Fix**: Run this one-time command in PowerShell (does **not** require Administrator privileges):
   ```powershell
   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
   ```
 
 ---
 
-### 6. Launching the Application
+### 2. 🛑 Command Not Recognized: `'node'` or `'npm'` is not recognized
+* **Symptom**: PowerShell outputs `The term 'node' is not recognized as the name of a cmdlet, function, script file...`
+* **Cause**: Node.js was recently installed, but your open PowerShell session hasn't refreshed its environment PATH.
+* **Fix**: Refresh your PATH environment variable without closing your terminal:
+  ```powershell
+  $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+  ```
+  *(Or close all PowerShell windows and open a fresh terminal).*
 
-```bash
-# 1. Install dependencies
-npm install
+---
 
-# 2. Start the financial agent server
-node backend/server.js
-```
+### 3. 🛑 LM Studio Connection Error (`ECONNREFUSED 127.0.0.1:1234`)
+* **Symptom**: Chat displays a connection failure message: *"عذراً، فشل الاتصال بخادم الذكاء الاصطناعي المحلي..."*
+* **Fix Steps**:
+  1. Open LM Studio and navigate to the **Local Server (`<->`)** tab.
+  2. Verify that a model is selected in the top bar.
+  3. Ensure the green **Start Server** button has been pressed (it should say **Stop Server** while active).
+  4. Ensure the port is set to **`1234`**. If you configured a different port (e.g., `8080`), update `LM_STUDIO_URL` in your `.env` to match.
+  5. **Instant Fallback**: If you do not wish to run LM Studio, click the model dropdown in the header of the web app and select **Google Gemini** or **Groq Cloud**!
 
-You will see:
-```text
-====================================================
-  AI Financial Agent Backend running on port 3000
-  Connected to LM Studio: http://127.0.0.1:1234/v1
-  Database File: .../backend/mock_wallet_db.json
-====================================================
-```
+---
 
-Open your browser and navigate to:
-👉 **`http://localhost:3000`**
+### 4. 🛑 Port 3000 Already in Use (`EADDRINUSE: address already in use :::3000`)
+* **Symptom**: Starting the server results in `Error: listen EADDRINUSE: address already in use :::3000`.
+* **Cause**: A previous instance of `server.js` or another local application is already bound to port 3000.
+* **Fix Option A (Change Port)**: Edit `.env` and change `PORT=3000` to `PORT=3001`. Then start with `npm start` and visit `http://localhost:3001`.
+* **Fix Option B (Kill Existing Process on Port 3000)**:
+  - In **PowerShell**:
+    ```powershell
+    Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Process -Force
+    ```
+  - In **Command Prompt (CMD)**:
+    ```cmd
+    netstat -ano | findstr :3000
+    taskkill /PID <PID_NUMBER> /F
+    ```
+
+---
+
+### 5. 🛑 Microphone / Speech-to-Text Not Responding
+* **Symptom**: Clicking the microphone icon fails to transcribe speech or reports a permission error.
+* **Cause**: Browser microphone permissions are blocked, or browser lacks Web Speech API support.
+* **Fix Steps**:
+  1. Use a Chromium-based browser (Google Chrome, Microsoft Edge, or Brave).
+  2. In your address bar, click the **Settings / Lock icon** next to `http://localhost:3000`.
+  3. Ensure **Microphone** is toggled to **Allow**.
+  4. Ensure your machine has an active default microphone device set under Windows Sound Settings.
+
+---
+
+### 6. 🛑 Cloud API Key Errors (401 Unauthorized / 429 Rate Limit)
+* **Symptom**: Gemini or Groq returns an authentication or quota failure message.
+* **Fix Steps**:
+  1. Open `.env` and ensure there are no surrounding quotes, spaces, or line breaks around your key. Example:
+     ```env
+     GEMINI_API_KEY=AIzaSyBFAu...
+     GROQ_API_KEY=gsk_KzXal...
+     ```
+  2. **Important**: Whenever you edit `.env`, you **must restart the server** (`Ctrl + C` in your terminal, then run `npm start`). Environment variables are only read when Node initializes.
+
+---
+
+### 7. 🛑 Resetting the Wallet Database to Default
+* **Question**: How do I reset balances, paid bills, and contacts back to the pristine initial state?
+* **Fix**: Click the **Reset DB** button in the web console header, or send a quick POST request:
+  ```bash
+  curl -X POST http://localhost:3000/api/reset
+  ```
+  This immediately rewrites `mock_wallet_db.json` with fresh initial balances (`2,200,000 IQD`) and resets all utility bills to `unpaid`.
 
 ---
 

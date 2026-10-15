@@ -1,4 +1,12 @@
 {
+  "name": "vi-financial-agent",
+  "version": "1.0.0",
+  "description": "Autonomous AI Financial Agent for Bill Pay and Money Transfers in Iraqi Arabic",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
