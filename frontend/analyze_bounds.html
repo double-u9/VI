@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="c2" width="1024" height="1024"></canvas>
+<pre id="res"></pre>
+<script>
+async function run() {
+  const img2 = new Image();
+  img2.onload = () => {
+    const cv = document.getElementById('c2');
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(img2, 0, 0);
+    const d = ctx.getImageData(0, 0, 1024, 1024).data;
+    
+    // Connected components on pixels > 180
+    let visited = new Uint8Array(1024 * 1024);
+    let clusters = [];
+    for (let y = 50; y < 980; y++) {
+      for (let x = 50; x < 980; x++) {
+        let idx = y * 1024 + x;
+        if (!visited[idx] && d[idx*4] > 180) {
+          let q = [x, y];
+          visited[idx] = 1;
+          let sumX = 0, sumY = 0, count = 0;
+          let head = 0;
+          while(head < q.length) {
+            let qx = q[head++];
+            let qy = q[head++];
+            sumX += qx; sumY += qy; count++;
+            let n = [[qx+1, qy], [qx-1, qy], [qx, qy+1], [qx, qy-1]];
+            for (let [nx, ny] of n) {
+              if (nx >= 0 && nx < 1024 && ny >= 0 && ny < 1024) {
+                let nidx = ny * 1024 + nx;
+                if (!visited[nidx] && d[nidx*4] > 180) {
+                  visited[nidx] = 1;
+                  q.push(nx, ny);
+                }
+              }
+            }
+          }
+          if (count > 50) { // filter noise
+            clusters.push({ cx: Math.round(sumX / count), cy: Math.round(sumY / count), count });
+          }
+        }
+      }
+    }
+    // Plus sign is the biggest cluster
+    clusters.sort((a,b) => b.count - a.count);
+    const plus = clusters[0];
+    const dots = clusters.slice(1);
+    
+    // Calculate radius and angles from (512, 509.5)
+    let analyzedDots = dots.map(dot => {
+      let dx = dot.cx - 512;
+      let dy = dot.cy - 509.5;
+      let r = Math.sqrt(dx*dx + dy*dy);
+      let deg = Math.atan2(dy, dx) * 180 / Math.PI;
+      if (deg < 0) deg += 360;
+      return { cx: dot.cx, cy: dot.cy, r: Math.round(r), deg: +deg.toFixed(1) };
+    }).sort((a,b) => a.deg - b.deg);
+
+    document.getElementById('res').textContent = JSON.stringify({
+      plusSignClusterSize: plus.count,
+      totalDots: analyzedDots.length,
+      dots: analyzedDots
+    }, null, 2);
+  };
+  img2.src = 'icon_dotted_ref.jpg';
+}
+run();
+</script>
+</body>
+</html>

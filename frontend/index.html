@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فاي | VI - المساعد المالي الذكي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Reem+Kufi:wght@400..700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=48.0">
+</head>
+
+<body>
+  <!-- Ambient Luxury Background Glow Orbs -->
+  <div class="ambient-orb orb-emerald" aria-hidden="true"></div>
+  <div class="ambient-orb orb-gold" aria-hidden="true"></div>
+  <div class="ambient-orb orb-teal" aria-hidden="true"></div>
+
+  <!-- App Container -->
+  <div class="app-layout hero-mode" id="app-layout">
+    <!-- Corner Halftone Dots Dynamic Canvas (Inside App) -->
+    <canvas id="app-halftone-canvas" class="app-halftone-canvas" aria-hidden="true"></canvas>
+
+    <!-- Top Ambient Glow Orbs (Floating inside top ~30% of chat) -->
+    <div class="chat-ambient-glows" aria-hidden="true">
+      <div class="chat-orb orb-primary"></div>
+      <div class="chat-orb orb-secondary"></div>
+      <div class="chat-orb orb-accent"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="chat-header">
+      <div class="agent-profile">
+        <h1 class="agent-name">فاي</h1>
+
+        <!-- محدد نموذج الذكاء الاصطناعي بنمط جيمني الاحترافي (AI Model Switcher) -->
+        <div class="model-menu-container" id="model-menu-container">
+          <button id="model-menu-trigger" class="model-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="تبديل نموذج الذكاء الاصطناعي">
+            <svg class="model-trigger-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+            <span class="model-trigger-name" id="model-trigger-name">LM Studio</span>
+          </button>
+
+          <!-- Smooth Floating Dropdown Menu Card (Matching Screenshot Concept) -->
+          <div class="model-dropdown-card" id="model-dropdown-card" role="menu" aria-hidden="true">
+            <div class="model-dropdown-list">
+              <!-- LM Studio -->
+              <button class="model-dropdown-item active" type="button" data-model="local" role="menuitem">
+                <div class="model-item-check" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <div class="model-item-text">
+                  <div class="model-item-title">LM Studio</div>
+                  <div class="model-item-desc">أوفلاين 100% • خصوصية وأمان محلي</div>
+                </div>
+              </button>
+
+              <!-- Gemini Flash -->
+              <button class="model-dropdown-item" type="button" data-model="gemini" role="menuitem">
+                <div class="model-item-check" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <div class="model-item-text">
+                  <div class="model-item-title">Gemini Flash</div>
+                  <div class="model-item-desc">مساعد شامل وذكي • سرعة وتوازن</div>
+                </div>
+              </button>
+
+              <!-- Groq -->
+              <button class="model-dropdown-item" type="button" data-model="groq" role="menuitem">
+                <div class="model-item-check" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <div class="model-item-text">
+                  <div class="model-item-title">Groq</div>
+                  <div class="model-item-desc">أسرع إجابات • معالجة فورية فائقة</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- زر شات جديد (New Chat Button) - بجانب LM Studio مع الأيقونتين المتطابقتين تماماً مع الصور الأصلية -->
+        <button id="new-chat-btn" class="new-chat-btn" type="button" aria-label="بدء محادثة جديدة" title="محادثة جديدة">
+          <!-- أيكونة النقط (Dotted Icon): 21 نقطة هندسية مطابقة 100% وزائد عريض بارز للوضوح -->
+          <svg class="new-chat-icon icon-dotted" viewBox="50 50 924 924" fill="currentColor" stroke="currentColor" aria-hidden="true">
+            <circle cx="904" cy="510" r="34"></circle>
+            <circle cx="708" cy="850" r="34"></circle>
+            <circle cx="614" cy="889" r="34"></circle>
+            <circle cx="512" cy="902" r="34"></circle>
+            <circle cx="410" cy="889" r="34"></circle>
+            <circle cx="316" cy="850" r="34"></circle>
+            <circle cx="235" cy="787" r="34"></circle>
+            <circle cx="172" cy="706" r="34"></circle>
+            <circle cx="133" cy="611" r="34"></circle>
+            <circle cx="120" cy="510" r="34"></circle>
+            <circle cx="133" cy="408" r="34"></circle>
+            <circle cx="172" cy="313" r="34"></circle>
+            <circle cx="235" cy="232" r="34"></circle>
+            <circle cx="316" cy="169" r="34"></circle>
+            <circle cx="410" cy="130" r="34"></circle>
+            <circle cx="512" cy="117" r="34"></circle>
+            <circle cx="614" cy="130" r="34"></circle>
+            <circle cx="708" cy="169" r="34"></circle>
+            <circle cx="789" cy="232" r="34"></circle>
+            <circle cx="852" cy="313" r="34"></circle>
+            <circle cx="891" cy="408" r="34"></circle>
+            <!-- الزائد الهندسي الواضح والبارز -->
+            <line x1="566" y1="616" x2="928" y2="616" stroke-width="68" stroke-linecap="round"></line>
+            <line x1="748" y1="431" x2="748" y2="801" stroke-width="68" stroke-linecap="round"></line>
+          </svg>
+          <!-- أيكونة الخط المتصل (Solid Icon): قوس دائري متطابق 100% وزائد عريض بارز للوضوح -->
+          <svg class="new-chat-icon icon-solid" viewBox="50 50 924 924" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="M 708 849 A 392.5 392.5 0 1 1 903 540" stroke-width="68" stroke-linecap="round"></path>
+            <!-- الزائد الهندسي الواضح والبارز -->
+            <line x1="566" y1="616" x2="928" y2="616" stroke-width="68" stroke-linecap="round"></line>
+            <line x1="748" y1="431" x2="748" y2="801" stroke-width="68" stroke-linecap="round"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="header-actions">
+
+        <!-- 1. زر السجل (History Drawer Toggle) - First on the left -->
+        <button id="transactions-toggle-btn" class="transactions-toggle-btn" type="button"
+          aria-label="عرض سجل المعاملات الأخيرة">
+          <svg class="transactions-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3.5" y="2.5" width="17" height="19" rx="4.5" ry="4.5"></rect>
+            <line x1="7.5" y1="8" x2="16.5" y2="8"></line>
+            <line x1="7.5" y1="12" x2="16.5" y2="12"></line>
+            <line x1="7.5" y1="16" x2="16.5" y2="16"></line>
+          </svg>
+        </button>
+
+        <!-- 2. توغل الثيم (Theme Toggle) - Second on the left -->
+        <button id="theme-toggle-btn" class="theme-toggle-pill" type="button" aria-label="تبديل مظهر الواجهة">
+          <div class="theme-toggle-track">
+            <span class="theme-icon light-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            </span>
+            <span class="theme-icon dark-icon" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </span>
+            <span class="theme-thumb"></span>
+          </div>
+        </button>
+
+        <!-- 3. رصيد الحساب البنكي (Wallet Pill مع زر حجب/إظهار الرصيد) -->
+        <div class="wallet-pill" id="wallet-pill">
+          <span class="wallet-balance" id="wallet-balance-display">*** IQD</span>
+          <button type="button" id="wallet-eye-btn" class="wallet-eye-btn is-hidden" aria-label="إظهار الرصيد" title="إظهار/حجب الرصيد">
+            <svg class="eye-icon eye-off" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+            <svg class="eye-icon eye-on" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Chat Window -->
+    <main class="chat-main" id="chat-window">
+      <div class="messages-container" id="messages-container">
+        <!-- Messages will be dynamically rendered here -->
+      </div>
+
+      <!-- Typing Loading Indicator (Hidden by default) -->
+      <div class="typing-indicator-container hidden" id="typing-indicator">
+        <div class="typing-bubble">
+          <div class="typing-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Interaction Dock (Centers on Initial Load / Refresh, Docks at Bottom in Chat) -->
+    <div class="interaction-dock" id="interaction-dock">
+
+      <!-- Hero Centerpiece (Logo, Name, Welcome Title & Concise Description) -->
+      <div class="hero-brand-section" id="hero-brand-section">
+        <div class="hero-logo-wrapper">
+          <img id="hero-logo-img" class="hero-logo-img" src="logo-emerald.png" alt="شعار فاي">
+        </div>
+        <h1 class="hero-agent-title">فاي</h1>
+        <div class="hero-welcome-badge">
+          <h2 class="hero-welcome-title">يا هلا بيك! محفظتك الرقمية بين يديك</h2>
+          <p class="hero-welcome-desc">أني فاي، مساعدك المالي الذكي لإدارة المحفظة، تحويل الأموال بالدينار العراقي، تسديد
+            الفواتير، ومتابعة الرصيد بكل سلاسة وأمان فائق.</p>
+        </div>
+
+        <!-- Quick Action Prompts (Only visible in Hero Mode) -->
+        <div class="quick-prompts-bar" id="quick-prompts">
+          <button class="prompt-chip" data-prompt="شكد رصيدي هسة؟">
+            <span>شكد رصيدي هسة؟</span>
+          </button>
+
+          <button class="prompt-chip" data-prompt="أريد أحول 50 ألف لأحمد">
+            <span>أريد أحول 50 ألف لأحمد</span>
+          </button>
+
+          <button class="prompt-chip" data-prompt="أريد أدفع فاتورة الإنترنت">
+            <span>أريد أدفع فاتورة الإنترنت</span>
+          </button>
+
+          <button class="prompt-chip" data-prompt="اعرضلي سجل الحركات الأخيرة">
+            <span>سجل الحركات الأخيرة</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Fixed Input Area -->
+      <footer class="chat-input-area" id="chat-input-area">
+        <form class="input-form" id="chat-form" onsubmit="return false;">
+          <div class="input-wrapper">
+            <textarea id="user-input" class="chat-textarea"
+              placeholder="اكتب طلبك المالي هنا (مثال: حوّل 25 ألف لأحمد)..." rows="1" autocomplete="off"
+              required></textarea>
+          </div>
+
+          <!-- Single Unified Action Button Slot (Mic morphs directly into Send button) -->
+          <div class="chat-action-slot">
+            <button type="button" id="mic-btn" class="mic-button" aria-label="التسجيل الصوتي">
+              <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
+
+            <button type="submit" id="send-btn" class="send-button" aria-label="إرسال الطلب">
+              <svg class="send-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+              </svg>
+            </button>
+          </div>
+        </form>
+
+        <!-- Voice Recording Interactive Dock (Merged Continuous Capsule) -->
+        <div class="voice-recording-dock" id="voice-recording-dock" dir="rtl" style="display: none;" role="region"
+          aria-label="شريط التسجيل الصوتي المتقدم">
+          <!-- Top Tier: Controls, Waves, and Clean Unboxed Mic -->
+          <div class="voice-recording-bar" id="voice-recording-bar">
+            <!-- Right Side (RTL start): Clean Unboxed Mic Icon & Live Status -->
+            <div class="voice-right-section">
+              <svg class="voice-mic-indicator" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <span class="voice-status-label" id="voice-status-label">جارٍ التسجيل...</span>
+            </div>
+
+            <!-- Real-time Sound Wave Frequency Visualizer (Center Canvas) -->
+            <div class="voice-waves-wrapper" id="voice-waves-wrapper" aria-label="تردد الصوت الفعلي">
+              <canvas id="voice-waves-canvas" class="voice-waves-canvas"></canvas>
+            </div>
+
+            <!-- Left Side (RTL end): Action Controls Group -->
+            <div class="voice-actions-group">
+              <!-- Stop / Pause button (Dark circle with hollow rounded square matching Image 3) -->
+              <button type="button" id="voice-stop-btn" class="voice-bar-btn voice-stop-circle"
+                aria-label="إيقاف وتحويل لنص">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="4" y="4" width="16" height="16" rx="4"></rect>
+                </svg>
+              </button>
+
+              <!-- Instant Send button (Theme-colored circle with up-arrow) -->
+              <button type="button" id="voice-send-btn" class="voice-bar-btn voice-send-circle"
+                aria-label="إرسال الطلب فوراً">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"></line>
+                  <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Bottom Tier: Attached Live Transcription Layer (Merged Dropdown Layer, No Icon) -->
+          <div class="voice-live-bubble" id="voice-live-bubble" style="display: none;">
+            <div class="voice-live-text-wrapper" id="voice-live-text-wrapper">
+              <span class="voice-live-text" id="voice-live-text">تحدث الآن باللغة العربية...</span>
+            </div>
+          </div>
+        </div>
+
+      </footer>
+    </div>
+
+    <!-- Recent Transactions Slide-Out Drawer (Opens from Left to Right) -->
+    <div class="transactions-backdrop" id="transactions-backdrop" aria-hidden="true"></div>
+
+    <aside class="transactions-drawer" id="transactions-drawer" dir="rtl" role="dialog" aria-modal="true"
+      aria-label="سجل المعاملات الأخيرة">
+      <!-- Drawer Header -->
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <svg class="drawer-header-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3.5" y="2.5" width="17" height="19" rx="4.5" ry="4.5"></rect>
+            <line x1="7.5" y1="8" x2="16.5" y2="8"></line>
+            <line x1="7.5" y1="12" x2="16.5" y2="12"></line>
+            <line x1="7.5" y1="16" x2="16.5" y2="16"></line>
+          </svg>
+          <h2 class="drawer-title">سجل المعاملات الأخيرة</h2>
+        </div>
+        <div class="drawer-header-actions">
+          <button type="button" id="refresh-transactions-btn" class="drawer-action-btn"
+            aria-label="تحديث السجل">
+            <svg class="refresh-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
+          <button type="button" id="close-transactions-btn" class="drawer-action-btn close-btn"
+            aria-label="إغلاق السجل">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Balance & Overview Card -->
+      <div class="drawer-overview-card">
+        <div class="overview-balance-row">
+          <span class="overview-balance-label">الرصيد المتاح حالياً</span>
+          <span class="overview-balance-val" id="drawer-balance-val">...</span>
+        </div>
+        <div class="overview-stats-grid">
+          <div class="overview-stat-item">
+            <span class="stat-label">إجمالي العمليات</span>
+            <span class="stat-value" id="drawer-total-count">0 عملية</span>
+          </div>
+          <div class="overview-stat-item">
+            <span class="stat-label">إجمالي المصروفات</span>
+            <span class="stat-value negative" id="drawer-total-spent">0 د.ع</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Chips -->
+      <div class="drawer-filters">
+        <button type="button" class="drawer-filter-chip active" data-filter="all">الكل</button>
+        <button type="button" class="drawer-filter-chip" data-filter="TRANSFER">التحويلات</button>
+        <button type="button" class="drawer-filter-chip" data-filter="BILL_PAYMENT">الفواتير</button>
+      </div>
+
+      <!-- Scrollable Transactions List -->
+      <div class="drawer-list-wrapper" id="drawer-transactions-list">
+        <!-- Rendered dynamically via JavaScript -->
+      </div>
+
+      <!-- Drawer Footer Note -->
+      <div class="drawer-footer">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        <span>بيانات المحفظة مشفرة ومحمية محلياً 100%</span>
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="script.js?v=36.0"></script>
+</body>
+
+</html>

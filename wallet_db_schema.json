@@ -1,0 +1,323 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IraqiWalletMockDatabaseSchema",
+  "description": "Database schema for a mock Iraqi digital wallet API designed for LLM agent function-calling, ambiguity resolution, and idempotent payments.",
+  "type": "object",
+  "required": [
+    "users",
+    "contacts",
+    "billers",
+    "transactions"
+  ],
+  "properties": {
+    "users": {
+      "type": "array",
+      "description": "Registered wallet account holders.",
+      "items": {
+        "$ref": "#/definitions/User"
+      }
+    },
+    "contacts": {
+      "type": "array",
+      "description": "Payee address book. Allows duplicate names per user to test agent ambiguity handling.",
+      "items": {
+        "$ref": "#/definitions/Contact"
+      }
+    },
+    "billers": {
+      "type": "array",
+      "description": "Utility, telecom, and municipal billers with required payment parameters.",
+      "items": {
+        "$ref": "#/definitions/Biller"
+      }
+    },
+    "transactions": {
+      "type": "array",
+      "description": "Ledger of transfers and bill payments with strict idempotency control.",
+      "items": {
+        "$ref": "#/definitions/Transaction"
+      }
+    }
+  },
+  "definitions": {
+    "User": {
+      "type": "object",
+      "required": [
+        "id",
+        "full_name",
+        "phone_number",
+        "currency",
+        "current_balance",
+        "status",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^usr_[a-zA-Z0-9_-]+$",
+          "description": "Primary Key: Unique user identifier (e.g. usr_1001)."
+        },
+        "full_name": {
+          "type": "string",
+          "description": "Full legal name in Arabic or English."
+        },
+        "phone_number": {
+          "type": "string",
+          "pattern": "^\\+9647[3-9][0-9]{8}$",
+          "description": "Primary wallet identity (Iraqi MSISDN format, e.g. +9647701234567)."
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["IQD", "USD"],
+          "default": "IQD",
+          "description": "Standard wallet currency (default Iraqi Dinar)."
+        },
+        "current_balance": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Available spendable balance in smallest unit (IQD integers or standard currency unit)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ACTIVE", "SUSPENDED", "KYC_PENDING"],
+          "description": "Account status flag."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 account creation timestamp."
+        }
+      }
+    },
+    "Contact": {
+      "type": "object",
+      "description": "Relationship: Many-to-One with User (foreign key: user_id). Allows duplicate 'name' or 'alias' values per user to test ambiguity resolution.",
+      "required": [
+        "id",
+        "user_id",
+        "name",
+        "account_details",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^cnt_[a-zA-Z0-9_-]+$",
+          "description": "Primary Key: Unique contact record ID."
+        },
+        "user_id": {
+          "type": "string",
+          "pattern": "^usr_[a-zA-Z0-9_-]+$",
+          "description": "Foreign Key: References users.id (the owner of this contact list)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display contact name (e.g. 'أحمد' or 'Ahmed'). NOT unique per user_id."
+        },
+        "alias": {
+          "type": "string",
+          "description": "Optional disambiguation nickname or relationship (e.g. 'أحمد أخوي', 'أحمد أبو الكافيه', 'أحمد كمال')."
+        },
+        "account_details": {
+          "type": "object",
+          "required": [
+            "account_type",
+            "account_identifier"
+          ],
+          "properties": {
+            "account_type": {
+              "type": "string",
+              "enum": ["WALLET_PHONE", "BANK_IBAN", "WALLET_ACCOUNT_NUMBER"],
+              "description": "Destination account identifier type."
+            },
+            "account_identifier": {
+              "type": "string",
+              "description": "Target address (e.g. '+9647801122334', 'IQ88ZBQI0000000012345678')."
+            },
+            "bank_name": {
+              "type": "string",
+              "description": "Bank or wallet provider name (e.g. 'ZainCash', 'Qi Card', 'Trade Bank of Iraq')."
+            }
+          }
+        },
+        "is_favorite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Indicates if contact is marked as a frequent recipient."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Biller": {
+      "type": "object",
+      "description": "Catalog of verified bill payment services across Iraq.",
+      "required": [
+        "id",
+        "biller_code",
+        "name_ar",
+        "name_en",
+        "category",
+        "required_fields",
+        "is_active"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^blr_[a-zA-Z0-9_-]+$",
+          "description": "Primary Key: Unique biller ID."
+        },
+        "biller_code": {
+          "type": "string",
+          "description": "Machine-readable lookup code (e.g. 'MOE_ELECTRICITY_BAGHDAD', 'EARTHLINK_HOME')."
+        },
+        "name_ar": {
+          "type": "string",
+          "description": "Biller name in Arabic (e.g. 'كهرباء بغداد - الكرخ', 'إيرثلنك للإنترنت')."
+        },
+        "name_en": {
+          "type": "string",
+          "description": "Biller name in English."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["ELECTRICITY", "INTERNET", "TELECOM", "WATER", "GOVERNMENT_FEES", "PRIVATE_GENERATOR"],
+          "description": "Biller category (e.g. PRIVATE_GENERATOR for مولدة أهلية)."
+        },
+        "required_fields": {
+          "type": "array",
+          "description": "Parameter definitions required by this biller to query or pay bills.",
+          "items": {
+            "type": "object",
+            "required": ["field_key", "label_ar", "label_en", "regex_pattern", "data_type"],
+            "properties": {
+              "field_key": {
+                "type": "string",
+                "description": "Form parameter key (e.g. 'meter_number', 'subscriber_id', 'phone_number')."
+              },
+              "label_ar": {
+                "type": "string",
+                "description": "Arabic label presented to user (e.g. 'رقم العداد', 'اسم المشترك')."
+              },
+              "label_en": {
+                "type": "string"
+              },
+              "regex_pattern": {
+                "type": "string",
+                "description": "Validation regex pattern for user input."
+              },
+              "data_type": {
+                "type": "string",
+                "enum": ["STRING", "NUMBER", "PHONE_IQ"]
+              },
+              "example": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "fee_fixed_iqd": {
+          "type": "integer",
+          "default": 0,
+          "description": "Fixed service surcharge in IQD."
+        },
+        "is_active": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "Transaction": {
+      "type": "object",
+      "description": "Financial ledger record. Relationship: Many-to-One with User (foreign key: user_id). Strictly enforces unique idempotency_key.",
+      "required": [
+        "id",
+        "idempotency_key",
+        "user_id",
+        "type",
+        "amount",
+        "currency",
+        "status",
+        "recipient_or_biller_details",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^trx_[a-zA-Z0-9_-]+$",
+          "description": "Primary Key: System transaction identifier."
+        },
+        "idempotency_key": {
+          "type": "string",
+          "description": "Unique client-generated key (UUID / hash). Replaying a request with the same idempotency_key returns cached response without duplicate debit."
+        },
+        "user_id": {
+          "type": "string",
+          "pattern": "^usr_[a-zA-Z0-9_-]+$",
+          "description": "Foreign Key: References users.id (the payer whose balance was debited)."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["TRANSFER", "BILL_PAY"],
+          "description": "Transaction nature: peer-to-peer transfer or utility bill payment."
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": 250,
+          "description": "Transaction value in primary currency (IQD)."
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["IQD", "USD"],
+          "default": "IQD"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "SUCCESS", "FAILED", "REVERSED"],
+          "description": "Current lifecycle state of the payment."
+        },
+        "failure_reason": {
+          "type": ["string", "null"],
+          "description": "Error classification if status is FAILED (e.g. 'INSUFFICIENT_FUNDS', 'INVALID_BILLER_ACCOUNT')."
+        },
+        "recipient_or_biller_details": {
+          "type": "object",
+          "required": ["target_type", "target_id", "display_name"],
+          "properties": {
+            "target_type": {
+              "type": "string",
+              "enum": ["CONTACT", "RAW_ACCOUNT", "BILLER"],
+              "description": "Distinguishes whether target was a contact, ad-hoc number, or utility biller."
+            },
+            "target_id": {
+              "type": "string",
+              "description": "References contacts.id or billers.id or account number."
+            },
+            "display_name": {
+              "type": "string",
+              "description": "Human-readable label recorded at execution time (e.g. 'أحمد كمال (زين كاش)' or 'كهرباء الكرخ')."
+            },
+            "account_identifier": {
+              "type": "string",
+              "description": "Account number, phone number, or meter number charged."
+            },
+            "metadata": {
+              "type": "object",
+              "description": "Optional payload containing bill month, invoice reference, notes, etc."
+            }
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# ==============================================================================
+# Security & Git Leak Protection (DO NOT COMMIT SECRETS)
+# ==============================================================================
+
+# Environment variable files containing API keys
+.env
+.env.*
+!.env.example
+*.env
+
+# Dependency directories
+node_modules/
+package-lock.json.bak
+
+# Python caches (if running Python utilities or wrappers)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# System and editor files
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+.idea/
+.vscode/
