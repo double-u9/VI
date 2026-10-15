@@ -65,11 +65,13 @@ Handling real financial transactions through Generative AI models introduces cri
 
 <div align="center">
 
-<video src="assets/demo_walkthrough.mp4" controls width="100%" poster="frontend/logo-emerald.png" style="border-radius: 18px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55); max-width: 960px;">
+<video src="assets/demo_walkthrough.mp4" controls="controls" width="640" poster="frontend/logo-emerald.png">
   Your browser does not support the video tag.
 </video>
 
-*(Place your recorded walkthrough as `assets/demo_walkthrough.mp4` or link directly to YouTube / Loom)*
+<p align="center">
+  <sub>🎬 <strong>فاي (VI) في العمل:</strong> استعراض عملي لسداد الفواتير، التحويلات، صمامات الأمان، والتبديل بين النماذج.</sub>
+</p>
 
 </div>
 
