@@ -494,7 +494,14 @@ If you encounter any friction during setup or operation, consult these proven so
 
 ### 7. 🛑 Resetting the Wallet Database to Default
 * **Question**: How do I reset balances, paid bills, and contacts back to the pristine initial state?
-* **Fix**: Click the **Reset DB** button in the web console header, or send a quick POST request:
+* **Option A (One-Click UI)**: Click the **"Reset DB"** button in the web console header at `http://localhost:3000`.
+* **Option B (Windows PowerShell)**:
+  ```powershell
+  Invoke-RestMethod -Method Post http://localhost:3000/api/reset
+  # or using the curl binary:
+  curl.exe -X POST http://localhost:3000/api/reset
+  ```
+* **Option C (Bash / macOS / Linux / CMD)**:
   ```bash
   curl -X POST http://localhost:3000/api/reset
   ```
