@@ -1,7 +1,7 @@
 /* ==========================================================================
    Financial Agent Master Stylesheet - Dual Theme Architecture
    Theme 1 (Default / Light): Royal Violet (#7c3aed) & Titanium White (#f8fafc)
-   Theme 2 (Dark): ZainCash Luxury Emerald (#00d084) & Cosmic Black (#04070b)
+   Theme 2 (Dark): Luxury Emerald (#00d084) & Cosmic Black (#04070b)
    Aesthetic: Bespoke Luxury Banking Console, Glassmorphism, Micro-Glows
    ========================================================================== */
 
@@ -177,7 +177,7 @@
 }
 
 /* ==========================================================================
-   2. Theme Tokens: Dark (Cosmic Black & ZainCash Emerald Green)
+   2. Theme Tokens: Dark (Cosmic Black & Luxury Emerald Green)
    ========================================================================== */
 [data-theme="dark"] {
   /* Natural Forest, Lime & Ocean Teal Harmony (Extracted from User Palette) */

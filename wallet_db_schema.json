@@ -136,7 +136,7 @@
             },
             "bank_name": {
               "type": "string",
-              "description": "Bank or wallet provider name (e.g. 'ZainCash', 'Qi Card', 'Trade Bank of Iraq')."
+              "description": "Bank or wallet provider name (e.g. 'Digital Wallet Provider', 'National Payment Card', 'Trade Bank of Iraq')."
             }
           }
         },
@@ -297,7 +297,7 @@
             },
             "display_name": {
               "type": "string",
-              "description": "Human-readable label recorded at execution time (e.g. 'أحمد كمال (زين كاش)' or 'كهرباء الكرخ')."
+              "description": "Human-readable label recorded at execution time (e.g. 'أحمد كمال (محفظة رقمية)' or 'كهرباء الكرخ')."
             },
             "account_identifier": {
               "type": "string",

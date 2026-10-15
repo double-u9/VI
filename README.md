@@ -1,15 +1,20 @@
-# 🏦 فاي (VI) - Local AI Financial Agent (المساعد المالي الذكي)
-> **فاي (VI) — Next-Generation Autonomous Financial Assistant for Iraqi Digital Wallets powered by 100% Local LLMs, Zero Cloud Data Leakage, Deterministic Guardrails, and Luxury Executive Fintech UX.**
-
 <div align="center">
+
+# فاي • VI
+### Bill Pay and Transfer Agent
+**وكيل سداد الفواتير والتحويلات المالية الذكي**
+
+<p align="center">
+  <strong>Next-Generation Autonomous Financial Agent for Digital Wallets powered by Multi-Model AI Orchestration, 100% Local Privacy, Deterministic Safety Guardrails, and Executive Fintech UX.</strong>
+</p>
 
 [![Node.js](https://img.shields.io/badge/Node.js-v18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express.js](https://img.shields.io/badge/Express.js-5.x-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
-[![Local AI](https://img.shields.io/badge/Local_AI-LM_Studio_%2F_Ollama-7c3aed?style=for-the-badge&logo=openai&logoColor=white)](https://lmstudio.ai/)
-[![Privacy First](https://img.shields.io/badge/Privacy-100%25_Offline_%26_Secure-10b981?style=for-the-badge&logo=shield&logoColor=white)](#)
+[![Multi-Model AI](https://img.shields.io/badge/AI_Engine-LM_Studio_%7C_Gemini_%7C_Groq-7c3aed?style=for-the-badge&logo=openai&logoColor=white)](#-multi-model-ai-orchestration-engine)
+[![Privacy First](https://img.shields.io/badge/Privacy-100%25_Local_%26_Deterministic-10b981?style=for-the-badge&logo=shield&logoColor=white)](#-deterministic-financial-guardrails)
 [![Currency](https://img.shields.io/badge/Currency-IQD_(Iraqi_Dinar)-0284c7?style=for-the-badge)](#)
 [![Frontend](https://img.shields.io/badge/Frontend-Vanilla_JS_%2B_CSS3_Glassmorphism-f59e0b?style=for-the-badge&logo=javascript&logoColor=white)](#)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](#license)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](#-license)
 
 </div>
 
@@ -18,13 +23,19 @@
 ## 📑 Table of Contents
 - [🌟 Executive Summary](#-executive-summary)
 - [🎥 Video Demo Walkthrough](#-video-demo-walkthrough)
+- [🧠 Multi-Model AI Orchestration Engine](#-multi-model-ai-orchestration-engine)
 - [✨ Key Features](#-key-features)
+- [🛡️ Deterministic Financial Guardrails](#️-deterministic-financial-guardrails)
 - [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow)
 - [📂 Project Structure](#-project-structure)
 - [⚡ Quick Start & Installation Guide](#-quick-start--installation-guide)
-  - [🛠️ Windows Setup & Troubleshooting](#3-windows-powershell-first-time-setup--troubleshooting)
+  - [1. Prerequisites](#1-prerequisites)
+  - [2. Environment Configuration (.env)](#2-environment-configuration-env)
+  - [3. Running Locally with LM Studio (100% Offline)](#3-running-locally-with-lm-studio-100-offline)
+  - [4. Optional: Adding Gemini & Groq Cloud Keys](#4-optional-adding-gemini--groq-cloud-keys)
+  - [5. Windows PowerShell Setup & Troubleshooting](#5-windows-powershell-setup--troubleshooting)
+  - [6. Launching the Application](#6-launching-the-application)
 - [💬 Interactive Test Scenarios](#-interactive-test-scenarios)
-- [🛡️ Deterministic Financial Guardrails](#️-deterministic-financial-guardrails)
 - [🎨 Luxury Fintech Design System](#-luxury-fintech-design-system)
 - [🗺️ Future Roadmap](#️-future-roadmap)
 - [📜 License](#-license)
@@ -33,71 +44,103 @@
 
 ## 🌟 Executive Summary
 
-**Local AI Financial Agent** is a privacy-first, on-premise digital wallet assistant engineered specifically for Iraqi fintech ecosystems (such as **ZainCash** and **SuperQi**).
+**فاي (VI) — Bill Pay and Transfer Agent** is an enterprise-grade autonomous digital wallet assistant engineered specifically for modern Iraqi fintech workflows and colloquial Iraqi Arabic communications.
 
-Modern cloud LLMs pose significant compliance, privacy, and hallucination risks for financial operations. This system solves those challenges through:
+Handling real financial transactions through Generative AI models introduces critical vulnerabilities: **hallucinated balances**, **accidental fund deductions**, **prompt injection**, and **cloud data leakage**. **فاي (VI)** solves every one of these challenges by isolating mathematical calculations and state changes from the generative layer through:
 
-1. **100% Local & Offline Inference**: Runs entirely on your local machine using **LM Studio** or **Ollama** (e.g., `Qwen2.5-7B-Instruct` or `Llama-3.1-8B-Instruct`). Zero customer transaction data, contact names, or wallet balances ever leave the host machine.
-2. **Deterministic Financial Safety Guardrails**: AI models can hallucinate math and intent. Our backend wraps model outputs in a strict, two-step confirmation state machine. Balance deductions and transaction executions are handled deterministically on disk—never hallucinated.
-3. **Colloquial Iraqi Dialect & Currency Parser**: Deeply understands colloquial Iraqi Arabic idioms (*"حول لـ أحمد 50 ألف"*, *"شكد رصيدي هسة"*, *"ادفع مال كهرباء"*, *"بطلت ما أريد"*), supporting numeric, alphanumeric, and written numbers.
-4. **Smart Contact Disambiguation Engine**: Resolves common ambiguity (e.g., having multiple contacts named *"Ahmed"*) by presenting interactive selections without guessing or erroneously sending money.
-5. **Luxury Executive UI/UX**: Bespoke dual-theme console featuring a ZainCash Emerald Dark Mode and Royal Violet Light Mode with mathematical halftone wave particle physics and glassmorphism.
+1. **Multi-Model Orchestration Layer**: Switch on the fly between **100% Local On-Premise Inference** (via **LM Studio** / **Ollama**) with zero cloud data egress, **Google Gemini Flash** for high-precision reasoning, or **Groq Cloud** for instant sub-second LPU processing.
+2. **Deterministic Financial Safety Guardrails**: All arithmetic, balance checks, transaction authorizations, and ledger updates are handled deterministically on disk via an atomic state machine. The LLM never hallucinates or modifies balances directly.
+3. **Colloquial Iraqi Dialect & Currency Parser**: Deep native comprehension of everyday Iraqi Arabic idioms (*"حول لـ أحمد 50 ألف"*, *"شكد رصيدي هسة"*, *"ادفع مال كهرباء"*, *"بطلت ما أريد"*), supporting numeric, alphanumeric, and written numbers.
+4. **Smart Contact Disambiguation Engine**: Resolves recipient ambiguity (e.g., multiple contacts named *"Ahmed"*) by presenting interactive selections without guessing or mistakenly sending funds.
+5. **Luxury Executive UI/UX**: Bespoke dual-theme console featuring an Emerald Dark Mode and Royal Violet Light Mode with mathematical halftone wave particle physics, balance privacy masking (`*** IQD 👁`), a sliding transaction ledger drawer, and fluid micro-animations.
 
 ---
 
 ## 🎥 Video Demo Walkthrough
 
-> [!IMPORTANT]
-> **Dedicated Video Showcase Section**  
-> Record your demo video showcasing the local AI financial flow (balance inquiry, disambiguation, confirmation cards, bill payment, voice input) and place it here.
+> [!TIP]
+> **Video Demonstration**  
+> Explore the interactive demo showcasing the multi-model switcher, balance privacy masking, contact disambiguation, confirmation cards, bill settlements, and voice input.
 
 <div align="center">
 
-<!-- ======================================================== -->
-<!-- 📹 EMBED YOUR VIDEO FILE OR YOUTUBE / LOOM LINK HERE      -->
-<!-- ======================================================== -->
-
-```html
 <video src="assets/demo_walkthrough.mp4" controls width="100%" poster="frontend/logo-emerald.png" style="border-radius: 18px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55); max-width: 960px;">
   Your browser does not support the video tag.
 </video>
-```
 
-*(You can drop your video into the project folder as `demo.mp4` or link directly to YouTube / Loom)*
-
-[![Watch Demo Video](https://img.shields.io/badge/▶️_Watch_Demo_Video-Click_Here-00d084?style=for-the-badge&logo=youtube&logoColor=white)](#-video-demo-walkthrough)
+*(Place your recorded walkthrough as `assets/demo_walkthrough.mp4` or link directly to YouTube / Loom)*
 
 </div>
+
+---
+
+## 🧠 Multi-Model AI Orchestration Engine
+
+**فاي (VI)** implements a dynamic, multi-provider AI architecture. Users can seamlessly choose their preferred inference engine directly from the executive in-app dropdown header:
+
+| Provider | Mode | Best For | Privacy / Data Residency | API Key Needed |
+| :--- | :--- | :--- | :--- | :--- |
+| **LM Studio** *(Default)* | **100% Local / Offline** | On-premise execution, complete privacy, zero internet dependency | **Zero Data Egress** (Runs entirely on local hardware) | ❌ **No (Free)** |
+| **Google Gemini Flash** | **Cloud AI Engine** | Advanced linguistic reasoning, complex intent nuance | Encrypted HTTPS API | ✅ Yes (`GEMINI_API_KEY`) |
+| **Groq Cloud** | **Ultra-Fast Cloud LPU** | Instantaneous sub-second replies, high-speed interactions | Encrypted HTTPS API | ✅ Yes (`GROQ_API_KEY`) |
+
+### Key Architectural Highlights:
+* **Unified Universal OpenAI Wrapper**: A single, robust wrapper function in `backend/server.js` dynamically routes requests to the selected provider without duplicating prompt engineering or state logic.
+* **Instant In-Session Switch**: Change models at any time during an active session via the header trigger. No page reload, server restart, or context wipe required.
+* **Graceful Fallback & Error Handling**: If a cloud key is missing or a local server is stopped, the agent delivers clear, friendly diagnostic guidance in colloquial Iraqi Arabic without crashing.
 
 ---
 
 ## ✨ Key Features
 
 ### 1. 🛡️ Strict Two-Step Confirmation State Machine
-- **Zero Accidental Deductions**: The AI agent cannot trigger any financial mutation directly from an initial prompt.
-- **Card-Based Verification**: Generates an interactive verification card displaying the recipient, verified phone number, exact amount, and remaining balance.
-- **Explicit User Consent**: Requires explicit affirmative confirmation (`"نعم"`, `"أكد"`, `"تمام"`, `"yes"`) before executing changes.
-- **Instant Cancellation**: Immediate rollback upon negative inputs (`"إلغاء"`, `"لا"`, `"بطلت"`, `"cancel"`).
+* **Zero Accidental Deductions**: The AI agent cannot trigger any financial mutation directly from an initial prompt.
+* **Verification Cards**: Generates an interactive verification card displaying recipient details, verified phone number, exact fee, amount, and remaining balance.
+* **Explicit User Consent**: Requires explicit affirmative confirmation (`"نعم"`, `"أكد"`, `"تمام"`, `"yes"`) before executing changes.
+* **Instant Cancellation**: Immediate rollback upon negative inputs (`"إلغاء"`, `"لا"`, `"بطلت"`, `"cancel"`).
 
 ### 2. 👥 Smart Contact Disambiguation Engine
-- If a user requests a transfer to a common name (e.g., *"Ahmed"*):
-  - The engine detects multiple matches in the address book.
-  - Formats and displays all matching entries with aliases and masked phone numbers.
-  - The user can select the target by number (`1`, `2`, `3`), alias (`"صديق الجامعة"`), or phone digits.
+* If a user requests a transfer to a common name (e.g., *"أحمد"*):
+  * The engine detects multiple matches in the verified address book.
+  * Formats and presents all matching entries with aliases and masked phone numbers.
+  * The user can select the target by number (`1`, `2`, `3`), alias (`"صديق الجامعة"`), or phone digits.
 
 ### 3. 🧾 Utility & Telecom Bill Payment System
-- **Pre-Integrated Biller Types**: Electricity (*كهرباء الكرخ*), Water (*مياه البصرة*), Mobile Postpaid (*زين العراق*), and Fiber/4G Internet (*ZainFi*).
-- **Aggregated or Single Settlement**: Query pending unpaid bills, pay an individual service (*"ادفع فاتورة الإنترنت"*), or settle all outstanding bills in one transaction (*"ادفع كل الفواتير"*).
+* **Pre-Integrated Biller Categories**: National Electricity Grid (*الكهرباء الوطنية*), Municipal Water (*الماء والخدمات البلدية*), Mobile Telecommunications (*فواتير خط الهاتف والاتصالات*), and Fiber/4G Internet (*فواتير الإنترنت والألياف الضوئية*).
+* **Aggregated or Single Settlement**: Query pending unpaid bills, pay an individual service (*"ادفع فاتورة الإنترنت"*), or settle all outstanding bills in one atomic transaction (*"ادفع كل الفواتير"*).
 
-### 4. 🎙️ Iraqi Arabic Voice-to-Text (Web Speech API)
-- Real-time speech recognition tuned for Iraqi Arabic dialect (`ar-IQ`).
-- Pulse-glow microphone UI with live recording state indicators.
+### 4. 👁️ Wallet Balance Privacy Toggle
+* Header pill features a shoulder-surfing privacy mask (`*** IQD 👁`) enabled by default.
+* One-click toggle reveals the live balance (`2,200,000 IQD`) with smooth SVG eye-animation and local storage persistence.
 
-### 5. 🎨 Dual Luxury Fintech Themes
-- **🌙 ZainCash Luxury Emerald (Dark Theme)**: Cosmic Black `#04070b` surface, luminous emerald accents `#8acc44`, gold alert lines `#ffc83b`, and dark glassmorphic cards.
-- **☀️ Royal Violet & Crisp White (Light Theme)**: Titanium White surface, deep royal violet `#7c3aed`, emerald success badges, and pristine high-contrast legibility.
-- **Dynamic Halftone Wave Canvas**: Custom mathematical dot grid rendered in real time, reacting dynamically to viewport scaling, theme switches, and layout transitions.
-- **Hero-to-Chat Seamless Transition**: Minimalist landing view centered on the brand logo smoothly shrinks and docks into an active conversation console upon the first interaction.
+### 5. 📂 Sliding Transactions History Drawer
+* Dedicated slide-out drawer accessible from the top-left navigation button.
+* Displays verified transaction receipts, timestamps, recipient names, and real-time status badges (`مكتملة` / `قيد المراجعة`).
+
+### 6. 🎙️ Iraqi Arabic Voice-to-Text (Web Speech API)
+* Real-time speech recognition calibrated for colloquial Iraqi Arabic (`ar-IQ`).
+* In-place morphing action capsule smoothly transforms the microphone button into a send button upon voice input or typing.
+
+---
+
+## 🛡️ Deterministic Financial Guardrails
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   DETERMINISTIC SAFETY PIPELINE                        │
+├────────────────────────────────────────────────────────────────────────┤
+│ 🔒 Anti-Hallucination Gate ◄── Balances read from disk only; LLM never │
+│                                computes or guesses financial figures.  │
+│ 🔒 2-Step Consent Lock     ◄── No balance mutation occurs without an  │
+│                                explicit secondary confirmation.        │
+│ 🔒 Overdraft Protection    ◄── Transfers exceeding available funds are │
+│                                blocked at the backend engine level.    │
+│ 🔒 Ambiguity Interceptor   ◄── Duplicate recipient matches block       │
+│                                execution until explicitly resolved.    │
+│ 🔒 Input Sanitization      ◄── Complete XSS escaping and prompt        │
+│                                injection sanitization on all inputs.   │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -105,42 +148,53 @@ Modern cloud LLMs pose significant compliance, privacy, and hallucination risks 
 
 ```mermaid
 flowchart TD
-    classDef clientStyle fill:#7c3aed,stroke:#a855f7,stroke-width:2px,color:#fff;
+    classDef clientStyle fill:#1e1e2e,stroke:#a855f7,stroke-width:2px,color:#fff;
     classDef serverStyle fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff;
-    classDef aiStyle fill:#059669,stroke:#34d399,stroke-width:2px,color:#fff;
-    classDef dbStyle fill:#d97706,stroke:#fbbf24,stroke-width:2px,color:#fff;
+    classDef aiStyle fill:#052e16,stroke:#34d399,stroke-width:2px,color:#fff;
+    classDef dbStyle fill:#2a1b05,stroke:#fbbf24,stroke-width:2px,color:#fff;
 
-    subgraph Client ["🖥️ Frontend Client (Pure Vanilla JS & CSS3)"]
-        UI["Executive UI Console\n(index.html & style.css)"]:::clientStyle
-        Voice["Voice Input Engine\n(Web Speech ar-IQ)"]:::clientStyle
-        Theme["Theme Controller\n(ZainCash Emerald / Royal Violet)"]:::clientStyle
+    subgraph Client ["🖥️ Executive Frontend Console (Pure Vanilla JS & CSS3)"]
+        UI["Executive UI & Action Capsule\n(index.html & style.css)"]:::clientStyle
+        Voice["Voice Input Engine\n(Web Speech API ar-IQ)"]:::clientStyle
+        ModelToggle["Model Switcher Dropdown\n(LM Studio | Gemini | Groq)"]:::clientStyle
+        Theme["Dual Theme Controller\n(Emerald Dark / Royal Violet)"]:::clientStyle
+        Drawer["Transaction Ledger Drawer\n(Real-time History & Masking)"]:::clientStyle
     end
 
-    subgraph Backend ["⚙️ Express Backend Engine (Node.js)"]
+    subgraph Backend ["⚙️ Express Engine & Safety Core (Node.js)"]
         Router["API Gateway\n(/api/chat, /api/db, /api/reset)"]:::serverStyle
-        NLP["Iraqi NLP & Amount Parser\n(Regex + Dialect Normalizer)"]:::serverStyle
-        Disambig["Contact Disambiguation Engine\n(Duplicate Name Resolver)"]:::serverStyle
-        Guardrail["Financial Safety Guardrail\n(Two-Step State Machine)"]:::serverStyle
+        NLP["Iraqi Dialect & Amount Parser\n(Colloquial Regex + Normalizer)"]:::serverStyle
+        Disambig["Contact Disambiguation Engine\n(Duplicate & Alias Resolver)"]:::serverStyle
+        Guardrail["Deterministic Safety Guardrail\n(Two-Step Confirmation Machine)"]:::serverStyle
+        ProviderRouter["Unified Multi-Model Gateway\n(Universal OpenAI Wrapper)"]:::serverStyle
     end
 
-    subgraph AI ["🧠 Local AI Model (On-Premise)"]
-        LLM["LM Studio / Ollama\n(Qwen 2.5 / Llama 3.1)"]:::aiStyle
+    subgraph AI ["🧠 Multi-Model AI Orchestration Layer"]
+        LocalLM["LM Studio / Local Ollama\n(100% Offline • Zero Egress)"]:::aiStyle
+        Gemini["Google Gemini Flash\n(Cloud Balanced Reasoning)"]:::aiStyle
+        Groq["Groq Cloud LPU\n(Ultra Low Latency LLaMA)"]:::aiStyle
     end
 
-    subgraph Storage ["💾 Atomic Ledger Storage"]
-        DB[("Wallet Database\n(mock_wallet_db.json)")]:::dbStyle
+    subgraph Storage ["💾 Atomic Ledger & Storage"]
+        DB[("Wallet Ledger Database\n(mock_wallet_db.json)")]:::dbStyle
     end
 
     Voice --> UI
-    UI -->|HTTP POST JSON| Router
+    ModelToggle --> UI
+    UI -->|HTTP POST JSON with selected provider| Router
     Router --> NLP
     NLP --> Disambig
     Disambig --> Guardrail
-    Guardrail -->|Contextual Prompting| LLM
-    LLM -->|Structured Response / Action Tag| Guardrail
+    Guardrail -->|Contextual Prompting| ProviderRouter
+    ProviderRouter -->|Local Port 1234| LocalLM
+    ProviderRouter -->|HTTPS API| Gemini
+    ProviderRouter -->|HTTPS API| Groq
+    LocalLM & Gemini & Groq -->|Structured Response / Action Tag| ProviderRouter
+    ProviderRouter --> Guardrail
     Guardrail -->|Atomic Disk Mutation| DB
-    DB -->|Verified Balance & Ledger| Router
+    DB -->|Verified Balance & Ledger Updates| Router
     Router -->|Fintech Card & Receipt Payload| UI
+    UI <--> Drawer
 ```
 
 ---
@@ -148,24 +202,29 @@ flowchart TD
 ## 📂 Project Structure
 
 ```text
-local-ai-financial-agent/
-│
+VI/
 ├── 📁 backend/
-│   ├── 📄 server.js               # Express server, NLP dialect parser, state machine & DB engine
-│   └── 📄 mock_wallet_db.json      # Atomic mock wallet database (User, Contacts, Bills, Ledger)
+│   ├── 📄 server.js               # Express server, NLP dialect parser, state machine & multi-model router
+│   ├── 📄 mock_wallet_db.json     # Atomic mock wallet database (User, Contacts, Bills, Ledger)
+│   ├── 📄 feedback_likes.json     # Analytics on positive user feedback
+│   └── 📄 feedback_dislikes.json  # Analytics on negative user feedback
 │
 ├── 📁 frontend/
 │   ├── 📄 index.html              # Semantic HTML5 layout (Header, Hero Dock, Interaction Capsule)
 │   ├── 📄 style.css               # Luxury design system, dual themes, halftone canvas, cards
-│   ├── 📄 script.js               # Client logic, speech recognition, DOM rendering, animations
-│   ├── 🖼️ logo-emerald.png        # Brand logo for ZainCash Dark Theme (Emerald Green)
-│   ├── 🖼️ logo-violet.png         # Brand logo for Royal Violet Light Theme (Royal Purple)
-│   ├── 🖼️ bot-emerald.png         # Bot avatar for Dark Theme
-│   └── 🖼️ bot-violet.png          # Bot avatar for Light Theme
+│   ├── 📄 script.js               # Client logic, model switcher, speech recognition, DOM rendering
+│   ├── 🖼️ logo-emerald.png        # Brand logo for Dark Theme (Emerald Green)
+│   ├── 🖼️ logo-violet.png         # Brand logo for Light Theme (Royal Purple)
+│   ├── 🖼️ bot-emerald.png         # Assistant avatar for Dark Theme
+│   └── 🖼️ bot-violet.png          # Assistant avatar for Light Theme
 │
+├── 📄 .env                        # Local environment variables & API keys (Git ignored)
+├── 📄 .env.example                # Safe environment variable configuration template
+├── 📄 .gitignore                  # Git leak protection (excludes .env, node_modules, temp files)
 ├── 📄 wallet_db_schema.json       # Formal JSON Schema defining wallet data models
-├── 📄 package.json                # Project dependencies and metadata
+├── 📄 package.json                # Project dependencies and npm scripts
 ├── 📄 package-lock.json           # Locked dependency tree
+├── 📄 LICENSE                     # MIT Open Source License
 └── 📄 README.md                   # Comprehensive project documentation
 ```
 
@@ -174,81 +233,92 @@ local-ai-financial-agent/
 ## ⚡ Quick Start & Installation Guide
 
 ### 1. Prerequisites
-- **[Node.js](https://nodejs.org/)** (v18.0.0 or higher recommended).
-- **[LM Studio](https://lmstudio.ai/)** or **[Ollama](https://ollama.ai/)** to host and run local LLMs.
-- Standard terminal (**Windows PowerShell**, **Command Prompt**, or any IDE like **Antigravity** / **VS Code**).
+* **[Node.js](https://nodejs.org/)** (v18.0.0 or higher recommended).
+* **Git** installed on your system.
+* *(Optional)* **[LM Studio](https://lmstudio.ai/)** or **[Ollama](https://ollama.ai/)** for running 100% local, offline models.
 
 ---
 
-### 2. Configure & Load Model in LM Studio
+### 2. Environment Configuration (.env)
+Create a `.env` file in the project root by copying the template:
+
+```bash
+cp .env.example .env
+```
+
+Your `.env` file should look like this:
+
+```env
+# Local LM Studio (Default port is 1234)
+LM_STUDIO_URL=http://127.0.0.1:1234/v1
+LOCAL_API_KEY=lm-studio
+
+# Optional Cloud Providers (Only required if you want to use them)
+GEMINI_API_KEY=your_gemini_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+
+# Server Port (defaults to 3000)
+PORT=3000
+```
+
+> [!NOTE]
+> If you only plan to use **LM Studio**, you do **not** need any cloud API keys! The system runs 100% offline out of the box.
+
+---
+
+### 3. Running Locally with LM Studio (100% Offline)
 1. Launch **LM Studio**.
-2. Search and download an instruction-tuned model with strong Arabic capabilities:
-   - `Qwen2.5-7B-Instruct` *(Highly recommended for exceptional Arabic comprehension and speed)*
-   - `Llama-3.1-8B-Instruct` *(High-quality reasoning)*
-3. Load the model into memory:
-   - Go to **Chat** or select the model in the top dropdown of the **Developer / Local Server** tab (`<->` icon on the left sidebar).
-   - Verify the port is set to **`1234`** and click **Start Server**.
-4. Ensure the OpenAI-compatible endpoint is running at:
-   ```text
-   http://127.0.0.1:1234/v1/chat/completions
-   ```
-   *(Node.js communicates directly with this endpoint over HTTP; no manual IDE or MCP setup is required).*
+2. Download an instruction-tuned model with strong Arabic capabilities:
+   * **`Qwen2.5-7B-Instruct`** *(Recommended for exceptional Arabic comprehension and speed)*.
+   * **`Llama-3.1-8B-Instruct`** *(High-quality reasoning)*.
+3. In the **Developer / Local Server** tab (`<->` on the sidebar):
+   * Select your downloaded model from the top dropdown.
+   * Verify the port is set to **`1234`**.
+   * Click **Start Server**.
 
 ---
 
-### 3. Windows PowerShell First-Time Setup & Troubleshooting
-When running on a fresh Windows machine, PowerShell may display one of two common setup notices. Apply these quick one-time fixes:
+### 4. Optional: Adding Gemini & Groq Cloud Keys
+* **Google Gemini**: Get a free API key at [Google AI Studio](https://aistudio.google.com/) and paste it as `GEMINI_API_KEY`.
+* **Groq Cloud**: Get a free API key at [Groq Console](https://console.groq.com/keys) and paste it as `GROQ_API_KEY`.
 
-#### A. Issue: `'node'` or `'npm'` is not recognized
-> `node : The term 'node' is not recognized as the name of a cmdlet, function, script file...`
-* **Cause**: The terminal was opened before or during the Node.js installation, so the system `PATH` has not yet been refreshed.
-* **Quick Fix (Option 1)**: Close and re-open your terminal or IDE completely.
-* **Instant Fix (Option 2)**: Refresh the environment `PATH` in the current terminal session without restarting:
+---
+
+### 5. Windows PowerShell Setup & Troubleshooting
+On a fresh Windows setup, PowerShell may restrict scripts or fail to recognize new Node.js paths. Apply these one-time fixes if needed:
+
+* **If `node` or `npm` is not recognized**:
+  Refresh the terminal environment path without restarting:
   ```powershell
   $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
   ```
-  Then verify:
-  ```powershell
-  node -v
-  npm -v
-  ```
-
-#### B. Issue: `npm.ps1 cannot be loaded because running scripts is disabled`
-> `npm : File C:\Program Files\nodejs\npm.ps1 cannot be loaded because running scripts is disabled on this system (PSSecurityException).`
-* **Cause**: Windows PowerShell restricts running third-party unsigned scripts by default.
-* **Fix**: Run this one-time command in PowerShell (does not require Administrator rights):
+* **If running scripts is disabled (`PSSecurityException`)**:
+  Allow local script execution (does not require Administrator privileges):
   ```powershell
   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
   ```
-  *(Type `Y` and press Enter if prompted to confirm).*
 
 ---
 
-### 4. Install & Launch the Agent
+### 6. Launching the Application
 
 ```bash
-# 1. Clone repository or navigate to directory (omit node_modules when copying to another PC)
-cd "local ai agent"
-
-# 2. Install lightweight dependencies (Express & CORS)
+# 1. Install dependencies
 npm install
 
-# 3. Start the financial agent backend
+# 2. Start the financial agent server
 node backend/server.js
 ```
 
-You should see the following console output:
+You will see:
 ```text
 ====================================================
   AI Financial Agent Backend running on port 3000
-  Connected to LM Studio: http://127.0.0.1:1234/v1/chat/completions
-  Database File: c:\...\backend\mock_wallet_db.json
+  Connected to LM Studio: http://127.0.0.1:1234/v1
+  Database File: .../backend/mock_wallet_db.json
 ====================================================
 ```
 
----
-
-### 5. Access the Web Application
 Open your browser and navigate to:
 👉 **`http://localhost:3000`**
 
@@ -256,42 +326,31 @@ Open your browser and navigate to:
 
 ## 💬 Interactive Test Scenarios
 
-Test the agent using these real-world scenarios:
-
-| Scenario | User Message (Arabic) | Agent Expected Behavior |
+| Scenario | User Prompt (Iraqi Arabic) | Agent Behavior |
 | :--- | :--- | :--- |
-| **Balance Inquiry** | `"شكد رصيدي هسة؟"` or `"كم عندي بالمحفظة؟"` | Reads deterministic balance directly from disk and warns of any pending payments. |
-| **Contact Ambiguity** | `"أريد أحول 50 ألف لأحمد"` | Identifies multiple contacts named *Ahmed* and prompts the user to choose by index (`1`, `2`, `3`) or alias. |
-| **Confirmation Flow** | `"أحمد كمال"` followed by `"نعم"` | Displays verification card with recipient, fee, and remaining balance. Executes upon `"نعم"` and issues a receipt. |
-| **Operation Rollback** | `"بطلت ما أريد"` or `"إلغاء"` | Cancels pending action immediately without debiting any funds. |
-| **Unpaid Bills Inquiry** | `"شنو الفواتير اللي ما مدفوعة عندي؟"` | Lists all unpaid bills (Electricity, Water, Internet, Line) with amounts and total balance needed. |
+| **Balance Inquiry** | `"شكد رصيدي هسة؟"` أو `"كم عندي بالمحفظة؟"` | Reads deterministic balance directly from disk and warns of any outstanding bills. |
+| **Contact Ambiguity** | `"أريد أحول 50 ألف لأحمد"` | Identifies multiple contacts named *أحمد* and prompts the user to select by index (`1`, `2`) or alias. |
+| **Confirmation Flow** | `"أحمد كمال"` ثم `"نعم"` | Renders a verification card with recipient, fee, and remaining balance. Executes upon `"نعم"` and issues a verified receipt. |
+| **Operation Rollback** | `"بطلت ما أريد"` أو `"إلغاء"` | Cancels pending action immediately without debiting any funds. |
+| **Unpaid Bills Inquiry** | `"شنو الفواتير اللي ما مدفوعة عندي؟"` | Lists all unpaid bills (Electricity, Water, Internet, Phone) with individual amounts and total sum. |
 | **Single Bill Payment** | `"ادفع فاتورة الإنترنت"` | Verifies Internet bill balance, generates confirmation card, and updates bill status to `paid`. |
 | **Bulk Bill Payment** | `"ادفع كل الفواتير اللي عليه"` | Aggregates all unpaid bills, verifies total against available balance, and settles them atomically. |
 
 ---
 
-## 🛡️ Deterministic Financial Guardrails
-
-```
-🔒 Anti-Hallucination Gate ◄── Balances are read directly from disk; LLM never guesses figures
-🔒 2-Step Consent Lock     ◄── No mutation occurs without an explicit secondary user confirmation
-🔒 Overdraft Protection    ◄── Transfers exceeding available funds are blocked at the engine level
-🔒 Ambiguity Interceptor   ◄── Duplicate recipient matches block execution until resolved
-🔒 Secure Sanitization     ◄── Complete XSS escaping and prompt injection sanitization on all inputs
-```
-
----
-
 ## 🎨 Luxury Fintech Design System
 
-- **Dual Color Palette**:
-  - **ZainCash Dark Theme**: Cosmic Black `#04070b` surface, Deep Emerald `#0c171e`, Neon Emerald `#8acc44`, Warning Gold `#ffc83b`.
-  - **Royal Violet Light Theme**: Crisp Titanium White surface, Slate Mist `#f8fafc`, Royal Violet `#7c3aed`, Emerald Green `#10b981`.
-- **Bespoke Typography**:
-  - **Cairo**: Modern Arabic headings, body text, and dialogue cards.
-  - **Plus Jakarta Sans**: High-precision tabular numerals and international currency formatting (`IQD`).
-- **Mathematical Halftone Particle Wave**:
-  - Interactive HTML5 canvas rendering dynamic particle grids that morph and react across viewports and themes without distorting on zoom.
+* **Dual Color Palette**:
+  * **🌙 Luxury Emerald (Dark Theme)**: Cosmic Black `#04070b` surface, Deep Forest `#0c171e`, Neon Emerald `#4ade80`, Warning Gold `#ffc83b`.
+  * **☀️ Royal Violet (Light Theme)**: Crisp Titanium White surface, Slate Mist `#f8fafc`, Royal Violet `#7c3aed`, Emerald Green `#10b981`.
+* **Bespoke Typography**:
+  * **Cairo**: Modern Arabic headings, body text, and dialogue cards.
+  * **Plus Jakarta Sans**: High-precision tabular numerals and international currency formatting (`IQD`).
+* **Mathematical Halftone Particle Wave**:
+  * Interactive HTML5 canvas rendering dynamic particle grids that morph and react across viewports and themes without distorting on zoom.
+* **Dual-State Dynamic New Chat Button**:
+  * In Hero mode: displays a refined dotted perimeter icon indicating a fresh session.
+  * In Active Chat mode: seamlessly transforms into a solid circle icon with fluid rotation.
 
 ---
 
@@ -299,6 +358,9 @@ Test the agent using these real-world scenarios:
 
 - [x] Full Iraqi dialect support for money transfers and utility bills.
 - [x] Strict two-step confirmation engine and contact disambiguation.
+- [x] Multi-Model AI Orchestration (LM Studio, Google Gemini, Groq).
+- [x] Wallet balance privacy masking toggle (`*** IQD 👁`).
+- [x] Sliding transaction ledger history drawer.
 - [x] Dual luxury themes with real-time responsive halftone animations.
 - [x] Integrated voice input via Web Speech API (`ar-IQ`).
 - [ ] Iraqi dialect Text-to-Speech (TTS) auditory feedback.
@@ -314,6 +376,6 @@ This project is open-source and licensed under the **[MIT License](LICENSE)**.
 
 <div align="center">
 
-**Crafted with precision for the future of digital banking in Iraq 🇮🇶**
+**فاي (VI) — صُمم وصُقل ليكون المعيار الأعلى لمستقبل الخدمات المالية الرقمية 🇮🇶**
 
 </div>
