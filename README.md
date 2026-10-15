@@ -65,13 +65,16 @@ Handling real financial transactions through Generative AI models introduces cri
 
 <div align="center">
 
-<video src="assets/demo_walkthrough.mp4" controls="controls" width="640" poster="frontend/logo-emerald.png">
-  Your browser does not support the video tag.
-</video>
+  <a href="https://github.com/double-u9/VI/raw/main/assets/demo_walkthrough.mp4" target="_blank">
+    <img src="frontend/logo-emerald.png" width="220" alt="فاي - عرض توضيحي" />
+    <br/><br/>
+    <img src="https://img.shields.io/badge/▶️_Watch_Video_Walkthrough-1080p_HD_Demo-10b981?style=for-the-badge&logo=googleplay&logoColor=white" alt="Play Video Walkthrough" />
+  </a>
 
-<p align="center">
-  <sub>🎬 <strong>فاي (VI) في العمل:</strong> استعراض عملي لسداد الفواتير، التحويلات، صمامات الأمان، والتبديل بين النماذج.</sub>
-</p>
+  <p align="center">
+    <sub>🎬 <strong>اضغط على الزر أعلاه لتشغيل الفيديو التوضيحي المباشر (Full HD Walkthrough)</strong><br/>
+    <em>استعراض عملي وتفاعلي لسداد الفواتير، التحويلات المالية، صمامات الأمان، والتبديل الفوري بين النماذج.</em></sub>
+  </p>
 
 </div>
 
