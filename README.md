@@ -22,7 +22,7 @@
 
 ## 📑 Table of Contents
 - [🌟 Executive Summary](#-executive-summary)
-- [🎥 Video Demo Walkthrough](#-video-demo-walkthrough)
+- [🎥 Interactive Demo Walkthrough](#-interactive-demo-walkthrough)
 - [🧠 Multi-Model AI Orchestration Engine](#-multi-model-ai-orchestration-engine)
 - [✨ Key Features](#-key-features)
 - [🛡️ Deterministic Financial Guardrails](#️-deterministic-financial-guardrails)
@@ -57,24 +57,19 @@ Handling real financial transactions through Generative AI models introduces cri
 
 ---
 
-## 🎥 Video Demo Walkthrough
+## 🎥 Interactive Demo Walkthrough
 
 > [!TIP]
-> **Video Demonstration**  
-> Explore the interactive demo showcasing the multi-model switcher, balance privacy masking, contact disambiguation, confirmation cards, bill settlements, and voice input.
+> **Live Demonstration**  
+> Explore the interactive walkthrough showcasing the multi-model switcher, balance privacy masking, contact disambiguation, confirmation cards, bill settlements, and voice input in action.
 
 <div align="center">
 
-  <a href="https://github.com/double-u9/VI/raw/main/assets/demo_walkthrough.mp4" target="_blank">
-    <img src="frontend/logo-emerald.png" width="220" alt="فاي - عرض توضيحي" />
-    <br/><br/>
-    <img src="https://img.shields.io/badge/▶️_Watch_Video_Walkthrough-1080p_HD_Demo-10b981?style=for-the-badge&logo=googleplay&logoColor=white" alt="Play Video Walkthrough" />
-  </a>
+<img src="assets/demo_walkthrough.gif" alt="فاي • VI Walkthrough Demo" width="850" style="max-width: 100%; border-radius: 16px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);" />
 
-  <p align="center">
-    <sub>🎬 <strong>اضغط على الزر أعلاه لتشغيل الفيديو التوضيحي المباشر (Full HD Walkthrough)</strong><br/>
-    <em>استعراض عملي وتفاعلي لسداد الفواتير، التحويلات المالية، صمامات الأمان، والتبديل الفوري بين النماذج.</em></sub>
-  </p>
+<p align="center">
+  <sub>🎬 <strong>فاي (VI) في العمل:</strong> استعراض عملي وتفاعلي لسداد الفواتير، التحويلات المالية، صمامات الأمان الحتمية، والتبديل اللحظي بين النماذج.</sub>
+</p>
 
 </div>
 
