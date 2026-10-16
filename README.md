@@ -494,18 +494,22 @@ If you encounter any friction during setup or operation, consult these proven so
 
 ### 7. 🛑 Resetting the Wallet Database to Default
 * **Question**: How do I reset balances, paid bills, and contacts back to the pristine initial state?
-* **Option A (One-Click UI)**: Click the **"Reset DB"** button in the web console header at `http://localhost:3000`.
-* **Option B (Windows PowerShell)**:
-  ```powershell
-  Invoke-RestMethod -Method Post http://localhost:3000/api/reset
-  # or using the curl binary:
-  curl.exe -X POST http://localhost:3000/api/reset
-  ```
-* **Option C (Bash / macOS / Linux / CMD)**:
+* **Option A (Terminal - Works even if server is stopped)**:
   ```bash
-  curl -X POST http://localhost:3000/api/reset
+  npm run reset-db
   ```
-  This immediately rewrites `mock_wallet_db.json` with fresh initial balances (`2,200,000 IQD`) and resets all utility bills to `unpaid`.
+* **Option B (One-Click UI - When server is running)**:
+  Click the **"Reset DB"** button in the top navigation bar at `http://localhost:3000`.
+* **Option C (HTTP API - When server is running)**:
+  - In **Windows PowerShell**:
+    ```powershell
+    Invoke-RestMethod -Method Post http://localhost:3000/api/reset
+    ```
+  - In **Bash / Linux / macOS / CMD**:
+    ```bash
+    curl -X POST http://localhost:3000/api/reset
+    ```
+  All options immediately rewrite `mock_wallet_db.json` with fresh initial balances (`2,200,000 IQD`) and reset all utility bills to `unpaid`.
 
 ---
 

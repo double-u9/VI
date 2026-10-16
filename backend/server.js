@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const { OpenAI } = require('openai');
+const { resetDatabase } = require('./reset_db');
 
 // Load environment variables securely from .env in project root
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
@@ -1297,8 +1298,9 @@ app.post('/api/reset', (req, res) => {
     pendingDisambiguation = null;
     pendingBillPayment = null;
     pendingTransferRecipient = null;
-    console.log('🔄 [Conversation history and pending state reset]');
-    res.json({ status: 'Conversation history reset successful' });
+    resetDatabase();
+    console.log('🔄 [Conversation history, pending state, and wallet database reset to defaults]');
+    res.json({ status: 'Conversation history and database reset successful' });
 });
 
 /* ==========================================================================
