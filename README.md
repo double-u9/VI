@@ -204,8 +204,16 @@ flowchart TD
 
 ```text
 VI/
+├── 📁 assets/
+│   ├── 🎬 demo_walkthrough.gif    # Animated walkthrough demonstration
+│   ├── 🖼️ logo-emerald.png        # Brand logo for Dark Theme (Emerald Green)
+│   ├── 🖼️ logo-violet.png         # Brand logo for Light Theme (Royal Purple)
+│   ├── 🖼️ bot-emerald.png         # Assistant avatar for Dark Theme
+│   └── 🖼️ bot-violet.png          # Assistant avatar for Light Theme
+│
 ├── 📁 backend/
 │   ├── 📄 server.js               # Express server, NLP dialect parser, state machine & multi-model router
+│   ├── 📄 reset_db.js             # Standalone database and conversation state reset utility
 │   ├── 📄 mock_wallet_db.json     # Atomic mock wallet database (User, Contacts, Bills, Ledger)
 │   ├── 📄 feedback_likes.json     # Analytics on positive user feedback
 │   └── 📄 feedback_dislikes.json  # Analytics on negative user feedback
@@ -213,11 +221,7 @@ VI/
 ├── 📁 frontend/
 │   ├── 📄 index.html              # Semantic HTML5 layout (Header, Hero Dock, Interaction Capsule)
 │   ├── 📄 style.css               # Luxury design system, dual themes, halftone canvas, cards
-│   ├── 📄 script.js               # Client logic, model switcher, speech recognition, DOM rendering
-│   ├── 🖼️ logo-emerald.png        # Brand logo for Dark Theme (Emerald Green)
-│   ├── 🖼️ logo-violet.png         # Brand logo for Light Theme (Royal Purple)
-│   ├── 🖼️ bot-emerald.png         # Assistant avatar for Dark Theme
-│   └── 🖼️ bot-violet.png          # Assistant avatar for Light Theme
+│   └── 📄 script.js               # Client logic, model switcher, speech recognition, DOM rendering
 │
 ├── 📄 .env                        # Local environment variables & API keys (Git ignored)
 ├── 📄 .env.example                # Safe environment variable configuration template

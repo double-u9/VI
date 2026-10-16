@@ -20,6 +20,8 @@ app.use((req, res, next) => {
     next();
 });
 
+app.use('/assets', express.static(path.join(__dirname, '../assets')));
+app.use(express.static(path.join(__dirname, '../assets')));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 /* ==========================================================================

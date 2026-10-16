@@ -645,7 +645,7 @@ function initSpeechRecognition() {
  */
 function getBotAvatarSrc() {
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-  return currentTheme === 'light' ? 'bot-violet.png' : 'bot-emerald.png';
+  return currentTheme === 'light' ? 'assets/bot-violet.png' : 'assets/bot-emerald.png';
 }
 
 /**
@@ -683,7 +683,7 @@ function initThemeToggle() {
     }
 
     // Instantly update all bot avatars across the app to match the theme
-    const avatarSrc = theme === 'light' ? 'bot-violet.png' : 'bot-emerald.png';
+    const avatarSrc = theme === 'light' ? 'assets/bot-violet.png' : 'assets/bot-emerald.png';
     document.querySelectorAll('.avatar-img').forEach(img => {
       img.src = avatarSrc;
     });
@@ -691,7 +691,7 @@ function initThemeToggle() {
     // Instantly update the centerpiece hero logo to match the theme (Emerald vs Violet)
     const heroLogoImg = document.getElementById('hero-logo-img');
     if (heroLogoImg) {
-      heroLogoImg.src = theme === 'light' ? 'logo-violet.png' : 'logo-emerald.png';
+      heroLogoImg.src = theme === 'light' ? 'assets/logo-violet.png' : 'assets/logo-emerald.png';
     }
 
     // Instantly update resting voice visualizer theme colors
