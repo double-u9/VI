@@ -1350,54 +1350,151 @@ function getBestArabicVoice(preferredVoiceName = null) {
 }
 
 /**
- * Dynamically populates the voice selector dropdown with cloud neural voice
- * and any available system voices (Microsoft Salma, Google Arabic, etc.)
+ * Helper to clean and format raw system voice names into readable Arabic titles and descriptions
+ */
+function formatVoiceDisplay(voiceId, voiceObj = null) {
+  if (voiceId === 'cloud-google' || !voiceObj) {
+    return {
+      title: 'صوت فاي الذكي (Google Neural)',
+      desc: 'سحابي فائق • ذكاء اصطناعي وعراقي فصيح'
+    };
+  }
+  const name = voiceObj.name || voiceId;
+  const lang = voiceObj.lang || 'ar';
+
+  let cleanTitle = name;
+  if (/salma|سلمى/i.test(name)) cleanTitle = 'سلمى (Microsoft Natural)';
+  else if (/shakir|شاكر/i.test(name)) cleanTitle = 'شاكر (Microsoft Natural)';
+  else if (/maryam|مريم/i.test(name)) cleanTitle = 'مريم (Microsoft Natural)';
+  else if (/hamed|حامد/i.test(name)) cleanTitle = 'حامد (Microsoft Natural)';
+  else if (/fatima|فاطمة/i.test(name)) cleanTitle = 'فاطمة (Microsoft Natural)';
+  else if (/zariyah|زرية/i.test(name)) cleanTitle = 'زرية (Microsoft Natural)';
+  else if (/maged|ماجد/i.test(name)) cleanTitle = 'ماجد (Microsoft Natural)';
+  else if (/tarik|طارق/i.test(name)) cleanTitle = 'طارق (Microsoft Natural)';
+  else if (/laila|ليلى/i.test(name)) cleanTitle = 'ليلى (Microsoft Natural)';
+  else if (/google/i.test(name)) cleanTitle = `جوجل (${name})`;
+  else {
+    cleanTitle = name.replace(/Microsoft/gi, '').replace(/Online \(Natural\)/gi, '').trim() || name;
+  }
+
+  const cleanDesc = `صوت محلي • ${lang}`;
+  return { title: cleanTitle, desc: cleanDesc };
+}
+
+/**
+ * Dynamically populates both the hidden native voice selector and the
+ * luxury liquid glassy custom bubble dropdown (matching Image 2).
  */
 function populateVoiceSelectDropdown() {
   if (typeof document === 'undefined') return;
   const voiceSelect = document.getElementById('tts-voice-select');
-  if (!voiceSelect) return;
+  const optionsList = document.getElementById('tts-voice-options-list');
+  const triggerTitle = document.getElementById('tts-voice-bubble-title');
+  const triggerDesc = document.getElementById('tts-voice-bubble-desc');
 
-  voiceSelect.innerHTML = '';
+  // 1. Compile available voices
+  const voiceEntries = [
+    {
+      id: 'cloud-google',
+      title: 'صوت فاي الذكي (Google Neural)',
+      desc: 'سحابي فائق • ذكاء اصطناعي وعراقي فصيح',
+      voiceObj: null
+    }
+  ];
 
-  // 1. Google Neural Cloud Voice (Default recommended)
-  const cloudOption = document.createElement('option');
-  cloudOption.value = 'cloud-google';
-  cloudOption.textContent = '✨ صوت فاي الذكي (Google Neural - عراقي فصيح)';
-  voiceSelect.appendChild(cloudOption);
-
-  // 2. Check for local browser Arabic voices
   const arabicVoices = (cachedSpeechVoices || []).filter(v => {
     const lang = (v.lang || '').toLowerCase();
     const name = (v.name || '').toLowerCase();
-    return lang.startsWith('ar') || name.includes('arabic') || name.includes('عربي') || name.includes('salma') || name.includes('shakir');
+    return lang.startsWith('ar') || name.includes('arabic') || name.includes('عربي') || name.includes('salma') || name.includes('shakir') || name.includes('maryam');
   });
 
-  if (arabicVoices.length > 0) {
-    const group = document.createElement('optgroup');
-    group.label = 'أصوات المتصفح والنظام (Offline / Browser)';
-    arabicVoices.forEach(v => {
-      const opt = document.createElement('option');
-      opt.value = v.name;
-      let label = v.name;
-      if (v.name.includes('Salma')) {
-        label = 'سلمى (Microsoft Salma - Natural)';
-      } else if (v.name.includes('Shakir')) {
-        label = 'شاكر (Microsoft Shakir - Natural)';
-      } else if (v.name.includes('Google') && v.lang.startsWith('ar')) {
-        label = `جوجل (Google ${v.lang})`;
-      } else {
-        label = `${v.name} (${v.lang})`;
-      }
-      opt.textContent = label;
-      group.appendChild(opt);
+  arabicVoices.forEach(v => {
+    const display = formatVoiceDisplay(v.name, v);
+    voiceEntries.push({
+      id: v.name,
+      title: display.title,
+      desc: display.desc,
+      voiceObj: v
     });
-    voiceSelect.appendChild(group);
+  });
+
+  // Keep selection valid
+  const activeExists = voiceEntries.some(e => e.id === selectedVoiceId);
+  if (!activeExists) {
+    selectedVoiceId = 'cloud-google';
   }
 
-  // Restore active user selection if available
-  const exists = Array.from(voiceSelect.options).some(o => o.value === selectedVoiceId);
-  voiceSelect.value = exists ? selectedVoiceId : 'cloud-google';
+  // 2. Sync Hidden Native Select for test/fallback parity
+  if (voiceSelect) {
+    voiceSelect.innerHTML = '';
+    voiceEntries.forEach(entry => {
+      const opt = document.createElement('option');
+      opt.value = entry.id;
+      opt.textContent = `${entry.title} - ${entry.desc}`;
+      voiceSelect.appendChild(opt);
+    });
+    voiceSelect.value = selectedVoiceId;
+  }
+
+  // 3. Update Custom Trigger Bubble
+  const currentEntry = voiceEntries.find(e => e.id === selectedVoiceId) || voiceEntries[0];
+  if (triggerTitle) triggerTitle.textContent = currentEntry.title;
+  if (triggerDesc) triggerDesc.textContent = currentEntry.desc;
+
+  // 4. Render Glassy Voice Cards List (Matching Image 2 Model Selector)
+  if (optionsList) {
+    optionsList.innerHTML = '';
+    voiceEntries.forEach(entry => {
+      const isSelected = entry.id === selectedVoiceId;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tts-voice-card-item' + (isSelected ? ' active' : '');
+      btn.setAttribute('role', 'menuitem');
+      btn.setAttribute('data-voice-id', entry.id);
+
+      btn.innerHTML = `
+        <div class="tts-voice-card-check" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div class="tts-voice-card-text">
+          <div class="tts-voice-card-title">${escapeHtml(entry.title)}</div>
+          <div class="tts-voice-card-desc">${escapeHtml(entry.desc)}</div>
+        </div>
+      `;
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedVoiceId = entry.id;
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem('vi_tts_voice', selectedVoiceId);
+          }
+        } catch (err) {}
+
+        if (voiceSelect) {
+          voiceSelect.value = selectedVoiceId;
+        }
+        if (triggerTitle) triggerTitle.textContent = entry.title;
+        if (triggerDesc) triggerDesc.textContent = entry.desc;
+
+        const allItems = optionsList.querySelectorAll('.tts-voice-card-item');
+        allItems.forEach(i => i.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Close secondary voice menu bubble
+        const voiceMenu = document.getElementById('tts-voice-options-menu');
+        const voiceWrapper = document.getElementById('tts-voice-bubble-wrapper');
+        const voiceTrigger = document.getElementById('tts-voice-bubble-trigger');
+        if (voiceMenu) voiceMenu.classList.add('hidden');
+        if (voiceWrapper) voiceWrapper.classList.remove('open');
+        if (voiceTrigger) voiceTrigger.setAttribute('aria-expanded', 'false');
+      });
+
+      optionsList.appendChild(btn);
+    });
+  }
 }
 
 /**
@@ -1698,8 +1795,39 @@ function initTtsEngine() {
     });
   }
 
-  // 4. Voice Select Dropdown initialization & change listener
+  // 4. Voice Bubble Trigger & Secondary Floating Glass Menu Toggle
   populateVoiceSelectDropdown();
+
+  const voiceTrigger = document.getElementById('tts-voice-bubble-trigger');
+  const voiceMenu = document.getElementById('tts-voice-options-menu');
+  const voiceWrapper = document.getElementById('tts-voice-bubble-wrapper');
+
+  if (voiceTrigger && voiceMenu) {
+    voiceTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !voiceMenu.classList.contains('hidden');
+      if (isOpen) {
+        voiceMenu.classList.add('hidden');
+        if (voiceWrapper) voiceWrapper.classList.remove('open');
+        voiceTrigger.setAttribute('aria-expanded', 'false');
+      } else {
+        voiceMenu.classList.remove('hidden');
+        if (voiceWrapper) voiceWrapper.classList.add('open');
+        voiceTrigger.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    if (ttsPopover) {
+      ttsPopover.addEventListener('click', (e) => {
+        if (voiceWrapper && !voiceWrapper.contains(e.target)) {
+          voiceMenu.classList.add('hidden');
+          voiceWrapper.classList.remove('open');
+          voiceTrigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  }
+
   if (voiceSelect) {
     voiceSelect.addEventListener('change', (e) => {
       selectedVoiceId = e.target.value;

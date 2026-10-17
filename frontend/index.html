@@ -202,14 +202,14 @@
             </svg>
           </button>
 
-          <!-- نافذة الإعدادات المنسدلة (Voice & Speed Settings Popover) -->
-          <div class="tts-settings-popover hidden" id="tts-settings-popover">
+          <!-- نافذة الإعدادات المنسدلة بتصميم زجاجي سائل فاخر (Liquid Glassy Popover) -->
+          <div class="tts-settings-popover hidden" id="tts-settings-popover" role="dialog" aria-label="إعدادات الصوت والنطق">
             <div class="tts-popover-header">
               <span class="tts-popover-title">🎚️ إعدادات الصوت والنطق</span>
               <button type="button" class="tts-popover-close" id="tts-popover-close" aria-label="إغلاق">✕</button>
             </div>
 
-            <!-- سرعة القراءة (Speed selector: بطيء، نص ونص، سريع) -->
+            <!-- سرعة القراءة: بابلات دائرية ناعمة بانسيابية تامة (Glassy Speed Bubbles) -->
             <div class="tts-popover-section">
               <span class="tts-section-label">سرعة القراءة:</span>
               <div class="tts-speed-chips" id="tts-speed-chips">
@@ -219,19 +219,47 @@
               </div>
             </div>
 
-            <!-- اختيار صوت المتحدث (Voice Selector) -->
+            <!-- اختيار صوت المتحدث: بابل تفاعلي ناعم وقائمة منبثقة زجاجية مطابقة لقائمة النماذج (Glassy Voice Selector Bubble) -->
             <div class="tts-popover-section">
               <span class="tts-section-label">صوت المتحدث:</span>
-              <select id="tts-voice-select" class="tts-voice-select">
-                <option value="cloud-google">صوت فاي الذكي (Google Neural)</option>
-                <!-- Populated dynamically with available browser voices -->
-              </select>
+              <div class="tts-voice-bubble-wrapper" id="tts-voice-bubble-wrapper">
+                <button type="button" class="tts-voice-bubble-trigger" id="tts-voice-bubble-trigger" aria-haspopup="true" aria-expanded="false">
+                  <div class="tts-voice-bubble-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                    </svg>
+                  </div>
+                  <div class="tts-voice-bubble-info">
+                    <span class="tts-voice-bubble-title" id="tts-voice-bubble-title">صوت فاي الذكي</span>
+                    <span class="tts-voice-bubble-desc" id="tts-voice-bubble-desc">Google Neural • عراقي فصيح</span>
+                  </div>
+                  <svg class="tts-voice-bubble-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+
+                <!-- القائمة الزجاجية المنبثقة للأصوات (تفتح كبابل زجاجي فاخر مطابق لقائمة النماذج في الصورة 2) -->
+                <div class="tts-voice-options-menu hidden" id="tts-voice-options-menu" role="menu" aria-hidden="true">
+                  <div class="tts-voice-options-list" id="tts-voice-options-list">
+                    <!-- Populated dynamically with glassy voice card items -->
+                  </div>
+                </div>
+
+                <!-- Hidden select kept in sync for fallback & testing compatibility -->
+                <select id="tts-voice-select" class="tts-voice-select-hidden" tabindex="-1" aria-hidden="true">
+                  <option value="cloud-google">صوت فاي الذكي (Google Neural)</option>
+                </select>
+              </div>
             </div>
 
-            <!-- زر الاستماع لتجربة الصوت -->
+            <!-- زر الاستماع لتجربة الصوت (Glassy Preview Bubble) -->
             <div class="tts-popover-footer">
               <button type="button" class="tts-test-preview-btn" id="tts-test-preview-btn">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
                 <span>تجربة الصوت</span>
               </button>
             </div>
