@@ -24,13 +24,22 @@
 - [🌟 Executive Summary & Vision](#-executive-summary--vision)
 - [🎥 Interactive Demo Walkthrough](#-interactive-demo-walkthrough)
 - [🏗️ System Architecture & Operational Data Flow](#️-system-architecture--operational-data-flow)
-  - [Architectural Deep-Dive by Tier](#architectural-deep-dive-by-tier)
-  - [End-to-End Transaction Request Lifecycle](#end-to-end-transaction-request-lifecycle)
-- [✨ Key Features](#-key-features)
+  - [Architectural Flowchart](#architectural-flowchart)
+  - [Tier-by-Tier Architectural Breakdown](#tier-by-tier-architectural-breakdown)
+  - [End-to-End Financial Transaction Lifecycle](#end-to-end-financial-transaction-lifecycle)
+- [✨ In-Depth Core Features](#-in-depth-core-features)
+  - [1. Strict Two-Step Confirmation State Machine](#1-strict-two-step-confirmation-state-machine)
+  - [2. Colloquial Iraqi Dialect & Verbal Numeral NLP Engine](#2-colloquial-iraqi-dialect--verbal-numeral-nlp-engine)
+  - [3. Smart Contact Disambiguation & Abandonment Engine](#3-smart-contact-disambiguation--abandonment-engine)
+  - [4. Complete Utility & Telecom Bill Payment System](#4-complete-utility--telecom-bill-payment-system)
+  - [5. Tamper-Evident Security Audit Logging Layer](#5-tamper-evident-security-audit-logging-layer)
+  - [6. Financial Integrity, Validation & Anti-Tampering Guards](#6-financial-integrity-validation--anti-tampering-guards)
+  - [7. Cryptographic Per-Tab Session Isolation](#7-cryptographic-per-tab-session-isolation)
+  - [8. Executive Fintech UX System](#8-executive-fintech-ux-system)
 - [🧠 Multi-Model Orchestration Engine](#-multi-model-orchestration-engine)
-  - [Provider Comparison Matrix](#provider-comparison-matrix)
-  - [Dynamic Failover Chain](#dynamic-failover-chain)
-- [🛡️ Deterministic Security & Financial Guardrails](#️-deterministic-security--financial-guardrails)
+  - [Provider Comparison & Specification Matrix](#provider-comparison--specification-matrix)
+  - [Automated Exponential Backoff & Failover Chain](#automated-exponential-backoff--failover-chain)
+- [🛡️ Deterministic Security & Guardrail Specifications](#️-deterministic-security--guardrail-specifications)
 - [🩺 Failure Handling & Self-Healing Architecture](#-failure-handling--self-healing-architecture)
   - [1. Upstream LLM Failures, Rate Limits & Outages](#1-upstream-llm-failures-rate-limits--outages)
   - [2. Generative Action Tag Parsing & Closed-Loop Repair](#2-generative-action-tag-parsing--closed-loop-repair)
@@ -41,16 +50,17 @@
 - [📡 API Specifications & Route Reference](#-api-specifications--route-reference)
 - [📂 Project Directory Layout](#-project-directory-layout)
 - [⚡ Quick Start & Installation Guide](#-quick-start--installation-guide)
-  - [Step 1: Prerequisites & Verification](#step-1-prerequisites--verification)
+  - [Step 1: System Prerequisites & Verification](#step-1-system-prerequisites--verification)
   - [Step 2: Clone the Repository](#step-2-clone-the-repository)
   - [Step 3: Install Dependencies](#step-3-install-dependencies)
   - [Step 4: Configure Environment Variables (.env)](#step-4-configure-environment-variables-env)
-  - [Step 5: Configure AI Model Engine (Local vs. Cloud)](#step-5-configure-ai-model-engine-local-vs-cloud)
+  - [Step 5: Setup AI Model Provider (Local vs. Cloud)](#step-5-setup-ai-model-provider-local-vs-cloud)
   - [Step 6: Launch Backend & Open Web Console](#step-6-launch-backend--open-web-console)
 - [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance)
-- [💬 Interactive Test Scenarios (Colloquial Iraqi)](#-interactive-test-scenarios-colloquial-iraqi)
-- [🎨 Executive Fintech UX Design System](#-executive-fintech-ux-design-system)
+- [💬 Colloquial Iraqi Dialect Showcase & Scenarios](#-colloquial-iraqi-dialect-showcase--scenarios)
 - [🛠️ Comprehensive Troubleshooting & FAQs](#️-comprehensive-troubleshooting--faqs)
+  - [Operational Troubleshooting](#operational-troubleshooting)
+  - [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
 - [🗺️ Future Roadmap](#️-future-roadmap)
 - [📜 License](#-license)
 
@@ -60,10 +70,10 @@
 
 **فاي (VI)** is an enterprise-grade autonomous digital wallet assistant engineered specifically for colloquial Iraqi Arabic (*اللهجة العراقية*) and mission-critical financial workflows.
 
-Deploying generative AI directly into banking or payment applications poses severe risks: **hallucinated balances**, **silent double debits**, **accidental funds transfers**, and **server downtime on upstream provider outages**. **فاي (VI)** solves these structural problems through a strict **Zero-Trust AI Architecture**:
+Deploying generative AI directly into banking or payment applications poses severe structural risks: **hallucinated balances**, **silent double debits**, **accidental funds transfers**, and **server downtime on upstream provider outages**. **فاي (VI)** solves these structural problems through a strict **Zero-Trust AI Architecture**:
 
 1. **Deterministic Core Separation**: The language model never performs arithmetic, never computes wallet balances, and cannot directly mutate financial ledgers. All funds transfers, utility settlements, and account records are managed exclusively by an atomic, validated backend state machine.
-2. **Multi-Model Orchestration Layer**: Switch seamlessly at runtime between **100% Local On-Premise Inference** (via **LM Studio** / **Ollama**) with zero cloud data egress, **Google Gemini Flash** for deep dialectal reasoning, and **Groq Cloud** for sub-second LPU throughput.
+2. **Multi-Model Dynamic Orchestration**: Seamless runtime switching between **100% Local On-Premise Inference** (via **LM Studio** / **Ollama**) with zero cloud data egress, **Google Gemini Flash** for deep dialectal reasoning, and **Groq Cloud** for sub-second LPU throughput.
 3. **Automated Self-Healing Pipeline**: Upstream timeouts and HTTP 429 rate limits trigger exponential backoff and transparent provider failover; malformed JSON action tags undergo closed-loop AI self-correction; corrupted or missing ledger files automatically reconstruct from verified templates without server crashes.
 4. **Per-Tab Cryptographic Session Isolation**: Every browser tab receives an isolated, cryptographically generated session token stored in `sessionStorage` and transmitted via `X-Session-Id`, eliminating state bleed across concurrent users or tabs.
 5. **Native Iraqi Linguistic Comprehension**: Comprehensive parsing of real Iraqi financial colloquialisms (*"دزله 50 ألف"*, *"شكد رصيدي هسة"*, *"ادفع مال كهرباء"*, *"ولا واحد منهم"*, *"عوفه وبطلت"*), supporting Arabic-Indic digits, Persian numerals, and spelled-out verbal monetary expressions.
@@ -85,6 +95,8 @@ Deploying generative AI directly into banking or payment applications poses seve
 ---
 
 ## 🏗️ System Architecture & Operational Data Flow
+
+### Architectural Flowchart
 
 ```mermaid
 flowchart TD
@@ -161,27 +173,42 @@ flowchart TD
     Router -->|Structured JSON Response & Verification Cards| UI
 ```
 
-### Architectural Deep-Dive by Tier
+### Tier-by-Tier Architectural Breakdown
 
-1. **Client Tier ([frontend/script.js](file:///c:/Users/moham/Desktop/VI/frontend/script.js))**:
-   - **Per-Tab Isolation**: Generates a cryptographically secure UUID stored in `sessionStorage` and sent as `X-Session-Id` on every request.
-   - **In-Flight Lock**: Synchronously sets `isRequestInProgress = true` before DOM mutations, disabling input elements and suggestion chips to prevent duplicate in-flight requests.
-   - **Voice Engine**: Integrates Web Speech API configured for Iraqi Arabic (`ar-IQ`) with live waveform visualizer and automatic restart on speech pauses.
-2. **Gateway Tier ([backend/server.js](file:///c:/Users/moham/Desktop/VI/backend/server.js))**:
-   - **Session Store**: In-memory `Map` keyed by `sessionId` containing isolated history, pending transfers, pending bill payments, and disambiguation contexts with 24-hour TTL pruning.
-   - **Linguistic Normalization**: Normalizes Eastern Arabic-Indic digits (`٠-٩`) and Persian digits (`۰-۹`) to standard ASCII integers, and parses colloquial currency idioms (*"مليونين ونص"*, *"ميتين وخمسين ألف"*, *"خمسين ورقة"*).
-3. **Safety & Guardrail Tier**:
-   - **Contact Provenance**: Rejects contact creation if phone number digits are not found in the user's raw message or conversation context, preventing AI number hallucinations.
-   - **Two-Step Consent**: Stages operations into memory; zero funds are deducted until explicit verbal confirmation is provided.
-   - **Anti-Fabrication**: Intercepts verbal claims of payment made in conversational text when no programmatic `<<<DB_ACTION>>>` tag was executed.
-4. **AI Orchestration Tier**:
-   - **Unified Wrapper**: Routes requests dynamically to LM Studio, Gemini, or Groq with identical prompt structures and error boundaries.
-   - **Closed-Loop Self-Correction**: Automatically sends syntax errors and JSON schema specifications back to the model at $T = 0.1$ if generative action tags fail parsing.
-5. **Storage & Persistence Tier**:
-   - **Atomic File Swaps**: Writes data to temporary `.tmp` files first, then executes atomic filesystem rename (`renameSync`), falling back to `copyFileSync` + `unlinkSync` on Windows file lock (`EPERM`/`EBUSY`) conditions.
-   - **Security Audit Trail**: Every transaction and blocked mutation is appended to [backend/audit_trail.json](file:///c:/Users/moham/Desktop/VI/backend/audit_trail.json) with timestamps, session tokens, and idempotency keys.
+#### 1. Executive Frontend Client Tier
+* **Module**: [frontend/script.js](file:///c:/Users/moham/Desktop/VI/frontend/script.js), [frontend/index.html](file:///c:/Users/moham/Desktop/VI/frontend/index.html), [frontend/style.css](file:///c:/Users/moham/Desktop/VI/frontend/style.css)
+* **Cryptographic Tab Session Isolation**: On application load, `getOrCreateSessionId()` checks `sessionStorage` for an existing token. If none exists, it generates a cryptographically random UUID using `crypto.randomUUID()` (with a timestamp-random mathematical fallback). This token is transmitted in every HTTP request as the `X-Session-Id` header and body payload.
+* **Synchronous In-Flight Concurrency Guard**: When a message submission is triggered (via text input, voice transcription, or quick suggestion chip), `handleFormSubmit()` immediately and synchronously asserts `if (isRequestInProgress) return;`. It locks the interface (`isRequestInProgress = true`), disables the input textarea, send button, microphone button, and suggestion chips via `setInputState(false)`, and attaches ARIA disabled attributes. Cleanup occurs inside an unconditional `finally` block.
+* **Continuous Voice Engine**: Implements the Web Speech API configured for Iraqi Arabic (`ar-IQ`). An integrated HTML5 canvas visualizer maps live volume oscillation waveforms. An `onend` auto-recovery listener automatically calls `recognition.start()` when short speech pauses occur, ensuring fluid dictation without premature microphone termination.
 
-### End-to-End Transaction Request Lifecycle
+#### 2. Express.js Gateway & Normalization Tier
+* **Module**: [backend/server.js](file:///c:/Users/moham/Desktop/VI/backend/server.js)
+* **In-Memory Multi-User Session Store**: In-memory `Map` keyed by `sessionId`. Each session maintains an independent conversation history (trimmed to the last 12 messages with system prompt retention), active contact disambiguation contexts, pending transfers, pending bill payments, and rate metrics. Inactive sessions are automatically evicted after 24 hours (`SESSION_TTL_MS = 86,400,000`).
+* **Dialectal & Verbal Numeral NLP Normalizer**: Converts Eastern Arabic-Indic digits (`٠, ١, ٢, ٣, ٤, ٥, ٦, ٧, ٨, ٩`) and Persian digits (`۰, ۱, ۲, ۳, ۴, ۵, ۶, ۷, ۸, ۹`) to standard ASCII numbers. Spoken Iraqi expressions for currency are parsed deterministically:
+  * *"مليونين ونص"* $\rightarrow$ `2,500,000 IQD`
+  * *"ميتين وخمسين ألف"* $\rightarrow$ `250,000 IQD`
+  * *"خمسين ألف"* $\rightarrow$ `50,000 IQD`
+  * *"ورقة"* $\rightarrow$ `150,000 IQD` (colloquial $100 reference)
+
+#### 3. Deterministic Safety & Guardrail Tier
+* **Module**: [backend/server.js](file:///c:/Users/moham/Desktop/VI/backend/server.js#L268-L450)
+* **Contact Provenance Verification**: When `ADD_CONTACT` is requested, `isContactProvenanceValid()` verifies that the digits of the target phone number exist verbatim in the incoming user message or verified previous turn candidates. Fabricated or hallucinated phone numbers generated by the LLM are blocked immediately.
+* **Two-Step Confirmation Machine**: Financial mutations are never executed on initial turn prompts. The transaction parameters are staged in `session.pendingTransfer` or `session.pendingBillPayment`. Execution is locked until an explicit affirmative utterance (`"نعم"`, `"أكد"`, `"تمام"`, `"توكل"`) is received.
+* **Anti-Fabrication Prose Interceptor**: If an LLM generates conversational text asserting *"تم التحويل بنجاح"* without emitting the corresponding authorized `<<<DB_ACTION>>>` tag, the gateway intercepts the text and appends an explicit security disclaimer informing the user that no balance was deducted.
+
+#### 4. Multi-Model AI Orchestrator Tier
+* **Module**: [backend/server.js](file:///c:/Users/moham/Desktop/VI/backend/server.js#L123-L198)
+* **Centralized Completion Wrapper**: [callUnifiedChatCompletion](file:///c:/Users/moham/Desktop/VI/backend/server.js#L123) normalizes OpenAI-compatible payloads across LM Studio, Google Gemini Flash, and Groq Cloud.
+* **Closed-Loop JSON Self-Correction**: When an LLM produces malformed or unclosed JSON in action tags, the parser catches the syntax error and initiates an immediate repair sub-request ($T = 0.1$, `max_tokens: 300`) containing the raw snippet, error offset, and strict JSON schema rules.
+
+#### 5. Deterministic Storage & Audit Trail Tier
+* **Module**: [backend/mock_wallet_db.json](file:///c:/Users/moham/Desktop/VI/backend/mock_wallet_db.json), [backend/audit_trail.json](file:///c:/Users/moham/Desktop/VI/backend/audit_trail.json), [backend/reset_db.js](file:///c:/Users/moham/Desktop/VI/backend/reset_db.js)
+* **Two-Phase Atomic Disk I/O**: State updates write to a temporary file (`mock_wallet_db.json.tmp`) and then call atomic `fs.renameSync()`. If a Windows file indexing lock (`EPERM` / `EBUSY`) occurs, the engine automatically catches the error and executes `fs.copyFileSync()` followed by `fs.unlinkSync()`.
+* **Tamper-Evident Audit Logging**: Every executed or blocked financial operation is appended to `audit_trail.json` with an immutable UUID, UTC timestamp, session ID, action type, source account, destination, amount, and idempotency key.
+
+---
+
+### End-to-End Financial Transaction Lifecycle
 
 ```
 [User Utterance: "دز 50 ألف لأحمد"] 
@@ -225,35 +252,51 @@ flowchart TD
 
 ---
 
-## ✨ Key Features
+## ✨ In-Depth Core Features
 
-### 1. 🛡️ Strict Two-Step Confirmation State Machine
+### 1. Strict Two-Step Confirmation State Machine
 * **Zero Accidental Deductions**: The AI agent cannot trigger any financial mutation directly from an initial request.
-* **Interactive Verification Cards**: Renders a rich verification card displaying recipient name, verified phone number, fee breakdown, deduction amount, and remaining balance.
+* **Interactive Verification Cards**: Renders an interactive verification card displaying recipient name, verified phone number, fee breakdown, deduction amount, and remaining balance.
 * **Explicit User Consent**: Requires explicit affirmative confirmation (`"نعم"`, `"أكد"`, `"تمام"`, `"توكل"`) before committing changes to disk.
 * **Instant Cancellation & Rollback**: Immediate clean state rollback upon negative inputs (`"إلغاء"`, `"لا"`, `"بطلت"`, `"cancel"`).
 
-### 2. 👥 Smart Contact Disambiguation Engine
+### 2. Colloquial Iraqi Dialect & Verbal Numeral NLP Engine
+* **Native Iraqi Vocabulary**: Comprehends colloquial terms such as *"دزله"*, *"حول"*, *"سدد"*, *"شكد رصيدي"*, *"ما عندي"*, *"عوف الموضوع"*, *"توكل"*.
+* **Numeral Normalization**: Automatically normalizes Eastern Arabic-Indic digits (`٠١٢٣٤٥٦٧٨٩`) and Persian digits (`۰۱۲۳۴۵۶۷۸۹`) to ASCII integers.
+* **Spoken Monetary Phrasing**: Robust regex rules translate complex spoken verbal monetary amounts into integer IQD values.
+* **Carrier Validation**: Strictly enforces valid Iraqi mobile carrier formats (Zain 078, Asiacell 077, Korek 075).
+
+### 3. Smart Contact Disambiguation & Abandonment Engine
 * When transferring to a common name (e.g., *"أحمد"*):
   * The engine detects all matches in the verified address book.
   * Presents numbered options with aliases and masked phone numbers.
   * The user can select the target by index (`1`, `2`), alias (*"صديق الجامعة"*), or phone digits.
-  * If the user abandons the intent (*"عوفه وبطلت"*, *"مو ذولي"*), the pending state is wiped immediately.
+  * If the user abandons the intent (*"عوفه وبطلت"*, *"مو ذولي"*), `isDisambiguationAbandonment()` purges all pending states immediately.
 
-### 3. 🧾 Utility & Telecom Bill Payment System
+### 4. Complete Utility & Telecom Bill Payment System
 * **Pre-Integrated Biller Categories**: National Electricity Grid (*الكهرباء الوطنية*), Municipal Water (*الماء والخدمات البلدية*), Mobile Telecommunications (*فواتير خط الهاتف والاتصالات*), and Fiber/4G Internet (*فواتير الإنترنت والألياف الضوئية*).
 * **Single or Bulk Settlement**: Query pending unpaid bills, pay an individual service (*"ادفع فاتورة الإنترنت"*), or settle all outstanding bills in one atomic transaction (*"ادفع كل الفواتير اللي عليه"*).
 
-### 4. 👁️ Wallet Balance Privacy Toggle
-* Header pill features a shoulder-surfing privacy mask (`*** IQD 👁`) enabled by default to protect financial privacy in public environments.
-* One-click toggle reveals the live balance (`2,200,000 IQD`) with smooth SVG eye animations and local storage persistence.
+### 5. Tamper-Evident Security Audit Logging Layer
+* Every financial operation (successful or blocked) is appended atomically to [backend/audit_trail.json](file:///c:/Users/moham/Desktop/VI/backend/audit_trail.json).
+* Each record captures: `id`, `timestamp` (ISO 8601), `sessionId`, `actionType`, `sourceAccount`, `destination`, `amount`, `currency`, `idempotencyKey`, and `executionStatus` (`SUCCESS` / `BLOCKED`).
 
-### 5. 📂 Sliding Transactions History Drawer
-* Dedicated slide-out drawer accessible from the navigation header.
-* Displays verified transaction receipts, timestamps, recipient names, and real-time status badges (`مكتملة` / `قيد المراجعة`) with category filters (`كل العمليات`, `تحويلات`, `فواتير`).
+### 6. Financial Integrity, Validation & Anti-Tampering Guards
+* **Strict Integer Validation**: Rejects non-numeric, negative, zero, and fractional decimal transfer values.
+* **Minimum Threshold**: Enforces a minimum transaction limit of $250\text{ IQD}$.
+* **Overdraft Prevention**: Blocks transfers or bill payments exceeding the available balance before disk I/O.
+* **Idempotency Replay Protection**: Cached transaction receipts indexed by idempotency tokens guarantee that replayed network requests return the original receipt without double debiting.
 
-### 6. 🔒 Idempotency Replay Protection
-* Every financial request accepts an idempotency key. Subsequent requests with identical tokens replay the cached receipt without double deduction.
+### 7. Cryptographic Per-Tab Session Isolation
+* Distinct browser tabs maintain separate conversation contexts, pending transfers, and disambiguation states via per-tab UUID tokens in `sessionStorage` and `X-Session-Id` headers.
+
+### 8. Executive Fintech UX System
+* **Dual Luxury Color Palettes**:
+  * **🌙 Luxury Emerald (Dark Theme)**: Obsidian `#04070b`, Deep Forest `#0c171e`, Neon Emerald `#4ade80`, Gold `#ffc83b`.
+  * **☀️ Royal Violet (Light Theme)**: Titanium White, Slate Mist `#f8fafc`, Royal Violet `#7c3aed`, Emerald Green `#10b981`.
+* **Privacy Balance Masking (`*** IQD 👁`)**: Real-time shoulder-surfing protection in the header with one-click toggle and local storage persistence.
+* **Sliding Transactions Drawer**: Fast slide-out ledger drawer with category filters (`كل العمليات`, `تحويلات`, `فواتير`).
+* **Mathematical Halftone Particle Wave**: Interactive HTML5 canvas rendering dynamic particle grids that morph and react across viewports and themes without distorting on zoom.
 
 ---
 
@@ -261,15 +304,19 @@ flowchart TD
 
 **فاي (VI)** incorporates dynamic multi-provider routing through a centralized completion wrapper ([callUnifiedChatCompletion](file:///c:/Users/moham/Desktop/VI/backend/server.js#L123)):
 
-### Provider Comparison Matrix
+### Provider Comparison & Specification Matrix
 
-| Provider | Operating Mode | Primary Advantage | Data Privacy & Residency | API Key Required |
-| :--- | :--- | :--- | :--- | :--- |
-| **LM Studio** *(Default)* | **100% Local / Offline** | On-premise execution, zero cloud dependency | **Complete Local Hardware Residency** (Zero data egress) | ❌ **None** (`lm-studio`) |
-| **Google Gemini Flash** | **Cloud AI Engine** | Advanced linguistic reasoning, complex dialect nuances | Encrypted HTTPS API | ✅ Yes (`GEMINI_API_KEY`) |
-| **Groq Cloud** | **Ultra-Fast Cloud LPU** | Sub-second streaming responses, high concurrency | Encrypted HTTPS API | ✅ Yes (`GROQ_API_KEY`) |
+| Feature / Metric | LM Studio *(Recommended Default)* | Google Gemini Flash | Groq Cloud |
+| :--- | :--- | :--- | :--- |
+| **Execution Mode** | **100% Local / On-Premise** | Cloud HTTPS API | Cloud HTTPS API (LPU) |
+| **Data Privacy** | **Zero Data Egress** (Local Hardware) | Encrypted Transit | Encrypted Transit |
+| **Recommended Model** | `Qwen2.5-7B-Instruct` / `Llama-3.1-8B` | `gemini-1.5-flash` | `llama-3.3-70b-versatile` |
+| **Quantization** | `Q4_K_M` or `Q5_K_M` GGUF | Cloud Full Precision | Cloud Full Precision |
+| **Inference Latency** | ~20–40 ms/token (Hardware dependent) | ~300–800 ms TTFT | **< 150 ms TTFT (Ultra-Fast)** |
+| **API Key Required** | ❌ **None** (`lm-studio`) | ✅ `GEMINI_API_KEY` | ✅ `GROQ_API_KEY` |
+| **Cost** | **$0.00 (Completely Free & Offline)** | Free Tier / Pay-as-you-go | Free Tier / Pay-as-you-go |
 
-### Dynamic Failover Chain
+### Automated Exponential Backoff & Failover Chain
 
 If an active model experiences network connection drops, timeouts, or HTTP 429 rate limits, the system shifts automatically through a deterministic failover chain without dropping user session state:
 
@@ -281,20 +328,24 @@ const FAILOVER_CHAIN = {
 };
 ```
 
+1. **Retry Logic**: `callProviderWithBackoff()` initiates a 3-attempt exponential backoff sequence (500ms $\rightarrow$ 1000ms $\rightarrow$ 2000ms).
+2. **Transparent Failover**: If retries are exhausted on the active model, `callUnifiedChatCompletion()` automatically redirects the request down `FAILOVER_CHAIN`.
+3. **Graceful Fallback**: If all configured options fail, the gateway returns an informative diagnostic message in colloquial Iraqi Arabic with clear instructions on starting LM Studio or verifying API keys.
+
 ---
 
-## 🛡️ Deterministic Security & Financial Guardrails
+## 🛡️ Deterministic Security & Guardrail Specifications
 
-| Guardrail Layer | Enforcement Mechanism | Failure Response |
-| :--- | :--- | :--- |
-| **Anti-Hallucination Gate** | Balances and records are read directly from disk; the LLM never calculates balances. | Rejects LLM-generated math; forces deterministic calculation. |
-| **Contact Provenance** | Phone digits must exist in the user's raw input buffer or verified history. | Rejects contact creation; prompts user for real digits. |
-| **Two-Step Consent Lock** | Financial mutations require an explicit affirmative secondary confirmation. | Transactions remain staged in memory; zero funds deducted. |
-| **Strict Integer Validator** | Amounts must be positive integers $\ge 250\text{ IQD}$; decimals and fractions are rejected. | Rejects transaction; returns descriptive currency error. |
-| **Overdraft Protection** | Requested transfer or bill payment total is checked against available wallet balance. | Blocks transaction; alerts user of insufficient funds. |
-| **Idempotency Guard** | Cached transaction receipts are indexed by unique request tokens. | Replays cached transaction; prevents duplicate debit. |
-| **Anti-Fabrication Intercept** | Verbal claims of payment without verified `<<<DB_ACTION>>>` tags are intercepted. | Overrides message; informs user that no funds were deducted. |
-| **Security Audit Trail** | Every successful or blocked mutation is appended to `audit_trail.json` with metadata. | Atomic disk append; preserves tamper-evident log. |
+| Guardrail Layer | Implementation Function | Enforcement Rule | Security Guarantee |
+| :--- | :--- | :--- | :--- |
+| **Anti-Hallucination Gate** | `readDatabase()` | Balances and bills are read strictly from disk; LLM never computes arithmetic. | Impossible for the model to guess or hallucinate wallet balances. |
+| **Contact Provenance** | `isContactProvenanceValid()` | Phone digits must exist verbatim in the user's input buffer or verified history. | Prevents LLM from inventing fake contact phone numbers. |
+| **Two-Step Consent Lock** | `isUserConfirmation()` | Operations are staged in memory; execution requires explicit secondary verbal consent. | Zero accidental balance deductions or unauthenticated transfers. |
+| **Strict Integer Validator** | `executeTransferMutation()` | Transfer amounts must be integers $\ge 250\text{ IQD}$; fractions and negative values rejected. | Eliminates fractional rounding bugs and negative balance exploits. |
+| **Overdraft Protection** | `executeTransferMutation()` | Amount is verified against available balance before atomic disk write. | Prevents account balance from dropping below zero. |
+| **Idempotency Guard** | `executeTransferMutation()` | Unique request keys return cached receipts for identical payloads. | Prevents duplicate debit transactions on network retries. |
+| **Anti-Fabrication Intercept** | `server.js` Response Gate | Verbal claims of payment without verified `<<<DB_ACTION>>>` tags are intercepted. | Guarantees user is alerted if an LLM claims payment without executing it. |
+| **Security Audit Trail** | `appendAuditLog()` | Every financial operation is appended atomically to `audit_trail.json`. | Creates an immutable, tamper-evident record for security audits. |
 
 ---
 
@@ -362,16 +413,99 @@ const FAILOVER_CHAIN = {
 
 ## 📡 API Specifications & Route Reference
 
-| Method | Endpoint | Description | Request Headers | Payload / Parameters | Response Structure |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/api/chat` | Main conversational reasoning and action execution endpoint. | `X-Session-Id`, `X-Idempotency-Key` | `{ message: string, provider?: string, sessionId?: string }` | `{ text: string, status: string, openDrawer?: boolean }` |
-| `GET` | `/api/db` | Retrieves complete active wallet state (user, balance, contacts, bills). | — | — | `{ user: object, contacts: array, bills: array, transactions: array }` |
-| `GET` | `/api/transactions` | Retrieves recent transaction ledger with totals and metrics. | — | — | `{ transactions: array, totalCount: number }` |
-| `POST` | `/api/reset` | Resets session memory and restores wallet database to defaults. | `X-Session-Id` | `{ sessionId?: string }` | `{ success: true, message: string }` |
-| `GET` | `/api/audit` | Retrieves tamper-evident security audit logs. | — | — | `{ success: true, count: number, logs: array }` |
-| `POST` | `/api/feedback` | Records user satisfaction ratings (likes / dislikes) for AI responses. | — | `{ type: "like"\|"dislike"\|"remove", msgId: string, userMessage: string, botResponse: string }` | `{ success: true }` |
-| `GET` | `/api/feedback/likes` | Retrieves all positive evaluation entries. | — | — | `[ { id, msgId, userMessage, botResponse, timestamp } ]` |
-| `GET` | `/api/feedback/dislikes` | Retrieves all negative evaluation entries for alignment review. | — | — | `[ { id, msgId, userMessage, botResponse, timestamp } ]` |
+### 1. `POST /api/chat`
+* **Description**: Primary conversational reasoning and action execution endpoint.
+* **Headers**: `Content-Type: application/json`, `X-Session-Id: string`, `X-Idempotency-Key: string`
+* **Request Body**:
+  ```json
+  {
+    "message": "حول 50 ألف لأحمد كمال",
+    "provider": "local",
+    "sessionId": "sess_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "idempotency_key": "req_1729198200000_abc123"
+  }
+  ```
+* **Response Body (200 OK)**:
+  ```json
+  {
+    "text": "تمام، راح أحول 50,000 د.ع لأحمد كمال. متأكد من التحويل؟",
+    "status": "CONFIRMATION_REQUIRED",
+    "openDrawer": false
+  }
+  ```
+
+### 2. `GET /api/db`
+* **Description**: Returns the active wallet state (user profile, balance, contacts, utility bills, and recent ledger).
+* **Response Body (200 OK)**:
+  ```json
+  {
+    "user": {
+      "id": "usr_1001",
+      "name": "محمد",
+      "phone": "+9647801234567",
+      "balance": 2200000,
+      "currency": "IQD"
+    },
+    "contacts": [ ... ],
+    "bills": [ ... ],
+    "transactions": [ ... ]
+  }
+  ```
+
+### 3. `GET /api/transactions`
+* **Description**: Returns the verified transaction ledger history with totals and metrics.
+* **Response Body (200 OK)**:
+  ```json
+  {
+    "transactions": [
+      {
+        "id": "trx_1729198200000",
+        "type": "TRANSFER",
+        "recipient": "أحمد كمال",
+        "amount": 50000,
+        "currency": "IQD",
+        "status": "SUCCESS",
+        "date": "2026-10-17"
+      }
+    ],
+    "totalCount": 1
+  }
+  ```
+
+### 4. `POST /api/reset`
+* **Description**: Resets conversation state for the calling session and restores wallet database to defaults.
+* **Headers**: `X-Session-Id: string`
+* **Response Body (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Database and session state successfully reset to initial default values."
+  }
+  ```
+
+### 5. `GET /api/audit`
+* **Description**: Retrieves the immutable security audit trail entries.
+* **Response Body (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "count": 1,
+    "logs": [
+      {
+        "id": "audit_1729198200000_xyz789",
+        "timestamp": "2026-10-17T21:00:00.000Z",
+        "sessionId": "sess_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+        "actionType": "TRANSFER",
+        "sourceAccount": "usr_1001",
+        "destination": "+9647801122334",
+        "amount": 50000,
+        "currency": "IQD",
+        "idempotencyKey": "req_1729198200000_abc123",
+        "executionStatus": "SUCCESS"
+      }
+    ]
+  }
+  ```
 
 ---
 
@@ -417,7 +551,7 @@ VI/
 
 Follow these steps to launch **فاي (VI)** locally:
 
-### Step 1: Prerequisites & Verification
+### Step 1: System Prerequisites & Verification
 
 Ensure Node.js and Git are installed:
 
@@ -461,7 +595,7 @@ Copy-Item .env.example .env
 cp .env.example .env
 ```
 
-Open `.env` and configure your preferences:
+Open `.env` and verify settings:
 
 ```env
 # 1. Local LM Studio (Default port is 1234)
@@ -481,7 +615,7 @@ PORT=3000
 > [!NOTE]
 > If you are running **LM Studio locally**, you do **not need any cloud API keys**! You can leave `GEMINI_API_KEY` and `GROQ_API_KEY` blank.
 
-### Step 5: Configure AI Model Engine (Local vs. Cloud)
+### Step 5: Setup AI Model Provider (Local vs. Cloud)
 
 #### Option A: Local Model with LM Studio (Recommended)
 1. Download and install **[LM Studio](https://lmstudio.ai/)**.
@@ -526,7 +660,7 @@ npm test
 
 ---
 
-## 💬 Interactive Test Scenarios (Colloquial Iraqi)
+## 💬 Colloquial Iraqi Dialect Showcase & Scenarios
 
 | Category | Example Iraqi Phrase | System Execution & Response |
 | :--- | :--- | :--- |
@@ -542,22 +676,9 @@ npm test
 
 ---
 
-## 🎨 Executive Fintech UX Design System
-
-* **Dual-Themed Visual Architecture**:
-  * **🌙 Luxury Emerald (Dark Theme)**: Deep Obsidian `#04070b`, Forest Slate `#0c171e`, Neon Emerald `#4ade80`, Gold accents `#ffc83b`.
-  * **☀️ Royal Violet (Light Theme)**: Titanium White, Slate Mist `#f8fafc`, Royal Violet `#7c3aed`, Emerald Green `#10b981`.
-* **Bespoke Typography**:
-  * **Cairo**: Modern Arabic headings, body text, and dialogue cards.
-  * **Plus Jakarta Sans**: High-precision tabular numerals and international currency formatting (`IQD`).
-* **Privacy Balance Masking (`*** IQD 👁`)**: Real-time balance masking in the header pill protects user financial privacy in public environments with one-click SVG toggle.
-* **Sliding Transactions Drawer**: Accessible via the header ledger button, offering filtered transaction history (`كل العمليات`, `تحويلات`, `فواتير`) with live spend metrics.
-* **Mathematical Halftone Particle Canvas**: Dynamic HTML5 canvas simulating interactive wave particle physics that adapt smoothly across viewports without zoom distortion.
-* **Voice Visualizer Dock**: Integrated voice recording visualizer with live waveform animations and real-time speech transcription preview.
-
----
-
 ## 🛠️ Comprehensive Troubleshooting & FAQs
+
+### Operational Troubleshooting
 
 ### 1. 🛑 Windows PowerShell Script Execution Blocked (`PSSecurityException`)
 * **Symptom**: Running `npm` or `node` scripts fails with:
@@ -652,6 +773,25 @@ npm test
     curl -X POST http://localhost:3000/api/reset
     ```
   All options immediately rewrite `mock_wallet_db.json` with fresh initial balances (`2,200,000 IQD`) and reset all utility bills to `unpaid`.
+
+---
+
+### Frequently Asked Questions (FAQ)
+
+#### Q1: Can I run this system completely offline without an internet connection?
+**Yes.** When running with LM Studio or Ollama on `http://127.0.0.1:1234/v1`, 100% of reasoning occurs locally on your machine. Zero prompts, balances, or data egress to the cloud.
+
+#### Q2: How does the system prevent the AI from hallucinating account balances?
+The LLM prompt never asks the AI to guess or calculate balances. When balance queries or transfers occur, the server reads the balance strictly from `mock_wallet_db.json`. The AI only acts as a natural language interface to present the verified number.
+
+#### Q3: What happens if `mock_wallet_db.json` or `audit_trail.json` is deleted?
+The system features built-in self-healing. If either file is deleted, `readDatabase()` and `readAuditLog()` detect the missing file and automatically reconstruct a pristine database from `INITIAL_DB` without crashing the server.
+
+#### Q4: How are concurrent browser tabs isolated?
+Each tab generates a distinct session UUID stored in `sessionStorage` and transmitted via `X-Session-Id`. The backend isolates conversation history, pending transfers, and disambiguation states per session ID in an in-memory `Map`.
+
+#### Q5: Is it safe to delete `backend/audit_trail.json`?
+**Yes, 100% safe.** `audit_trail.json` is an append-only compliance log. Deleting it will not reset wallet balances or contacts. The server will recreate the file automatically on the next financial transaction.
 
 ---
 
