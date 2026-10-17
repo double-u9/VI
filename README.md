@@ -21,48 +21,28 @@
 ---
 
 ## 📑 Table of Contents
-- [🌟 Executive Summary & Vision](#-executive-summary--vision)
-- [🎥 Interactive Demo Walkthrough](#-interactive-demo-walkthrough)
-- [🏗️ System Architecture & Operational Data Flow](#️-system-architecture--operational-data-flow)
-  - [Architectural Flowchart](#architectural-flowchart)
-  - [Tier-by-Tier Architectural Breakdown](#tier-by-tier-architectural-breakdown)
-  - [End-to-End Financial Transaction Lifecycle](#end-to-end-financial-transaction-lifecycle)
-- [✨ In-Depth Core Features](#-in-depth-core-features)
-  - [1. Strict Two-Step Confirmation State Machine](#1-strict-two-step-confirmation-state-machine)
-  - [2. Colloquial Iraqi Dialect & Verbal Numeral NLP Engine](#2-colloquial-iraqi-dialect--verbal-numeral-nlp-engine)
-  - [3. Smart Contact Disambiguation & Abandonment Engine](#3-smart-contact-disambiguation--abandonment-engine)
-  - [4. Complete Utility & Telecom Bill Payment System](#4-complete-utility--telecom-bill-payment-system)
-  - [5. Tamper-Evident Security Audit Logging Layer](#5-tamper-evident-security-audit-logging-layer)
-  - [6. Financial Integrity, Validation & Anti-Tampering Guards](#6-financial-integrity-validation--anti-tampering-guards)
-  - [7. Cryptographic Per-Tab Session Isolation](#7-cryptographic-per-tab-session-isolation)
-  - [8. Executive Fintech UX System](#8-executive-fintech-ux-system)
-- [🧠 Multi-Model Orchestration Engine](#-multi-model-orchestration-engine)
-  - [Provider Comparison & Specification Matrix](#provider-comparison--specification-matrix)
-  - [Automated Exponential Backoff & Failover Chain](#automated-exponential-backoff--failover-chain)
-- [🛡️ Deterministic Security & Guardrail Specifications](#️-deterministic-security--guardrail-specifications)
-- [🩺 Failure Handling & Self-Healing Architecture](#-failure-handling--self-healing-architecture)
-  - [1. Upstream LLM Failures, Rate Limits & Outages](#1-upstream-llm-failures-rate-limits--outages)
-  - [2. Generative Action Tag Parsing & Closed-Loop Repair](#2-generative-action-tag-parsing--closed-loop-repair)
-  - [3. Database Ledger Corruption & Atomic Disk I/O](#3-database-ledger-corruption--atomic-disk-io)
-  - [4. Multi-User & Multi-Tab State Isolation](#4-multi-user--multi-tab-state-isolation)
-  - [5. Ambient Contact Ambiguity & Intent Abandonment](#5-ambient-contact-ambiguity--intent-abandonment)
-  - [6. Frontend Network Faults & Continuous Speech Recovery](#6-frontend-network-faults--continuous-speech-recovery)
-- [📡 API Specifications & Route Reference](#-api-specifications--route-reference)
-- [📂 Project Directory Layout](#-project-directory-layout)
-- [⚡ Quick Start & Installation Guide](#-quick-start--installation-guide)
-  - [Step 1: System Prerequisites & Verification](#step-1-system-prerequisites--verification)
-  - [Step 2: Clone the Repository](#step-2-clone-the-repository)
-  - [Step 3: Install Dependencies](#step-3-install-dependencies)
-  - [Step 4: Configure Environment Variables (.env)](#step-4-configure-environment-variables-env)
-  - [Step 5: Setup AI Model Provider (Local vs. Cloud)](#step-5-setup-ai-model-provider-local-vs-cloud)
-  - [Step 6: Launch Backend & Open Web Console](#step-6-launch-backend--open-web-console)
-- [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance)
-- [💬 Colloquial Iraqi Dialect Showcase & Scenarios](#-colloquial-iraqi-dialect-showcase--scenarios)
-- [🛠️ Comprehensive Troubleshooting & FAQs](#️-comprehensive-troubleshooting--faqs)
-  - [Operational Troubleshooting](#operational-troubleshooting)
-  - [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
-- [🗺️ Future Roadmap](#️-future-roadmap)
-- [📜 License](#-license)
+
+<details open>
+<summary><b>Click to expand or collapse Table of Contents</b></summary>
+
+| Section | Focus Area |
+| :--- | :--- |
+| [🌟 Executive Summary & Vision](#-executive-summary--vision) | Architectural philosophy, problem space, and the 5 zero-trust pillars |
+| [🎥 Interactive Demo Walkthrough](#-interactive-demo-walkthrough) | Visual walkthrough of multi-model switching, confirmation cards, and voice flow |
+| [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow) | High-level Mermaid diagram, tier-by-tier deep dive, and request lifecycle |
+| [✨ Core Feature Modules](#-core-feature-modules) | Detailed breakdown of the 8 core operational and fintech capabilities |
+| [🧠 Multi-Model Orchestration Engine](#-multi-model-orchestration-engine) | Provider matrix, local offline execution, and automated failover routing |
+| [🛡️ Deterministic Security & Guardrails](#️-deterministic-security--guardrails) | Financial integrity rules, contact provenance, and anti-fabrication gates |
+| [🩺 Failure Handling & Self-Healing Architecture](#-failure-handling--self-healing-architecture) | The 6 resilience pillars: rate limits, JSON repair, corruption, isolation, faults |
+| [📡 API Specifications & Route Reference](#-api-specifications--route-reference) | Endpoints, headers, request/response JSON schemas, and status codes |
+| [📂 Project Directory Layout](#-project-directory-layout) | Annotated file tree structure |
+| [⚡ Quick Start & Installation Guide](#-quick-start--installation-guide) | Prerequisites, environment configuration, LM Studio setup, and launch |
+| [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance) | 99-test regression coverage across 25 suites with 100% pass rate |
+| [💬 Colloquial Iraqi Dialect Showcase](#-colloquial-iraqi-dialect-showcase) | Real-world linguistic scenarios and deterministic execution examples |
+| [🛠️ Troubleshooting & Extended FAQs](#️-troubleshooting--extended-faqs) | Solutions for common setup issues and detailed technical Q&A |
+| [🗺️ Future Roadmap & License](#️-future-roadmap--license) | Milestones, open-source license, and project credits |
+
+</details>
 
 ---
 
@@ -72,11 +52,24 @@
 
 Deploying generative AI directly into banking or payment applications poses severe structural risks: **hallucinated balances**, **silent double debits**, **accidental funds transfers**, and **server downtime on upstream provider outages**. **فاي (VI)** solves these structural problems through a strict **Zero-Trust AI Architecture**:
 
-1. **Deterministic Core Separation**: The language model never performs arithmetic, never computes wallet balances, and cannot directly mutate financial ledgers. All funds transfers, utility settlements, and account records are managed exclusively by an atomic, validated backend state machine.
-2. **Multi-Model Dynamic Orchestration**: Seamless runtime switching between **100% Local On-Premise Inference** (via **LM Studio** / **Ollama**) with zero cloud data egress, **Google Gemini Flash** for deep dialectal reasoning, and **Groq Cloud** for sub-second LPU throughput.
-3. **Automated Self-Healing Pipeline**: Upstream timeouts and HTTP 429 rate limits trigger exponential backoff and transparent provider failover; malformed JSON action tags undergo closed-loop AI self-correction; corrupted or missing ledger files automatically reconstruct from verified templates without server crashes.
-4. **Per-Tab Cryptographic Session Isolation**: Every browser tab receives an isolated, cryptographically generated session token stored in `sessionStorage` and transmitted via `X-Session-Id`, eliminating state bleed across concurrent users or tabs.
-5. **Native Iraqi Linguistic Comprehension**: Comprehensive parsing of real Iraqi financial colloquialisms (*"دزله 50 ألف"*, *"شكد رصيدي هسة"*, *"ادفع مال كهرباء"*, *"ولا واحد منهم"*, *"عوفه وبطلت"*), supporting Arabic-Indic digits, Persian numerals, and spelled-out verbal monetary expressions.
+> ### 🏛️ The 5 Pillars of the Zero-Trust Architecture
+>
+> 1. **🔒 Deterministic Core Separation**  
+>    The language model never performs arithmetic, never computes wallet balances, and cannot directly mutate financial ledgers. All funds transfers, utility settlements, and account records are managed exclusively by an atomic, validated backend state machine.
+>
+> 2. **🧠 Multi-Model Dynamic Orchestration**  
+>    Seamless runtime switching between **100% Local On-Premise Inference** (via **LM Studio** / **Ollama**) with zero cloud data egress, **Google Gemini Flash** for deep dialectal reasoning, and **Groq Cloud** for sub-second LPU throughput.
+>
+> 3. **🩺 Automated Self-Healing Pipeline**  
+>    Upstream timeouts and HTTP 429 rate limits trigger exponential backoff and transparent provider failover; malformed JSON action tags undergo closed-loop AI self-correction; corrupted or missing ledger files automatically reconstruct from verified templates without server crashes.
+>
+> 4. **🛡️ Per-Tab Cryptographic Session Isolation**  
+>    Every browser tab receives an isolated, cryptographically generated session token stored in `sessionStorage` and transmitted via `X-Session-Id`, eliminating state bleed across concurrent users or tabs.
+>
+> 5. **🇮🇶 Native Iraqi Linguistic Comprehension**  
+>    Comprehensive parsing of real Iraqi financial colloquialisms (*"دزله 50 ألف"*, *"شكد رصيدي هسة"*, *"ادفع مال كهرباء"*, *"ولا واحد منهم"*, *"عوفه وبطلت"*), supporting Arabic-Indic digits, Persian numerals, and spelled-out verbal monetary expressions.
+
+[▲ Back to Top](#-table-of-contents)
 
 ---
 
@@ -92,9 +85,11 @@ Deploying generative AI directly into banking or payment applications poses seve
 
 </div>
 
+[▲ Back to Top](#-table-of-contents)
+
 ---
 
-## 🏗️ System Architecture & Operational Data Flow
+## 🏗️ System Architecture & Data Flow
 
 ### Architectural Flowchart
 
@@ -175,42 +170,22 @@ flowchart TD
 
 ### Tier-by-Tier Architectural Breakdown
 
-#### 1. Executive Frontend Client Tier
-* **Module**: [frontend/script.js](file:///c:/Users/moham/Desktop/VI/frontend/script.js), [frontend/index.html](file:///c:/Users/moham/Desktop/VI/frontend/index.html), [frontend/style.css](file:///c:/Users/moham/Desktop/VI/frontend/style.css)
-* **Cryptographic Tab Session Isolation**: On application load, `getOrCreateSessionId()` checks `sessionStorage` for an existing token. If none exists, it generates a cryptographically random UUID using `crypto.randomUUID()` (with a timestamp-random mathematical fallback). This token is transmitted in every HTTP request as the `X-Session-Id` header and body payload.
-* **Synchronous In-Flight Concurrency Guard**: When a message submission is triggered (via text input, voice transcription, or quick suggestion chip), `handleFormSubmit()` immediately and synchronously asserts `if (isRequestInProgress) return;`. It locks the interface (`isRequestInProgress = true`), disables the input textarea, send button, microphone button, and suggestion chips via `setInputState(false)`, and attaches ARIA disabled attributes. Cleanup occurs inside an unconditional `finally` block.
-* **Continuous Voice Engine**: Implements the Web Speech API configured for Iraqi Arabic (`ar-IQ`). An integrated HTML5 canvas visualizer maps live volume oscillation waveforms. An `onend` auto-recovery listener automatically calls `recognition.start()` when short speech pauses occur, ensuring fluid dictation without premature microphone termination.
+<details open>
+<summary><b>Click to expand or collapse Tier Breakdown Details</b></summary>
 
-#### 2. Express.js Gateway & Normalization Tier
-* **Module**: [backend/server.js](file:///c:/Users/moham/Desktop/VI/backend/server.js)
-* **In-Memory Multi-User Session Store**: In-memory `Map` keyed by `sessionId`. Each session maintains an independent conversation history (trimmed to the last 12 messages with system prompt retention), active contact disambiguation contexts, pending transfers, pending bill payments, and rate metrics. Inactive sessions are automatically evicted after 24 hours (`SESSION_TTL_MS = 86,400,000`).
-* **Dialectal & Verbal Numeral NLP Normalizer**: Converts Eastern Arabic-Indic digits (`٠, ١, ٢, ٣, ٤, ٥, ٦, ٧, ٨, ٩`) and Persian digits (`۰, ۱, ۲, ۳, ۴, ۵, ۶, ۷, ۸, ۹`) to standard ASCII numbers. Spoken Iraqi expressions for currency are parsed deterministically:
-  * *"مليونين ونص"* $\rightarrow$ `2,500,000 IQD`
-  * *"ميتين وخمسين ألف"* $\rightarrow$ `250,000 IQD`
-  * *"خمسين ألف"* $\rightarrow$ `50,000 IQD`
-  * *"ورقة"* $\rightarrow$ `150,000 IQD` (colloquial $100 reference)
+| Tier | Primary Modules | Key Responsibilities & Operational Guarantees |
+| :--- | :--- | :--- |
+| **1. Executive Frontend** | `frontend/script.js`<br>`frontend/style.css`<br>`frontend/index.html` | • **Cryptographic Per-Tab Isolation**: Generates unique session UUIDs in `sessionStorage` transmitted via `X-Session-Id`.<br>• **Synchronous In-Flight Lock**: Immediately locks UI (`isRequestInProgress = true`), disabling inputs and chips.<br>• **Continuous Voice Engine**: Web Speech API (`ar-IQ`) with live waveform visualizer and speech-pause auto-restart. |
+| **2. Express Gateway** | `backend/server.js`<br>(Router & SessionStore) | • **Multi-User Session Store**: In-memory `Map` with 24-hour TTL pruning for history, pending states, and disambiguation.<br>• **Linguistic Normalization**: Converts Arabic-Indic (`٠-٩`) and Persian digits (`۰-۹`) to standard ASCII integers.<br>• **Spoken Currency Engine**: Parses idioms (*"مليونين ونص"*, *"ميتين وخمسين ألف"*, *"خمسين ورقة"*). |
+| **3. Deterministic Safety** | `backend/server.js`<br>(Safety State Machine) | • **Contact Provenance Guard**: Verifies recipient phone digits exist in user input, preventing AI hallucination.<br>• **Two-Step Consent Lock**: Stages operations into memory; zero funds deducted without verbal consent.<br>• **Anti-Fabrication Interceptor**: Intercepts prose claims of payment when no programmatic action tag was executed. |
+| **4. AI Orchestration** | `backend/server.js`<br>(Unified Wrapper) | • **Centralized Universal Wrapper**: Single wrapper normalizing payloads across LM Studio, Gemini, and Groq.<br>• **Closed-Loop Self-Correction**: Automatically feeds syntax errors and JSON schema back to LLM at $T = 0.1$ on parse failures.<br>• **Dynamic Failover Matrix**: Automatically transitions requests down the provider chain on HTTP 429 or outages. |
+| **5. Storage & Audit** | `backend/mock_wallet_db.json`<br>`backend/audit_trail.json`<br>`backend/reset_db.js` | • **Two-Phase Atomic Disk I/O**: Writes to `.tmp` files first, followed by atomic `renameSync` with `EPERM`/`EBUSY` fallback.<br>• **Tamper-Evident Audit Logging**: Appends structured JSON records with UUIDs, timestamps, session IDs, and statuses.<br>• **Self-Healing Reconstruction**: Auto-reconstructs databases from `INITIAL_DB` if files are corrupted or missing. |
 
-#### 3. Deterministic Safety & Guardrail Tier
-* **Module**: [backend/server.js](file:///c:/Users/moham/Desktop/VI/backend/server.js#L268-L450)
-* **Contact Provenance Verification**: When `ADD_CONTACT` is requested, `isContactProvenanceValid()` verifies that the digits of the target phone number exist verbatim in the incoming user message or verified previous turn candidates. Fabricated or hallucinated phone numbers generated by the LLM are blocked immediately.
-* **Two-Step Confirmation Machine**: Financial mutations are never executed on initial turn prompts. The transaction parameters are staged in `session.pendingTransfer` or `session.pendingBillPayment`. Execution is locked until an explicit affirmative utterance (`"نعم"`, `"أكد"`, `"تمام"`, `"توكل"`) is received.
-* **Anti-Fabrication Prose Interceptor**: If an LLM generates conversational text asserting *"تم التحويل بنجاح"* without emitting the corresponding authorized `<<<DB_ACTION>>>` tag, the gateway intercepts the text and appends an explicit security disclaimer informing the user that no balance was deducted.
-
-#### 4. Multi-Model AI Orchestrator Tier
-* **Module**: [backend/server.js](file:///c:/Users/moham/Desktop/VI/backend/server.js#L123-L198)
-* **Centralized Completion Wrapper**: [callUnifiedChatCompletion](file:///c:/Users/moham/Desktop/VI/backend/server.js#L123) normalizes OpenAI-compatible payloads across LM Studio, Google Gemini Flash, and Groq Cloud.
-* **Closed-Loop JSON Self-Correction**: When an LLM produces malformed or unclosed JSON in action tags, the parser catches the syntax error and initiates an immediate repair sub-request ($T = 0.1$, `max_tokens: 300`) containing the raw snippet, error offset, and strict JSON schema rules.
-
-#### 5. Deterministic Storage & Audit Trail Tier
-* **Module**: [backend/mock_wallet_db.json](file:///c:/Users/moham/Desktop/VI/backend/mock_wallet_db.json), [backend/audit_trail.json](file:///c:/Users/moham/Desktop/VI/backend/audit_trail.json), [backend/reset_db.js](file:///c:/Users/moham/Desktop/VI/backend/reset_db.js)
-* **Two-Phase Atomic Disk I/O**: State updates write to a temporary file (`mock_wallet_db.json.tmp`) and then call atomic `fs.renameSync()`. If a Windows file indexing lock (`EPERM` / `EBUSY`) occurs, the engine automatically catches the error and executes `fs.copyFileSync()` followed by `fs.unlinkSync()`.
-* **Tamper-Evident Audit Logging**: Every executed or blocked financial operation is appended to `audit_trail.json` with an immutable UUID, UTC timestamp, session ID, action type, source account, destination, amount, and idempotency key.
-
----
+</details>
 
 ### End-to-End Financial Transaction Lifecycle
 
-```
+```text
 [User Utterance: "دز 50 ألف لأحمد"] 
        │
        ▼
@@ -250,9 +225,11 @@ flowchart TD
 [Client: Unlock UI, Play Confirmation Sound, Sync Balance Pill & Drawer]
 ```
 
+[▲ Back to Top](#-table-of-contents)
+
 ---
 
-## ✨ In-Depth Core Features
+## ✨ Core Feature Modules
 
 ### 1. Strict Two-Step Confirmation State Machine
 * **Zero Accidental Deductions**: The AI agent cannot trigger any financial mutation directly from an initial request.
@@ -263,15 +240,12 @@ flowchart TD
 ### 2. Colloquial Iraqi Dialect & Verbal Numeral NLP Engine
 * **Native Iraqi Vocabulary**: Comprehends colloquial terms such as *"دزله"*, *"حول"*, *"سدد"*, *"شكد رصيدي"*, *"ما عندي"*, *"عوف الموضوع"*, *"توكل"*.
 * **Numeral Normalization**: Automatically normalizes Eastern Arabic-Indic digits (`٠١٢٣٤٥٦٧٨٩`) and Persian digits (`۰۱۲۳۴۵۶۷۸۹`) to ASCII integers.
-* **Spoken Monetary Phrasing**: Robust regex rules translate complex spoken verbal monetary amounts into integer IQD values.
+* **Spoken Monetary Phrasing**: Translates complex verbal currency idioms (*"مليونين ونص"*, *"ميتين وخمسين ألف"*, *"خمسين ورقة"*) into integer IQD values.
 * **Carrier Validation**: Strictly enforces valid Iraqi mobile carrier formats (Zain 078, Asiacell 077, Korek 075).
 
 ### 3. Smart Contact Disambiguation & Abandonment Engine
-* When transferring to a common name (e.g., *"أحمد"*):
-  * The engine detects all matches in the verified address book.
-  * Presents numbered options with aliases and masked phone numbers.
-  * The user can select the target by index (`1`, `2`), alias (*"صديق الجامعة"*), or phone digits.
-  * If the user abandons the intent (*"عوفه وبطلت"*, *"مو ذولي"*), `isDisambiguationAbandonment()` purges all pending states immediately.
+* **Duplicate Name Resolution**: When transferring to a common name (e.g., *"أحمد"*), the engine detects multiple matches, formats entries with aliases, and prompts the user to select by index (`1`, `2`) or alias.
+* **Intent Abandonment Parsing**: If the user abandons the intent (*"عوفه وبطلت"*, *"مو ذولي"*), `isDisambiguationAbandonment()` purges all pending states immediately.
 
 ### 4. Complete Utility & Telecom Bill Payment System
 * **Pre-Integrated Biller Categories**: National Electricity Grid (*الكهرباء الوطنية*), Municipal Water (*الماء والخدمات البلدية*), Mobile Telecommunications (*فواتير خط الهاتف والاتصالات*), and Fiber/4G Internet (*فواتير الإنترنت والألياف الضوئية*).
@@ -297,6 +271,8 @@ flowchart TD
 * **Privacy Balance Masking (`*** IQD 👁`)**: Real-time shoulder-surfing protection in the header with one-click toggle and local storage persistence.
 * **Sliding Transactions Drawer**: Fast slide-out ledger drawer with category filters (`كل العمليات`, `تحويلات`, `فواتير`).
 * **Mathematical Halftone Particle Wave**: Interactive HTML5 canvas rendering dynamic particle grids that morph and react across viewports and themes without distorting on zoom.
+
+[▲ Back to Top](#-table-of-contents)
 
 ---
 
@@ -332,9 +308,11 @@ const FAILOVER_CHAIN = {
 2. **Transparent Failover**: If retries are exhausted on the active model, `callUnifiedChatCompletion()` automatically redirects the request down `FAILOVER_CHAIN`.
 3. **Graceful Fallback**: If all configured options fail, the gateway returns an informative diagnostic message in colloquial Iraqi Arabic with clear instructions on starting LM Studio or verifying API keys.
 
+[▲ Back to Top](#-table-of-contents)
+
 ---
 
-## 🛡️ Deterministic Security & Guardrail Specifications
+## 🛡️ Deterministic Security & Guardrails
 
 | Guardrail Layer | Implementation Function | Enforcement Rule | Security Guarantee |
 | :--- | :--- | :--- | :--- |
@@ -347,76 +325,81 @@ const FAILOVER_CHAIN = {
 | **Anti-Fabrication Intercept** | `server.js` Response Gate | Verbal claims of payment without verified `<<<DB_ACTION>>>` tags are intercepted. | Guarantees user is alerted if an LLM claims payment without executing it. |
 | **Security Audit Trail** | `appendAuditLog()` | Every financial operation is appended atomically to `audit_trail.json`. | Creates an immutable, tamper-evident record for security audits. |
 
+[▲ Back to Top](#-table-of-contents)
+
 ---
 
 ## 🩺 Failure Handling & Self-Healing Architecture
 
+The system is engineered with an active self-healing architecture structured across 6 core pillars:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   6 PILLARS OF SELF-HEALING RESILIENCE                 │
+├────────────────────────────────────────────────────────────────────────┤
+│ 1. Upstream LLM Outages    ◄── Exponential backoff & failover chain    │
+│ 2. JSON Action Repair      ◄── Closed-loop self-correction prompt      │
+│ 3. Database Corruption     ◄── Two-phase atomic writes & auto-rebuild  │
+│ 4. Multi-Tab State Bleed   ◄── Cryptographic per-tab session tokens    │
+│ 5. Ambiguity & Abandonment ◄── Interactive disambiguation & auto-purge │
+│ 6. Network & Speech Faults ◄── Unconditional unlock & voice auto-loop  │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
 ### 1. Upstream LLM Failures, Rate Limits & Outages
-- **Trigger**: Upstream engine returns HTTP 429 (rate limit/quota exhaustion), HTTP 500–504, `ECONNREFUSED`, `ETIMEDOUT`, or `ECONNRESET`.
-- **Self-Healing Process**:
-  1. `isRetryableError()` detects transient connection errors or quota exhaustion.
-  2. `callProviderWithBackoff()` initiates a 3-attempt exponential backoff sequence (500ms $\rightarrow$ 1000ms $\rightarrow$ 2000ms).
-  3. If retries are exhausted on the active model, `callUnifiedChatCompletion()` automatically redirects the request down the `FAILOVER_CHAIN`.
-  4. Missing cloud API keys are cleanly bypassed without runtime exceptions.
-  5. If all providers are unavailable, the gateway returns a user-friendly diagnostic message in colloquial Iraqi Arabic with setup guidance.
-- **Outcome**: **Graceful Degradation** — The backend process does not crash, HTTP 500 errors are prevented, and conversation context remains intact.
+* 🎯 **Failure Scenario**: Upstream model returns HTTP 429 (rate limit/quota exhaustion), HTTP 500–504, `ECONNREFUSED`, `ETIMEDOUT`, or `ECONNRESET`.
+* ⚙️ **Under the Hood**: `isRetryableError()` detects the error pattern $\rightarrow$ `callProviderWithBackoff()` initiates a 3-attempt exponential backoff sequence (500ms $\rightarrow$ 1000ms $\rightarrow$ 2000ms) $\rightarrow$ If exhausted, `callUnifiedChatCompletion()` transitions to the next engine in `FAILOVER_CHAIN` (`local` $\rightarrow$ `gemini` $\rightarrow$ `groq`).
+* 🛡️ **Self-Healing Guarantee**: **Graceful Degradation** — The backend process does not crash, HTTP 500 is prevented, and the conversation session remains intact.
 
 ### 2. Generative Action Tag Parsing & Closed-Loop Repair
-- **Trigger**: The LLM outputs malformed, unclosed, or invalid JSON syntax within structured action tags (`<<<DB_ACTION>>>`).
-- **Self-Healing Process**:
-  1. Primary `JSON.parse()` fails and triggers the closed-loop recovery handler in `handleModelActions`.
-  2. The gateway constructs a targeted repair prompt containing the raw syntax snippet, the exact parser error, and strict JSON schema rules.
-  3. The repair request is dispatched to the model with deterministic sampling ($T = 0.1$, `max_tokens: 300`).
-  4. Markdown code fences are stripped from the repaired response, and the clean payload is re-parsed.
-  5. If self-correction fails, the mutation is **aborted cleanly**.
-- **Outcome**: **Self-Healing with Fail-Safe Abort** — The database is protected from partial mutations, zero funds are deducted, and the user receives a clean retry prompt.
+* 🎯 **Failure Scenario**: The LLM outputs malformed, unclosed, or invalid JSON syntax within structured action tags (`<<<DB_ACTION>>>`).
+* ⚙️ **Under the Hood**: Primary `JSON.parse()` fails $\rightarrow$ Closed-loop handler builds a targeted repair prompt with the broken snippet, syntax error, and JSON schema $\rightarrow$ Request dispatched at $T = 0.1$ (`max_tokens: 300`) $\rightarrow$ Markdown fences stripped and payload re-parsed $\rightarrow$ If unrepairable, mutation is safely aborted.
+* 🛡️ **Self-Healing Guarantee**: **Fail-Safe Abort** — The database is protected from partial mutations, zero funds are deducted, and the user receives a clean retry prompt.
 
 ### 3. Database Ledger Corruption & Atomic Disk I/O
-- **Trigger**: `mock_wallet_db.json` is missing, deleted, empty (0 bytes), or corrupted with invalid JSON/schema; or a Windows indexer/antivirus locks the file (`EPERM` / `EBUSY`).
-- **Self-Healing Process**:
-  1. **Read Self-Healing**: `readDatabase()` verifies file existence, non-zero size, and schema validity. If corrupted, it logs a warning, clones `INITIAL_DB` from `reset_db.js`, writes it to disk, and continues execution.
-  2. **Two-Phase Atomic Write**: `saveDatabase()` writes to `mock_wallet_db.json.tmp` first, then executes atomic `fs.renameSync()`.
-  3. **Windows Lock Recovery**: If `renameSync()` encounters `EPERM` or `EBUSY`, it falls back to `copyFileSync()` and unlinks the temporary file.
-  4. **Orphan Cleanup**: Temporary files are unlinked in `catch` blocks if writes fail.
-  5. **Fail-Safe Audit Logging**: Failures during audit trail logging emit a warning without aborting verified database transactions.
-- **Outcome**: **Self-Healing & Tamper-Proof** — The server boots and operates even if database files are deleted from the disk mid-flight.
+* 🎯 **Failure Scenario**: `mock_wallet_db.json` is missing, deleted, empty (0 bytes), or corrupted; or a Windows indexer/antivirus locks the file (`EPERM` / `EBUSY`).
+* ⚙️ **Under the Hood**: `readDatabase()` verifies file existence, size, and schema $\rightarrow$ If corrupted, logs warning, clones `INITIAL_DB` from `reset_db.js`, writes to disk, and resumes $\rightarrow$ `saveDatabase()` writes to `.tmp` first, then executes atomic `fs.renameSync()` with fallback to `copyFileSync` + `unlinkSync` on Windows file lock.
+* 🛡️ **Self-Healing Guarantee**: **Self-Healing & Tamper-Proof** — Server boots and operates even if database files are deleted from the disk mid-flight.
 
 ### 4. Multi-User & Multi-Tab State Isolation
-- **Trigger**: Multiple users access the console simultaneously, or a single user opens multiple browser tabs.
-- **Self-Healing Process**:
-  1. The client initializes a unique session token using `sessionStorage` and `crypto.randomUUID()` (with timestamp-random fallback).
-  2. The session token is transmitted in every HTTP request via the `X-Session-Id` header and JSON body.
-  3. The backend maps requests to distinct memory instances in `sessions = new Map()`.
-  4. Pending transfers, disambiguation options, and bill settlements in Tab A do not leak into Tab B.
-  5. Inactive sessions are automatically pruned from memory after 24 hours (`SESSION_TTL_MS`).
-- **Outcome**: **Strict State Encapsulation** — Multiple tabs operate independently without cross-contamination.
+* 🎯 **Failure Scenario**: Multiple users access the console simultaneously, or a single user opens multiple concurrent browser tabs.
+* ⚙️ **Under the Hood**: Client generates unique UUID in `sessionStorage` transmitted via `X-Session-Id` header and JSON body $\rightarrow$ Backend routes requests to distinct memory instances in `sessions = new Map()` $\rightarrow$ Inactive sessions pruned after 24 hours (`SESSION_TTL_MS`).
+* 🛡️ **Self-Healing Guarantee**: **Strict State Encapsulation** — Multiple tabs operate independently without cross-contamination.
 
 ### 5. Ambient Contact Ambiguity & Intent Abandonment
-- **Trigger**: The user requests a transfer to a non-unique name (*"حول لأحمد"*), provides missing parameters, or abandons the operation (*"ما أعرفه"*, *"مو ذولي"*, *"عوفه وبطلت"*).
-- **Self-Healing Process**:
-  1. `findAmbiguousContacts()` detects multiple name matches and halts execution without balance deduction.
-  2. The system responds with an interactive numbered disambiguation list.
-  3. If the user replies with colloquial abandonment phrases, `isDisambiguationAbandonment()` immediately purges `pendingDisambiguation`, `pendingTransfer`, and `pendingTransferRecipient`.
-  4. If the user cancels (*"إلغاء"*), all pending operations are wiped cleanly.
-- **Outcome**: **Graceful Degradation** — Stale transactions never linger in memory; accidental transfers to wrong recipients are prevented.
+* 🎯 **Failure Scenario**: User transfers to a non-unique name (*"حول لأحمد"*), provides missing parameters, or abandons the operation (*"ما أعرفه"*, *"مو ذولي"*, *"عوفه وبطلت"*).
+* ⚙️ **Under the Hood**: `findAmbiguousContacts()` detects multiple name matches and halts execution without deduction $\rightarrow$ Interactive numbered list returned $\rightarrow$ If user replies with abandonment terms, `isDisambiguationAbandonment()` purges pending states $\rightarrow$ If user cancels (*"إلغاء"*), all pending operations are wiped cleanly.
+* 🛡️ **Self-Healing Guarantee**: **Graceful Degradation** — Stale transactions never linger in memory; accidental transfers to wrong recipients are prevented.
 
 ### 6. Frontend Network Faults & Continuous Speech Recovery
-- **Trigger**: Local backend takes longer than 30 seconds to respond, network connection drops, or Web Speech API pauses during vocal pauses.
-- **Self-Healing Process**:
-  1. **Client-Side Timeout**: `sendMessageToBackend()` wraps the request in an `AbortController` set to 30,000 ms. If exceeded, the request aborts gracefully.
-  2. **Unconditional UI Unlocking**: The submission cycle runs inside a `try...catch...finally` block. The `finally` clause unconditionally sets `isRequestInProgress = false`, calls `setInputState(true)`, and hides the typing indicator.
-  3. **Duplicate Prevention**: Synchronous guard flags reject rapid-fire clicks on the send button, Enter key, or prompt chips while an existing request is in-flight.
-  4. **Continuous Speech Recognition**: If speech pauses trigger recognition `onend`, the handler automatically re-initializes `recognition.start()` unless explicitly stopped by the user.
-- **Outcome**: **Self-Healing Interface** — The UI never locks permanently, and speech recording handles natural vocal pauses without premature termination.
+* 🎯 **Failure Scenario**: Backend takes longer than 30s to respond, network drops, or Web Speech API pauses during vocal pauses.
+* ⚙️ **Under the Hood**: `sendMessageToBackend()` sets 30,000ms `AbortController` timeout $\rightarrow$ Submission cycle runs in `try...catch...finally` where `finally` unconditionally sets `isRequestInProgress = false`, calls `setInputState(true)`, and hides typing indicator $\rightarrow$ Speech recognition `onend` auto-calls `recognition.start()`.
+* 🛡️ **Self-Healing Guarantee**: **Self-Healing Interface** — The UI never locks permanently, and speech recording handles natural vocal pauses without premature termination.
+
+[▲ Back to Top](#-table-of-contents)
 
 ---
 
 ## 📡 API Specifications & Route Reference
 
-### 1. `POST /api/chat`
-* **Description**: Primary conversational reasoning and action execution endpoint.
-* **Headers**: `Content-Type: application/json`, `X-Session-Id: string`, `X-Idempotency-Key: string`
-* **Request Body**:
+### Endpoints Overview
+
+| Method | Endpoint | Description | Request Headers |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/chat` | Main conversational reasoning and action execution endpoint. | `X-Session-Id`, `X-Idempotency-Key` |
+| `GET` | `/api/db` | Retrieves complete active wallet state (user, balance, contacts, bills). | — |
+| `GET` | `/api/transactions` | Retrieves recent transaction ledger with totals and metrics. | — |
+| `POST` | `/api/reset` | Resets session memory and restores wallet database to defaults. | `X-Session-Id` |
+| `GET` | `/api/audit` | Retrieves tamper-evident security audit logs. | — |
+| `POST` | `/api/feedback` | Records user satisfaction ratings (likes / dislikes) for AI responses. | — |
+| `GET` | `/api/feedback/likes` | Retrieves all positive evaluation entries. | — |
+| `GET` | `/api/feedback/dislikes` | Retrieves all negative evaluation entries for alignment review. | — |
+
+<details>
+<summary><b>Click to expand detailed Request & Response JSON schemas</b></summary>
+
+#### 1. `POST /api/chat`
+* **Request**:
   ```json
   {
     "message": "حول 50 ألف لأحمد كمال",
@@ -425,7 +408,7 @@ const FAILOVER_CHAIN = {
     "idempotency_key": "req_1729198200000_abc123"
   }
   ```
-* **Response Body (200 OK)**:
+* **Response (200 OK)**:
   ```json
   {
     "text": "تمام، راح أحول 50,000 د.ع لأحمد كمال. متأكد من التحويل؟",
@@ -434,9 +417,8 @@ const FAILOVER_CHAIN = {
   }
   ```
 
-### 2. `GET /api/db`
-* **Description**: Returns the active wallet state (user profile, balance, contacts, utility bills, and recent ledger).
-* **Response Body (200 OK)**:
+#### 2. `GET /api/db`
+* **Response (200 OK)**:
   ```json
   {
     "user": {
@@ -446,15 +428,28 @@ const FAILOVER_CHAIN = {
       "balance": 2200000,
       "currency": "IQD"
     },
-    "contacts": [ ... ],
-    "bills": [ ... ],
-    "transactions": [ ... ]
+    "contacts": [
+      {
+        "id": "cnt_2001",
+        "name": "أحمد",
+        "alias": "أحمد كمال (صديق الجامعة)",
+        "phone": "+9647801122334"
+      }
+    ],
+    "bills": [
+      {
+        "id": "bill_3001",
+        "name": "فاتورة الكهرباء الوطنية",
+        "amount": 45000,
+        "status": "unpaid"
+      }
+    ],
+    "transactions": []
   }
   ```
 
-### 3. `GET /api/transactions`
-* **Description**: Returns the verified transaction ledger history with totals and metrics.
-* **Response Body (200 OK)**:
+#### 3. `GET /api/transactions`
+* **Response (200 OK)**:
   ```json
   {
     "transactions": [
@@ -472,10 +467,8 @@ const FAILOVER_CHAIN = {
   }
   ```
 
-### 4. `POST /api/reset`
-* **Description**: Resets conversation state for the calling session and restores wallet database to defaults.
-* **Headers**: `X-Session-Id: string`
-* **Response Body (200 OK)**:
+#### 4. `POST /api/reset`
+* **Response (200 OK)**:
   ```json
   {
     "success": true,
@@ -483,9 +476,8 @@ const FAILOVER_CHAIN = {
   }
   ```
 
-### 5. `GET /api/audit`
-* **Description**: Retrieves the immutable security audit trail entries.
-* **Response Body (200 OK)**:
+#### 5. `GET /api/audit`
+* **Response (200 OK)**:
   ```json
   {
     "success": true,
@@ -506,6 +498,10 @@ const FAILOVER_CHAIN = {
     ]
   }
   ```
+
+</details>
+
+[▲ Back to Top](#-table-of-contents)
 
 ---
 
@@ -545,11 +541,11 @@ VI/
 └── 📄 README.md                       # Comprehensive documentation
 ```
 
+[▲ Back to Top](#-table-of-contents)
+
 ---
 
 ## ⚡ Quick Start & Installation Guide
-
-Follow these steps to launch **فاي (VI)** locally:
 
 ### Step 1: System Prerequisites & Verification
 
@@ -585,15 +581,14 @@ npm install
 
 Create your local `.env` configuration file from the template:
 
-**PowerShell (Windows):**
-```powershell
-Copy-Item .env.example .env
-```
-
-**Bash (Linux / macOS) or Command Prompt:**
-```bash
-cp .env.example .env
-```
+* **PowerShell (Windows)**:
+  ```powershell
+  Copy-Item .env.example .env
+  ```
+* **Bash (Linux / macOS) or Command Prompt**:
+  ```bash
+  cp .env.example .env
+  ```
 
 Open `.env` and verify settings:
 
@@ -624,8 +619,8 @@ PORT=3000
 4. Select the model from the top bar, ensure port is set to **`1234`**, and click **Start Server**.
 
 #### Option B: Cloud AI Engines (Instant Setup)
-- **Google Gemini**: Obtain an API key from **[Google AI Studio](https://aistudio.google.com/)** and set `GEMINI_API_KEY`.
-- **Groq Cloud**: Obtain an API key from **[Groq Console](https://console.groq.com/)** and set `GROQ_API_KEY`.
+* **Google Gemini**: Obtain an API key from **[Google AI Studio](https://aistudio.google.com/)** and set `GEMINI_API_KEY`.
+* **Groq Cloud**: Obtain an API key from **[Groq Console](https://console.groq.com/)** and set `GROQ_API_KEY`.
 
 ### Step 6: Launch Backend & Open Web Console
 
@@ -635,6 +630,8 @@ npm start
 
 Open your browser and navigate to:  
 👉 **`http://localhost:3000`**
+
+[▲ Back to Top](#-table-of-contents)
 
 ---
 
@@ -658,9 +655,11 @@ npm test
 | **Task 4: Security Audit Logging & Financial Integrity** | Multi-user session isolation across distinct `sessionId` tokens, double-spend prevention via idempotency keys, financial validation (negative, zero, fractional, below 250 IQD amounts), and audit trail immutability with atomic disk I/O. | 4 Suites | 15 Tests | ✅ **Passed** |
 | **Total Test Suite** | **Comprehensive End-to-End System & Security Verification** | **25 Suites** | **99 Tests** | **✅ 100% Pass** |
 
+[▲ Back to Top](#-table-of-contents)
+
 ---
 
-## 💬 Colloquial Iraqi Dialect Showcase & Scenarios
+## 💬 Colloquial Iraqi Dialect Showcase
 
 | Category | Example Iraqi Phrase | System Execution & Response |
 | :--- | :--- | :--- |
@@ -674,13 +673,18 @@ npm test
 | **Bulk Bill Payment** | *"سدد كل الفواتير اللي عليه"* | Aggregates all unpaid utilities, validates combined sum against balance, and executes atomically. |
 | **Contact Registration** | *"احفظ رقم 07804455667 باسم علي"* | Validates phone provenance against user input, adds contact to disk, and confirms. |
 
+[▲ Back to Top](#-table-of-contents)
+
 ---
 
-## 🛠️ Comprehensive Troubleshooting & FAQs
+## 🛠️ Troubleshooting & Extended FAQs
 
 ### Operational Troubleshooting
 
-### 1. 🛑 Windows PowerShell Script Execution Blocked (`PSSecurityException`)
+<details open>
+<summary><b>Click to expand or collapse Operational Troubleshooting Guides</b></summary>
+
+#### 1. 🛑 Windows PowerShell Script Execution Blocked (`PSSecurityException`)
 * **Symptom**: Running `npm` or `node` scripts fails with:
   ```text
   File C:\...\npm.ps1 cannot be loaded because running scripts is disabled on this system.
@@ -693,18 +697,17 @@ npm test
 
 ---
 
-### 2. 🛑 Command Not Recognized: `'node'` or `'npm'` is not recognized
+#### 2. 🛑 Command Not Recognized: `'node'` or `'npm'` is not recognized
 * **Symptom**: PowerShell outputs `The term 'node' is not recognized as the name of a cmdlet, function, script file...`
 * **Cause**: Node.js was recently installed, but your open PowerShell session hasn't refreshed its environment PATH.
 * **Fix**: Refresh your PATH environment variable without closing your terminal:
   ```powershell
   $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
   ```
-  *(Or close all PowerShell windows and open a fresh terminal).*
 
 ---
 
-### 3. 🛑 LM Studio Connection Error (`ECONNREFUSED 127.0.0.1:1234`)
+#### 3. 🛑 LM Studio Connection Error (`ECONNREFUSED 127.0.0.1:1234`)
 * **Symptom**: Chat displays a connection failure message: *"عذراً، فشل الاتصال بخادم الذكاء الاصطناعي المحلي..."*
 * **Fix Steps**:
   1. Open LM Studio and navigate to the **Local Server (`<->`)** tab.
@@ -715,7 +718,7 @@ npm test
 
 ---
 
-### 4. 🛑 Port 3000 Already in Use (`EADDRINUSE: address already in use :::3000`)
+#### 4. 🛑 Port 3000 Already in Use (`EADDRINUSE: address already in use :::3000`)
 * **Symptom**: Starting the server results in `Error: listen EADDRINUSE: address already in use :::3000`.
 * **Cause**: A previous instance of `server.js` or another local application is already bound to port 3000.
 * **Fix Option A (Change Port)**: Edit `.env` and change `PORT=3000` to `PORT=3001`. Then start with `npm start` and visit `http://localhost:3001`.
@@ -732,7 +735,7 @@ npm test
 
 ---
 
-### 5. 🛑 Microphone / Speech-to-Text Not Responding
+#### 5. 🛑 Microphone / Speech-to-Text Not Responding
 * **Symptom**: Clicking the microphone icon fails to transcribe speech or reports a permission error.
 * **Cause**: Browser microphone permissions are blocked, or browser lacks Web Speech API support.
 * **Fix Steps**:
@@ -743,10 +746,10 @@ npm test
 
 ---
 
-### 6. 🛑 Cloud API Key Errors (401 Unauthorized / 429 Rate Limit)
+#### 6. 🛑 Cloud API Key Errors (401 Unauthorized / 429 Rate Limit)
 * **Symptom**: Gemini or Groq returns an authentication or quota failure message.
 * **Fix Steps**:
-  1. Open `.env` and ensure there are no surrounding quotes, spaces, or line breaks around your key. Example:
+  1. Open `.env` and ensure there are no surrounding quotes, spaces, or line breaks around your key:
      ```env
      GEMINI_API_KEY=AIzaSyBFAu...
      GROQ_API_KEY=gsk_KzXal...
@@ -755,7 +758,7 @@ npm test
 
 ---
 
-### 7. 🛑 Resetting the Wallet Database to Default
+#### 7. 🛑 Resetting the Wallet Database to Default
 * **Question**: How do I reset balances, paid bills, and contacts back to the pristine initial state?
 * **Option A (Terminal - Works even if server is stopped)**:
   ```bash
@@ -772,11 +775,15 @@ npm test
     ```bash
     curl -X POST http://localhost:3000/api/reset
     ```
-  All options immediately rewrite `mock_wallet_db.json` with fresh initial balances (`2,200,000 IQD`) and reset all utility bills to `unpaid`.
+
+</details>
 
 ---
 
 ### Frequently Asked Questions (FAQ)
+
+<details open>
+<summary><b>Click to expand or collapse Frequently Asked Questions</b></summary>
 
 #### Q1: Can I run this system completely offline without an internet connection?
 **Yes.** When running with LM Studio or Ollama on `http://127.0.0.1:1234/v1`, 100% of reasoning occurs locally on your machine. Zero prompts, balances, or data egress to the cloud.
@@ -793,9 +800,15 @@ Each tab generates a distinct session UUID stored in `sessionStorage` and transm
 #### Q5: Is it safe to delete `backend/audit_trail.json`?
 **Yes, 100% safe.** `audit_trail.json` is an append-only compliance log. Deleting it will not reset wallet balances or contacts. The server will recreate the file automatically on the next financial transaction.
 
+</details>
+
+[▲ Back to Top](#-table-of-contents)
+
 ---
 
-## 🗺️ Future Roadmap
+## 🗺️ Future Roadmap & License
+
+### Milestone Roadmap
 
 - [x] Full Iraqi dialect support for money transfers and utility bills.
 - [x] Strict two-step confirmation engine and contact disambiguation.
@@ -814,7 +827,7 @@ Each tab generates a distinct session UUID stored in `sessionStorage` and transm
 
 ---
 
-## 📜 License
+### 📜 License
 
 This project is open-source under the **[MIT License](LICENSE)**.
 
