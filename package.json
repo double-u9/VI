@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
-    "reset-db": "node backend/reset_db.js"
+    "reset-db": "node backend/reset_db.js",
+    "test": "node --test backend/tests/*.test.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

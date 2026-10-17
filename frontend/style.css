@@ -2085,7 +2085,7 @@ button,
   border: 1px solid rgba(20, 184, 166, 0.35);
 }
 
-.prompt-chip:hover {
+.prompt-chip:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--chip-hover-bg);
   border-color: var(--chip-hover-border);
   color: var(--chip-hover-text);
@@ -2093,8 +2093,18 @@ button,
   box-shadow: var(--chip-hover-shadow);
 }
 
-.prompt-chip:active {
+.prompt-chip:active:not(:disabled):not([aria-disabled="true"]) {
   transform: translateY(0);
+}
+
+.prompt-chip:disabled,
+.prompt-chip[disabled],
+.prompt-chip[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* ==========================================================================

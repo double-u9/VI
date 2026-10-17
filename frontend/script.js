@@ -9,6 +9,31 @@ const API_CONFIG = {
   TIMEOUT_MS: 30000 // 30 seconds timeout for local LLM inference
 };
 
+/**
+ * Retrieves or generates a unique session ID for the current browser tab.
+ * Persists across refreshes within the same tab via sessionStorage.
+ * @returns {string} Session identifier
+ */
+function getOrCreateSessionId() {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      let sid = window.sessionStorage.getItem('vi_session_id');
+      if (!sid) {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+          sid = 'sess_' + crypto.randomUUID();
+        } else {
+          sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+        }
+        window.sessionStorage.setItem('vi_session_id', sid);
+      }
+      return sid;
+    }
+  } catch (e) {
+    console.warn('[Session] Storage unavailable, using ephemeral ID:', e);
+  }
+  return 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+}
+
 // DOM Elements
 const chatWindow = document.getElementById('chat-window');
 const messagesContainer = document.getElementById('messages-container');
@@ -36,6 +61,7 @@ let isVoiceActive = false;
 let explicitlyStopped = false;
 let accumulatedSpeech = '';
 let interimSpeech = '';
+let isRequestInProgress = false; // Synchronous guard against duplicate / concurrent request submissions
 
 // Web Audio API Frequency Visualizer state (Gemini AI outward emanation visualizer)
 let audioCtx = null;
@@ -558,7 +584,9 @@ function finishVoiceRecording(autoSend = false) {
     updateInputState();
 
     if (recordedText.length > 0) {
-      handleFormSubmit(recordedText);
+      if (!isRequestInProgress) {
+        handleFormSubmit(recordedText);
+      }
     } else {
       userInput.focus();
     }
@@ -597,6 +625,7 @@ function initSpeechRecognition() {
 
   // Toggle voice mode from the microphone icon
   micBtn.addEventListener('click', () => {
+    if (isRequestInProgress) return;
     if (isVoiceActive) {
       finishVoiceRecording(false);
     } else {
@@ -610,6 +639,7 @@ function initSpeechRecognition() {
     stopBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (isRequestInProgress) return;
       finishVoiceRecording(false);
     });
   }
@@ -620,6 +650,7 @@ function initSpeechRecognition() {
     sendVoiceBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (isRequestInProgress) return;
       finishVoiceRecording(true);
     });
   }
@@ -752,6 +783,7 @@ function initWalletEyeToggle() {
  * Synchronizes the wallet balance from /api/db into the header pill
  */
 async function syncWalletHeader() {
+  if (typeof document === 'undefined' || !document.getElementById) return;
   try {
     const res = await fetch('/api/db');
     if (!res.ok) return;
@@ -882,6 +914,7 @@ function renderTransactionsList() {
 }
 
 async function fetchAndRenderTransactions(showSpinner = false) {
+  if (typeof document === 'undefined' || !document.getElementById) return;
   const refreshBtn = document.getElementById('refresh-transactions-btn');
   const refreshIcon = refreshBtn ? refreshBtn.querySelector('.refresh-icon') : null;
 
@@ -894,7 +927,7 @@ async function fetchAndRenderTransactions(showSpinner = false) {
     if (!res.ok) return;
     const data = await res.json();
 
-    if (data) {
+    if (data && typeof document !== 'undefined' && document && typeof document.getElementById === 'function') {
       cachedTransactions = Array.isArray(data.transactions) ? data.transactions : [];
 
       // Update badge count in header
@@ -1251,12 +1284,17 @@ document.addEventListener('DOMContentLoaded', () => {
   initTransactionsDrawer();
 
   // Handle Form Submission
-  chatForm.addEventListener('submit', handleFormSubmit);
+  chatForm.addEventListener('submit', (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isRequestInProgress) return;
+    handleFormSubmit();
+  });
 
   // Handle Enter key for submission (Shift+Enter for newline)
   userInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (isRequestInProgress) return;
       handleFormSubmit();
     }
   });
@@ -1269,8 +1307,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Quick Action Prompts
   if (quickPromptsBar) {
     quickPromptsBar.addEventListener('click', (e) => {
+      if (isRequestInProgress) return;
       const button = e.target.closest('.prompt-chip');
-      if (!button) return;
+      if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
       const promptText = button.getAttribute('data-prompt');
       if (promptText) {
         handleFormSubmit(promptText);
@@ -1393,7 +1432,10 @@ function updateModelMenuUI(provider) {
  * @returns {string}
  */
 function getSelectedModelProvider() {
-  return localStorage.getItem('selected_model_provider') || 'local';
+  if (typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') {
+    return localStorage.getItem('selected_model_provider') || 'local';
+  }
+  return 'local';
 }
 
 /**
@@ -1439,7 +1481,15 @@ async function startNewChat() {
   }
 
   // Clear server session memory and pending operations
-  fetch('/api/reset', { method: 'POST' }).catch(() => {});
+  const resetSessionId = getOrCreateSessionId();
+  fetch('/api/reset', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-Id': resetSessionId
+    },
+    body: JSON.stringify({ sessionId: resetSessionId })
+  }).catch(() => {});
 
   setTimeout(() => {
     window.dispatchEvent(new Event('resize'));
@@ -1477,6 +1527,12 @@ function exitHeroMode() {
  * @param {string|null} customMessage - Optional message string (e.g. from speech or quick prompt)
  */
 async function handleFormSubmit(customMessage = null) {
+  // 1. Synchronous in-flight guard: immediately reject if another submission is in progress
+  if (isRequestInProgress) {
+    console.warn('[Request Guard] Submission ignored: another request is currently in progress.');
+    return;
+  }
+
   let messageText = '';
   if (typeof customMessage === 'string' && customMessage.trim()) {
     messageText = customMessage.trim();
@@ -1486,31 +1542,32 @@ async function handleFormSubmit(customMessage = null) {
 
   if (!messageText) return;
 
-  // 1. Clear input & reset textarea height and send button state immediately
+  // 2. Immediately lock state synchronously before ANY asynchronous operation or DOM transition
+  isRequestInProgress = true;
+  setInputState(false);
+
+  // 3. Clear input & reset textarea height and send button state immediately
   userInput.value = '';
   updateInputState();
 
-  // 2. If transitioning from welcome screen, wait for exit animation (~300ms) to finish cleanly
+  // 4. If transitioning from welcome screen, wait for exit animation (~300ms) to finish cleanly
   const appLayout = document.getElementById('app-layout');
   const wasHero = appLayout && appLayout.classList.contains('hero-mode');
   if (wasHero) {
     await exitHeroMode();
   }
 
-  // 3. Append User Message to UI (slides up smoothly from bottom with zero overlap)
+  // 5. Append User Message to UI (slides up smoothly from bottom with zero overlap)
   appendMessage(messageText, 'user');
 
-  // 4. Scroll to bottom
+  // 6. Scroll to bottom & Show typing indicator
   scrollToBottom();
-
-  // 5. Disable input & Show typing indicator
-  setInputState(false);
   showTypingIndicator(true);
 
   try {
     const startTime = Date.now();
 
-    // 5. Send POST request to Local Backend API
+    // 7. Send POST request to Local Backend API
     const result = await sendMessageToBackend(messageText);
     const replyText = typeof result === 'object' ? result.text : result;
 
@@ -1526,14 +1583,14 @@ async function handleFormSubmit(customMessage = null) {
     // Hide typing indicator right before showing AI response
     showTypingIndicator(false);
 
-    // 6. Append AI Response (associated with the user query for accurate feedback logging)
+    // 8. Append AI Response (associated with the user query for accurate feedback logging)
     appendMessage(replyText, 'ai', messageText);
 
-    // 7. Update live balance in header & sync transactions drawer
+    // 9. Update live balance in header & sync transactions drawer
     syncWalletHeader();
     fetchAndRenderTransactions();
 
-    // 8. Auto-open transactions drawer if the server flagged it (e.g. user asked for recent transactions)
+    // 10. Auto-open transactions drawer if the server flagged it (e.g. user asked for recent transactions)
     if (typeof result === 'object' && result.openDrawer) {
       setTimeout(() => {
         openTransactionsDrawer();
@@ -1547,11 +1604,14 @@ async function handleFormSubmit(customMessage = null) {
       `تعذر الاتصال بالخادم المحلي (${API_CONFIG.ENDPOINT}).\nيرجى التأكد من تشغيل خادم الـ Backend المحلي أو نموذج الذكاء الاصطناعي.`
     );
   } finally {
-    // Re-enable input & Hide typing indicator
+    // 11. Reliable cleanup path: unlock guard & restore controls after both successful and failed requests
+    isRequestInProgress = false;
     showTypingIndicator(false);
     setInputState(true);
     scrollToBottom();
-    userInput.focus();
+    if (userInput && typeof userInput.focus === 'function') {
+      userInput.focus();
+    }
   }
 }
 
@@ -1563,17 +1623,24 @@ async function handleFormSubmit(customMessage = null) {
 async function sendMessageToBackend(userMessage) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT_MS);
+  const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+  const sessionId = getOrCreateSessionId();
 
   try {
     const response = await fetch(API_CONFIG.ENDPOINT, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Request-Id': requestId,
+        'X-Idempotency-Key': requestId,
+        'X-Session-Id': sessionId
       },
       body: JSON.stringify({
         message: userMessage,
         provider: getSelectedModelProvider(),
-        timestamp: new Date().toISOString()
+        sessionId: sessionId,
+        timestamp: new Date().toISOString(),
+        idempotency_key: requestId
       }),
       signal: controller.signal
     });
@@ -1787,19 +1854,37 @@ function showTypingIndicator(show) {
 }
 
 /**
- * Enables or disables the input field and send button
+ * Enables or disables all interactive input controls, buttons, and suggestion chips
  * @param {boolean} enabled - UI state
  */
 function setInputState(enabled) {
-  userInput.disabled = !enabled;
-  sendBtn.disabled = !enabled;
+  if (userInput) {
+    userInput.disabled = !enabled;
+    userInput.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
+  }
+  if (sendBtn) {
+    sendBtn.disabled = !enabled;
+    sendBtn.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
+  }
   if (micBtn) {
     micBtn.disabled = !enabled;
+    micBtn.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
   }
   const stopBtn = document.getElementById('voice-stop-btn');
   const sendVoiceBtn = document.getElementById('voice-send-btn');
-  if (stopBtn) stopBtn.disabled = !enabled;
-  if (sendVoiceBtn) sendVoiceBtn.disabled = !enabled;
+  if (stopBtn) {
+    stopBtn.disabled = !enabled;
+    stopBtn.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
+  }
+  if (sendVoiceBtn) {
+    sendVoiceBtn.disabled = !enabled;
+    sendVoiceBtn.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
+  }
+  const promptChips = document.querySelectorAll('.prompt-chip');
+  promptChips.forEach(chip => {
+    chip.disabled = !enabled;
+    chip.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
+  });
 }
 
 /**
@@ -1814,7 +1899,8 @@ function autoResizeTextarea() {
  * Smoothly scrolls the chat window to the bottom
  */
 function scrollToBottom() {
-  requestAnimationFrame(() => {
+  const rAF = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function' ? window.requestAnimationFrame : (cb) => setTimeout(cb, 0));
+  rAF(() => {
     chatWindow.scrollTop = chatWindow.scrollHeight;
     setTimeout(() => {
       chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -1838,9 +1924,15 @@ function getCurrentFormattedTime() {
  * Basic HTML escaping helper to prevent XSS
  */
 function escapeHtml(string) {
+  if (typeof string !== 'string') return '';
   const div = document.createElement('div');
   div.textContent = string;
-  return div.innerHTML;
+  return typeof div.innerHTML === 'string' && div.innerHTML ? div.innerHTML : string
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**
@@ -1916,4 +2008,16 @@ function formatFintechMessage(text, sender) {
   }
 
   return joined;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    handleFormSubmit,
+    sendMessageToBackend,
+    setInputState,
+    getOrCreateSessionId,
+    getRequestInProgress: () => isRequestInProgress,
+    setRequestInProgress: (val) => { isRequestInProgress = val; },
+    formatFintechMessage
+  };
 }
