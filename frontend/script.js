@@ -1254,7 +1254,7 @@ function initHalftoneBackground() {
 }
 
 // ==========================================================================
-// Text-To-Speech (TTS) Voice Engine (Native Browser + ElevenLabs Hybrid)
+// Text-To-Speech (TTS) Voice Engine (Native Browser + ElevenLabs / Google Neural Hybrid)
 // ==========================================================================
 let isTtsEnabled = true;
 try {
@@ -1268,6 +1268,31 @@ try {
   console.warn('[TTS] Storage access warning:', e);
 }
 
+// User-configurable speech speed: 0.85x (بطيء), 1.05x (نص ونص / طبيعي), 1.3x (سريع)
+let currentTtsSpeed = 1.05;
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const savedSpeed = window.localStorage.getItem('vi_tts_speed');
+    if (savedSpeed) {
+      const parsed = parseFloat(savedSpeed);
+      if (!isNaN(parsed) && parsed >= 0.5 && parsed <= 2.5) {
+        currentTtsSpeed = parsed;
+      }
+    }
+  }
+} catch (e) {}
+
+// User-configurable voice preference: 'cloud-google' (default high-fidelity) or local browser voice name
+let selectedVoiceId = 'cloud-google';
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const savedVoice = window.localStorage.getItem('vi_tts_voice');
+    if (savedVoice) {
+      selectedVoiceId = savedVoice;
+    }
+  }
+} catch (e) {}
+
 let currentTtsAudio = null;
 let activeTtsBtn = null;
 let cachedSpeechVoices = [];
@@ -1279,6 +1304,7 @@ function loadTtsVoices() {
     } catch (e) {
       cachedSpeechVoices = [];
     }
+    populateVoiceSelectDropdown();
   }
 }
 
@@ -1293,17 +1319,23 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
  * Discovers the most authentic Arabic voice available in the browser.
  * Prioritizes Iraqi Arabic (ar-IQ), then regional/natural voices.
  */
-function getBestArabicVoice() {
+function getBestArabicVoice(preferredVoiceName = null) {
   if (!cachedSpeechVoices || cachedSpeechVoices.length === 0) {
     loadTtsVoices();
   }
   if (!cachedSpeechVoices || cachedSpeechVoices.length === 0) return null;
 
-  // 1. Exact Iraqi match
+  // 1. Direct name match if requested by user
+  if (preferredVoiceName && preferredVoiceName !== 'cloud-google') {
+    const matched = cachedSpeechVoices.find(v => v.name === preferredVoiceName);
+    if (matched) return matched;
+  }
+
+  // 2. Exact Iraqi match
   let voice = cachedSpeechVoices.find(v => v.lang === 'ar-IQ' || v.lang === 'ar_IQ');
   if (voice) return voice;
 
-  // 2. High-quality natural Arabic voices (Salma, Google, Microsoft Natural, Laila, Maged, Tarik)
+  // 3. High-quality natural Arabic voices (Salma, Google, Microsoft Natural, Laila, Maged, Tarik, Shakir)
   const premiumKeywords = ['salma', 'natural', 'google', 'shakir', 'maged', 'tarik', 'laila', 'arabic'];
   voice = cachedSpeechVoices.find(v => {
     const lang = (v.lang || '').toLowerCase();
@@ -1312,9 +1344,60 @@ function getBestArabicVoice() {
   });
   if (voice) return voice;
 
-  // 3. Any available Arabic voice
+  // 4. Any available Arabic voice
   voice = cachedSpeechVoices.find(v => (v.lang || '').toLowerCase().startsWith('ar'));
   return voice || null;
+}
+
+/**
+ * Dynamically populates the voice selector dropdown with cloud neural voice
+ * and any available system voices (Microsoft Salma, Google Arabic, etc.)
+ */
+function populateVoiceSelectDropdown() {
+  if (typeof document === 'undefined') return;
+  const voiceSelect = document.getElementById('tts-voice-select');
+  if (!voiceSelect) return;
+
+  voiceSelect.innerHTML = '';
+
+  // 1. Google Neural Cloud Voice (Default recommended)
+  const cloudOption = document.createElement('option');
+  cloudOption.value = 'cloud-google';
+  cloudOption.textContent = '✨ صوت فاي الذكي (Google Neural - عراقي فصيح)';
+  voiceSelect.appendChild(cloudOption);
+
+  // 2. Check for local browser Arabic voices
+  const arabicVoices = (cachedSpeechVoices || []).filter(v => {
+    const lang = (v.lang || '').toLowerCase();
+    const name = (v.name || '').toLowerCase();
+    return lang.startsWith('ar') || name.includes('arabic') || name.includes('عربي') || name.includes('salma') || name.includes('shakir');
+  });
+
+  if (arabicVoices.length > 0) {
+    const group = document.createElement('optgroup');
+    group.label = 'أصوات المتصفح والنظام (Offline / Browser)';
+    arabicVoices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      let label = v.name;
+      if (v.name.includes('Salma')) {
+        label = 'سلمى (Microsoft Salma - Natural)';
+      } else if (v.name.includes('Shakir')) {
+        label = 'شاكر (Microsoft Shakir - Natural)';
+      } else if (v.name.includes('Google') && v.lang.startsWith('ar')) {
+        label = `جوجل (Google ${v.lang})`;
+      } else {
+        label = `${v.name} (${v.lang})`;
+      }
+      opt.textContent = label;
+      group.appendChild(opt);
+    });
+    voiceSelect.appendChild(group);
+  }
+
+  // Restore active user selection if available
+  const exists = Array.from(voiceSelect.options).some(o => o.value === selectedVoiceId);
+  voiceSelect.value = exists ? selectedVoiceId : 'cloud-google';
 }
 
 /**
@@ -1372,13 +1455,13 @@ function stopSpeaking() {
 }
 
 /**
- * Speaks text using ElevenLabs backend streaming if available,
- * falling back effortlessly to browser SpeechSynthesis.
+ * Speaks text using user-chosen voice and speed setting.
+ * Supports Google Neural Cloud stream and local browser voices.
  * @param {string} text - Message text
  * @param {HTMLElement|null} btnElement - Optional replay button element to animate
  */
 async function speakText(text, btnElement = null) {
-  if (typeof window === 'undefined' || typeof Audio === 'undefined') return;
+  if (typeof window === 'undefined') return;
   if (typeof text !== 'string' || !text.trim()) return;
   const clean = cleanTextForSpeech(text);
   if (!clean) return;
@@ -1389,49 +1472,66 @@ async function speakText(text, btnElement = null) {
     activeTtsBtn = btnElement;
     btnElement.classList.add('speaking');
   }
-  const toggleBtn = document.getElementById('tts-toggle-btn');
+  const toggleBtn = (typeof document !== 'undefined' && typeof document.getElementById === 'function')
+    ? document.getElementById('tts-toggle-btn')
+    : null;
   if (toggleBtn) {
     toggleBtn.classList.add('is-speaking');
   }
 
-  // 1. Try Backend ElevenLabs endpoint
-  try {
-    const res = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: clean })
-    });
+  // If user selected a specific browser offline voice, route directly to browser synthesizer
+  if (selectedVoiceId && selectedVoiceId !== 'cloud-google') {
+    fallbackBrowserSpeak(clean, btnElement, selectedVoiceId);
+    return;
+  }
 
-    if (res.ok && res.headers.get('content-type')?.includes('audio')) {
-      const audioBlob = await res.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      currentTtsAudio = audio;
+  // 1. Default: High-fidelity cloud neural endpoint (/api/tts)
+  if (typeof Audio !== 'undefined') {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: clean })
+      });
 
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        stopSpeaking();
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
-        fallbackBrowserSpeak(clean, btnElement);
-      };
+      if (res.ok && res.headers.get('content-type')?.includes('audio')) {
+        const audioBlob = await res.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        currentTtsAudio = audio;
 
-      await audio.play();
-      return;
+        // Apply user-configured speed with pitch preservation
+        audio.playbackRate = currentTtsSpeed;
+        if (audio.preservesPitch !== undefined) audio.preservesPitch = true;
+
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          stopSpeaking();
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          fallbackBrowserSpeak(clean, btnElement, null);
+        };
+
+        await audio.play();
+        return;
+      }
+    } catch (err) {
+      // Backend /api/tts network or service fallback
     }
-  } catch (err) {
-    // If backend /api/tts fails or ElevenLabs is unconfigured, proceed to browser fallback
   }
 
   // 2. Zero-Config Browser Fallback
-  fallbackBrowserSpeak(clean, btnElement);
+  fallbackBrowserSpeak(clean, btnElement, null);
 }
 
 /**
  * Native offline browser speech synthesizer fallback
+ * @param {string} cleanText - Sanitized text
+ * @param {HTMLElement|null} btnElement - Button element to animate
+ * @param {string|null} targetVoiceName - Specific voice name if chosen
  */
-function fallbackBrowserSpeak(cleanText, btnElement = null) {
+function fallbackBrowserSpeak(cleanText, btnElement = null, targetVoiceName = null) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     stopSpeaking();
     return;
@@ -1439,8 +1539,7 @@ function fallbackBrowserSpeak(cleanText, btnElement = null) {
 
   try {
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'ar-IQ';
-    const arabicVoice = getBestArabicVoice();
+    const arabicVoice = getBestArabicVoice(targetVoiceName);
     if (arabicVoice) {
       utterance.voice = arabicVoice;
       utterance.lang = arabicVoice.lang;
@@ -1450,7 +1549,7 @@ function fallbackBrowserSpeak(cleanText, btnElement = null) {
       return;
     }
 
-    utterance.rate = 1.0;
+    utterance.rate = currentTtsSpeed;
     utterance.pitch = 1.0;
 
     utterance.onend = () => {
@@ -1499,10 +1598,18 @@ function createSpeakButton(text) {
 }
 
 /**
- * Initializes the header TTS toggle button and synchronizes with localStorage
+ * Initializes the header TTS toggle, voice selector, speed chips, and popover controls
  */
 function initTtsEngine() {
   const ttsToggleBtn = document.getElementById('tts-toggle-btn');
+  const ttsSettingsBtn = document.getElementById('tts-settings-btn');
+  const ttsPopover = document.getElementById('tts-settings-popover');
+  const ttsPopoverClose = document.getElementById('tts-popover-close');
+  const speedChips = document.querySelectorAll('#tts-speed-chips .speed-chip');
+  const voiceSelect = document.getElementById('tts-voice-select');
+  const testPreviewBtn = document.getElementById('tts-test-preview-btn');
+  const ttsHeaderGroup = document.getElementById('tts-header-group');
+
   if (!ttsToggleBtn) return;
 
   function updateTtsUi() {
@@ -1521,6 +1628,7 @@ function initTtsEngine() {
 
   updateTtsUi();
 
+  // 1. Master Audio Output Mute / Unmute Toggle
   ttsToggleBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     isTtsEnabled = !isTtsEnabled;
@@ -1535,6 +1643,81 @@ function initTtsEngine() {
     }
     updateTtsUi();
   });
+
+  // 2. Settings Popover Toggle & Outside Click Dismiss
+  if (ttsSettingsBtn && ttsPopover) {
+    ttsSettingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      ttsPopover.classList.toggle('hidden');
+    });
+
+    if (ttsPopoverClose) {
+      ttsPopoverClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        ttsPopover.classList.add('hidden');
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (ttsHeaderGroup && !ttsHeaderGroup.contains(e.target)) {
+        ttsPopover.classList.add('hidden');
+      }
+    });
+
+    ttsPopover.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+
+  // 3. Speech Rate (Speed Chips: بطيء 0.85x / نص ونص 1.05x / سريع 1.3x)
+  if (speedChips && speedChips.length > 0) {
+    speedChips.forEach(chip => {
+      const chipSpeed = parseFloat(chip.dataset.speed || '1.0');
+      if (Math.abs(chipSpeed - currentTtsSpeed) < 0.08) {
+        chip.classList.add('active');
+      } else {
+        chip.classList.remove('active');
+      }
+
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        speedChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const newSpeed = parseFloat(chip.dataset.speed || '1.05');
+        currentTtsSpeed = newSpeed;
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem('vi_tts_speed', newSpeed.toString());
+          }
+        } catch (err) {}
+
+        if (currentTtsAudio) {
+          currentTtsAudio.playbackRate = currentTtsSpeed;
+        }
+      });
+    });
+  }
+
+  // 4. Voice Select Dropdown initialization & change listener
+  populateVoiceSelectDropdown();
+  if (voiceSelect) {
+    voiceSelect.addEventListener('change', (e) => {
+      selectedVoiceId = e.target.value;
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('vi_tts_voice', selectedVoiceId);
+        }
+      } catch (err) {}
+    });
+  }
+
+  // 5. Test Audio Preview Button
+  if (testPreviewBtn) {
+    testPreviewBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      speakText('يا هلا بيك! أني فاي، مساعدك المالي الذكي. شلون أكدر أساعدك اليوم؟', testPreviewBtn);
+    });
+  }
 }
 
 /**
@@ -2056,6 +2239,14 @@ function createFeedbackActions(userQuery = '', botReply = '', msgId = '') {
  * @param {string} fullText - Final complete response
  * @param {Function} onComplete - Callback executed when streaming finishes
  */
+/**
+ * Streams text progressively (letter-by-letter) into target bubble element
+ * with natural human cadence, organic punctuation pauses, and blinking cursor,
+ * providing an authentic, ultra-smooth AI typewriter experience.
+ * @param {HTMLElement} targetEl - Chat bubble element
+ * @param {string} fullText - Final complete response
+ * @param {Function} onComplete - Callback executed when streaming finishes
+ */
 function streamTextMessage(targetEl, fullText, onComplete) {
   if (!targetEl || !fullText) {
     if (typeof onComplete === 'function') onComplete();
@@ -2065,36 +2256,52 @@ function streamTextMessage(targetEl, fullText, onComplete) {
   // Hide global typing indicator as soon as streaming begins
   showTypingIndicator(false);
 
+  const isRealBrowser = (typeof window !== 'undefined' && typeof window.location !== 'undefined' && typeof window.location.href === 'string' && typeof requestAnimationFrame === 'function');
+
+  // Headless test environments or instant fallback
+  if (!isRealBrowser) {
+    targetEl.innerHTML = escapeHtml(fullText).replace(/\n/g, '<br>');
+    if (typeof onComplete === 'function') onComplete();
+    return;
+  }
+
   let charIndex = 0;
   const len = fullText.length;
-  // Dynamic step: fast and responsive (2 to 4 chars per 16ms frame)
-  const step = len > 350 ? 4 : (len > 150 ? 3 : 2);
-  const intervalMs = 15;
-
   targetEl.innerHTML = '<span class="streaming-text"></span><span class="streaming-cursor"></span>';
   const textSpan = (typeof targetEl.querySelector === 'function') ? targetEl.querySelector('.streaming-text') : null;
 
-  const timer = setInterval(() => {
-    if (typeof document === 'undefined') {
-      clearInterval(timer);
-      return;
-    }
-    charIndex += step;
+  function step() {
+    if (typeof document === 'undefined') return;
     if (charIndex >= len) {
-      charIndex = len;
-      clearInterval(timer);
       if (typeof onComplete === 'function') {
         onComplete();
       }
       return;
     }
 
-    const currentSlice = fullText.substring(0, charIndex);
+    // 1 character per step for authentic, ultra-smooth fluid typing
+    const char = fullText.charAt(charIndex);
+    charIndex++;
+
     if (textSpan) {
-      textSpan.innerHTML = escapeHtml(currentSlice).replace(/\n/g, '<br>');
+      textSpan.innerHTML = escapeHtml(fullText.substring(0, charIndex)).replace(/\n/g, '<br>');
     }
     scrollToBottom();
-  }, intervalMs);
+
+    // Natural human reading cadence (not rushed, smooth and rhythmic)
+    let delay = 22; // ~45 characters per second: comfortable and readable
+    if (char === '،' || char === ',') {
+      delay = 60;
+    } else if (char === '.' || char === '؟' || char === '!' || char === '؛' || char === ':') {
+      delay = 95;
+    } else if (char === '\n') {
+      delay = 70;
+    }
+
+    setTimeout(step, delay);
+  }
+
+  step();
 }
 
 /**
@@ -2230,6 +2437,7 @@ function appendErrorMessage(errorMessage) {
  * @param {boolean} show - Whether to show or hide
  */
 function showTypingIndicator(show) {
+  if (!typingIndicator || !typingIndicator.classList) return;
   if (show) {
     typingIndicator.classList.remove('hidden');
     scrollToBottom();
@@ -2310,9 +2518,14 @@ function getCurrentFormattedTime() {
  */
 function escapeHtml(string) {
   if (typeof string !== 'string') return '';
-  const div = document.createElement('div');
-  div.textContent = string;
-  return typeof div.innerHTML === 'string' && div.innerHTML ? div.innerHTML : string
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    const div = document.createElement('div');
+    div.textContent = string;
+    if (typeof div.innerHTML === 'string' && div.innerHTML) {
+      return div.innerHTML;
+    }
+  }
+  return string
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -2407,6 +2620,11 @@ if (typeof module !== 'undefined' && module.exports) {
     cleanTextForSpeech,
     getTtsEnabled: () => isTtsEnabled,
     setTtsEnabled: (val) => { isTtsEnabled = val; },
+    getTtsSpeed: () => currentTtsSpeed,
+    setTtsSpeed: (val) => { currentTtsSpeed = val; },
+    getSelectedVoiceId: () => selectedVoiceId,
+    setSelectedVoiceId: (val) => { selectedVoiceId = val; },
+    streamTextMessage,
     stopSpeaking,
     speakText
   };

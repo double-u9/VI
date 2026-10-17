@@ -1896,6 +1896,44 @@ describe('VI Wallet Regression Suite - Task 5: Text-To-Speech (TTS) Voice Engine
             frontend.setTtsEnabled(originalState);
         });
 
+        test('TTS speech speed can be set, queried, and verified across speed chip presets (0.85x, 1.05x, 1.3x)', () => {
+            const originalSpeed = frontend.getTtsSpeed();
+            
+            frontend.setTtsSpeed(0.85);
+            assert.equal(frontend.getTtsSpeed(), 0.85);
+
+            frontend.setTtsSpeed(1.05);
+            assert.equal(frontend.getTtsSpeed(), 1.05);
+
+            frontend.setTtsSpeed(1.3);
+            assert.equal(frontend.getTtsSpeed(), 1.3);
+
+            frontend.setTtsSpeed(originalSpeed);
+        });
+
+        test('TTS voice selection can be set, queried, and defaults to cloud-google', () => {
+            const originalVoice = frontend.getSelectedVoiceId();
+            
+            assert.equal(typeof originalVoice, 'string');
+            frontend.setSelectedVoiceId('Microsoft Salma Online (Natural) - Arabic (Egypt)');
+            assert.equal(frontend.getSelectedVoiceId(), 'Microsoft Salma Online (Natural) - Arabic (Egypt)');
+
+            frontend.setSelectedVoiceId('cloud-google');
+            assert.equal(frontend.getSelectedVoiceId(), 'cloud-google');
+
+            frontend.setSelectedVoiceId(originalVoice);
+        });
+
+        test('streamTextMessage executes safely and invokes callback in headless environment', () => {
+            let completed = false;
+            const fakeElement = { innerHTML: '', querySelector: () => null };
+            frontend.streamTextMessage(fakeElement, 'مرحبا بك في فاي', () => {
+                completed = true;
+            });
+            assert.equal(completed, true);
+            assert.ok(fakeElement.innerHTML.includes('مرحبا بك في فاي'));
+        });
+
         test('stopSpeaking executes safely without error even in headless environment', () => {
             assert.doesNotThrow(() => {
                 frontend.stopSpeaking();

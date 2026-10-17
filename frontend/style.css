@@ -3287,3 +3287,202 @@ button,
     box-shadow: none;
   }
 }
+
+/* ==========================================================================
+   21. TTS Header Group & Voice / Speed Customization Popover
+   ========================================================================== */
+.tts-header-group {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  gap: 0.35rem;
+}
+
+.tts-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--wallet-pill-bg);
+  border: 1px solid var(--wallet-pill-border);
+  color: var(--accent-primary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  outline: none;
+  flex-shrink: 0;
+}
+
+.tts-settings-btn:hover {
+  transform: scale(1.1);
+  border-color: var(--accent-border-strong);
+  box-shadow: 0 0 14px var(--accent-surface-hover);
+}
+
+.tts-settings-btn:active {
+  transform: scale(0.92);
+}
+
+/* Floating Popover Settings Menu */
+.tts-settings-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: 290px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 16px 45px -10px rgba(0, 0, 0, 0.18), 0 0 30px var(--accent-surface);
+  padding: 1.15rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  animation: popoverFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  direction: rtl;
+}
+
+.tts-settings-popover.hidden {
+  display: none !important;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tts-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--accent-surface);
+  padding-bottom: 0.6rem;
+}
+
+.tts-popover-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tts-popover-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.tts-popover-close:hover {
+  color: var(--text-heading);
+  background: var(--accent-surface);
+}
+
+.tts-popover-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.tts-section-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.tts-speed-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.speed-chip {
+  padding: 0.4rem 0.2rem;
+  font-size: 0.73rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-border);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  outline: none;
+}
+
+.speed-chip:hover {
+  border-color: var(--accent-primary);
+  background: var(--accent-surface);
+  transform: translateY(-1px);
+}
+
+.speed-chip.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 12px var(--accent-surface);
+}
+
+.tts-voice-select {
+  width: 100%;
+  padding: 0.48rem 0.65rem;
+  font-size: 0.77rem;
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-border);
+  color: var(--text-main);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.tts-voice-select:focus {
+  border-color: var(--accent-primary);
+}
+
+.tts-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid var(--accent-surface);
+  padding-top: 0.65rem;
+}
+
+.tts-test-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-surface);
+  color: var(--accent-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tts-test-preview-btn:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
