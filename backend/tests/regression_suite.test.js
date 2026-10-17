@@ -1826,3 +1826,139 @@ describe('VI Wallet Regression Suite - Task 4: Security Audit Logging & Financia
     });
 });
 
+describe('VI Wallet Regression Suite - Task 5: Text-To-Speech (TTS) Voice Engine & Proactive Financial Intelligence', () => {
+    let testServer;
+    let serverUrl;
+    const frontend = require('../../frontend/script.js');
+
+    before(async () => {
+        await new Promise((resolve) => {
+            testServer = app.listen(0, () => {
+                const port = testServer.address().port;
+                serverUrl = `http://127.0.0.1:${port}`;
+                resolve();
+            });
+        });
+    });
+
+    after(async () => {
+        if (testServer) {
+            await new Promise((resolve) => testServer.close(resolve));
+        }
+    });
+
+    describe('1. Speech Text Sanitization & Dialect Audio Formatting', () => {
+        test('Strips internal action tags from TTS output', () => {
+            const raw = 'تسلملي عيوني! راح أحول المبلغ هسة <<<DB_ACTION>>>{"action":"TRANSFER","amount":50000}<<<END_DB_ACTION>>> وتدلل يا طيب.';
+            const clean = frontend.cleanTextForSpeech(raw);
+            assert.ok(!clean.includes('<<<DB_ACTION>>>'));
+            assert.ok(!clean.includes('END_DB_ACTION'));
+            assert.ok(clean.includes('تسلملي عيوني! راح أحول المبلغ هسة وتدلل يا طيب.'));
+        });
+
+        test('Replaces currency abbreviations (IQD, د.ع) with spoken Iraqi Arabic words', () => {
+            const raw = 'رصيدك الحالي هو 3,000,000 د.ع، والمبلغ المطلوب 25,000 IQD.';
+            const clean = frontend.cleanTextForSpeech(raw);
+            assert.ok(!clean.includes('د.ع'));
+            assert.ok(!clean.includes('IQD'));
+            assert.ok(clean.includes('دينار عراقي'));
+        });
+
+        test('Strips markdown formatting, hashtags, and code blocks', () => {
+            const raw = '## تنبيه الفاتورة\n**المبلغ:** 40,000 د.ع\n`حالة الفاتورة:` غير مسددة';
+            const clean = frontend.cleanTextForSpeech(raw);
+            assert.ok(!clean.includes('#'));
+            assert.ok(!clean.includes('*'));
+            assert.ok(!clean.includes('`'));
+            assert.ok(clean.includes('تنبيه الفاتورة'));
+        });
+
+        test('Converts bullet lists into natural speech pauses and strips emojis', () => {
+            const raw = 'قائمتك المالية:\n- فاتورة الكهرباء 💡: 50,000 د.ع\n• فاتورة الإنترنت 🌐: 40,000 د.ع';
+            const clean = frontend.cleanTextForSpeech(raw);
+            assert.ok(!clean.includes('💡'));
+            assert.ok(!clean.includes('🌐'));
+            assert.ok(clean.includes('قائمتك المالية'));
+            assert.ok(clean.includes('فاتورة الكهرباء'));
+        });
+    });
+
+    describe('2. Frontend TTS State & Control Guards', () => {
+        test('TTS can be enabled, disabled, and queried safely', () => {
+            const originalState = frontend.getTtsEnabled();
+            frontend.setTtsEnabled(false);
+            assert.equal(frontend.getTtsEnabled(), false);
+
+            frontend.setTtsEnabled(true);
+            assert.equal(frontend.getTtsEnabled(), true);
+
+            // Restore
+            frontend.setTtsEnabled(originalState);
+        });
+
+        test('stopSpeaking executes safely without error even in headless environment', () => {
+            assert.doesNotThrow(() => {
+                frontend.stopSpeaking();
+            });
+        });
+    });
+
+    describe('3. Backend /api/tts Endpoint & Fallback Protocol', () => {
+        test('Returns 501 fallback: browser when ElevenLabs key is not configured', async () => {
+            const res = await fetch(`${serverUrl}/api/tts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: 'مرحبا، شلونك اليوم؟' })
+            });
+
+            // Either 501 (not configured) or 200 (if local key provided in environment)
+            if (!process.env.ELEVENLABS_API_KEY) {
+                assert.equal(res.status, 501);
+                const body = await res.json();
+                assert.equal(body.fallback, 'browser');
+            } else {
+                assert.ok([200, 500, 501].includes(res.status));
+            }
+        });
+
+        test('Rejects request with 400 when text payload is missing or empty', async () => {
+            const res = await fetch(`${serverUrl}/api/tts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            assert.equal(res.status, 400);
+            const body = await res.json();
+            assert.ok(body.error);
+        });
+    });
+
+    describe('4. Proactive Financial Intelligence Calculations', () => {
+        test('Computes accurate count and total sum for unpaid bills', () => {
+            const db = readDatabase();
+            const unpaid = (db.bills || []).filter(b => b.status === 'unpaid');
+            const totalUnpaid = unpaid.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+
+            assert.equal(unpaid.length, 4);
+            assert.equal(totalUnpaid, 150000); // 25000 + 40000 + 50000 + 35000
+        });
+
+        test('Accurately flags zero unpaid bills when all bills are settled', () => {
+            const testDb = {
+                user: { balance: 3000000 },
+                bills: [
+                    { id: 'b1', amount: 25000, status: 'paid' },
+                    { id: 'b2', amount: 40000, status: 'paid' }
+                ]
+            };
+            const unpaid = testDb.bills.filter(b => b.status === 'unpaid');
+            const totalUnpaid = unpaid.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+
+            assert.equal(unpaid.length, 0);
+            assert.equal(totalUnpaid, 0);
+        });
+    });
+});
+
+

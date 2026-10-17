@@ -2324,6 +2324,11 @@ app.post('/api/chat', async (req, res) => {
         }
 
         const dbData = JSON.stringify(db, null, 2);
+        const unpaidBills = (db.bills || []).filter(b => b.status === 'unpaid');
+        const totalUnpaidAmount = unpaidBills.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+        const proactiveDigest = unpaidBills.length > 0
+            ? `تنبيه مالي استباقي دقيق: المستخدم لديه ${unpaidBills.length} فواتير غير مدفوعة بإجمالي ${totalUnpaidAmount.toLocaleString()} د.ع (${unpaidBills.map(b => `${b.biller} بقيمة ${Number(b.amount).toLocaleString()} د.ع`).join('، ')}). عندما يحييك المستخدم أو يسألك شلونك أو يبدأ المحادثة، بعد الترحيب العراقي الدافئ، اذكره برصيده الحالي (${db.user.balance.toLocaleString()} د.ع) ونبهه بلطف عن فواتيره غير المسددة واقترح عليه سدادها.`
+            : `تنبيه مالي استباقي دقيق: رصيد المستخدم ${db.user.balance.toLocaleString()} د.ع، وليس عليه أي فواتير متأخرة نهائياً. عند الترحيب، طمئنه بأن كل فواتيره مسددة ووضعه المالي ممتاز.`;
 
         const systemPrompt = `You are "فاي" (VI) — a smart, friendly, highly capable Iraqi AI financial assistant for digital wallets.
 
@@ -2339,11 +2344,14 @@ LANGUAGE & PERSONALITY:
 - Strictly avoid Egyptian words (like "عايز", "عشان") or Gulf words (like "تبي"). You are proudly Iraqi.
 - Be perceptive, intelligent, and understand the real meaning of the user's words.
 
+PROACTIVE FINANCIAL INTELLIGENCE & WALLET CONTEXT:
+${proactiveDigest}
+
 CASUAL CONVERSATION & SOCIAL CHAT (CRITICAL):
 - When the user talks to you socially or asks about your well-being:
-  * "دا اسأل عليك" (I'm checking up on you / asking how you are) / "شلونك" / "شخبارك" / "شكو ماكو":
-    The user is asking how YOU (فاي) are doing! Words like "عليك" or "فاي" are NEVER person names or recipients for a financial transfer!
-    Reply politely and warmly: "تسلملي عيوني ويحفظك ربي! اني بخير وبأحسن حال وما قصرت بسؤالك يا طيب. بشرني أنت شلونك، وبشنو أگدر أساعدك بمحفظتك اليوم؟"
+  * "دا اسأل عليك" (I'm checking up on you / asking how you are) / "شلونك" / "شخبارك" / "شكو ماكو" / "هلا" / "مرحبا" / "هلو":
+    The user is asking how YOU (فاي) are doing or greeting you! Words like "عليك" or "فاي" are NEVER person names or recipients for a financial transfer!
+    Reply politely, warmly, and authentically in Iraqi Arabic. After acknowledging their greeting gracefully, mention their current wallet balance and proactively suggest reviewing or settling unpaid bills if any, or reassuring them that their finances are in order.
   * "شكراً" / "عاشت ايدك" / "تسلم" / "مشكور": Reply gracefully ("تدلل عيوني بخدمتك", "وايدك العايشة يا غالي").
 - DO NOT treat friendly conversation as an error, and DO NOT say "هذا الشخص مو مسجل بقائمة اتصالاتك" unless the user is EXPLICITLY requesting to transfer money to a named person!
 
@@ -2603,6 +2611,67 @@ app.get('/api/audit', (req, res) => {
         res.json({ total: logs.length, logs });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/tts', async (req, res) => {
+    try {
+        const { text } = req.body;
+        if (!text || typeof text !== 'string') {
+            return res.status(400).json({ error: 'Text is required' });
+        }
+
+        const apiKey = process.env.ELEVENLABS_API_KEY;
+        if (!apiKey) {
+            return res.status(501).json({ error: 'ELEVENLABS_API_KEY is not configured', fallback: 'browser' });
+        }
+
+        // Clean text from internal action tags, markdown, and emojis for smooth TTS
+        const cleanText = text
+            .replace(/<<<DB_ACTION>>>[\s\S]*?<<<END_DB_ACTION>>>/g, '')
+            .replace(/[*#_~`]/g, '')
+            .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+            .trim();
+
+        if (!cleanText) {
+            return res.status(400).json({ error: 'Clean text is empty' });
+        }
+
+        const voiceId = process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
+        const elevenUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+
+        const elevenRes = await fetch(elevenUrl, {
+            method: 'POST',
+            headers: {
+                'xi-api-key': apiKey,
+                'Content-Type': 'application/json',
+                'Accept': 'audio/mpeg'
+            },
+            body: JSON.stringify({
+                text: cleanText.substring(0, 600),
+                model_id: 'eleven_multilingual_v2',
+                voice_settings: {
+                    stability: 0.5,
+                    similarity_boost: 0.8
+                }
+            })
+        });
+
+        if (!elevenRes.ok) {
+            const errText = await elevenRes.text();
+            console.warn(`[ElevenLabs TTS Error]: HTTP ${elevenRes.status}: ${errText}`);
+            return res.status(elevenRes.status).json({ error: 'ElevenLabs request failed', details: errText, fallback: 'browser' });
+        }
+
+        const audioBuffer = await elevenRes.arrayBuffer();
+        res.set({
+            'Content-Type': 'audio/mpeg',
+            'Cache-Control': 'no-cache'
+        });
+        return res.send(Buffer.from(audioBuffer));
+    } catch (err) {
+        console.error('[TTS API Error]:', err.message);
+        return res.status(500).json({ error: err.message, fallback: 'browser' });
     }
 });
 

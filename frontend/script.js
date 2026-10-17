@@ -34,28 +34,29 @@ function getOrCreateSessionId() {
   return 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
 }
 
-// DOM Elements
-const chatWindow = document.getElementById('chat-window');
-const messagesContainer = document.getElementById('messages-container');
-const chatForm = document.getElementById('chat-form');
-const userInput = document.getElementById('user-input');
-const sendBtn = document.getElementById('send-btn');
-const micBtn = document.getElementById('mic-btn');
-const typingIndicator = document.getElementById('typing-indicator');
-const quickPromptsBar = document.getElementById('quick-prompts');
-const welcomeTimestamp = document.getElementById('welcome-timestamp');
+// DOM Elements (Safely resolved in both browser and test environments)
+const getEl = (id) => (typeof document !== 'undefined' && typeof document.getElementById === 'function') ? document.getElementById(id) : null;
+const chatWindow = getEl('chat-window');
+const messagesContainer = getEl('messages-container');
+const chatForm = getEl('chat-form');
+const userInput = getEl('user-input');
+const sendBtn = getEl('send-btn');
+const micBtn = getEl('mic-btn');
+const typingIndicator = getEl('typing-indicator');
+const quickPromptsBar = getEl('quick-prompts');
+const welcomeTimestamp = getEl('welcome-timestamp');
 
 // Voice Recording & Visualizer System (Gemini / Antigravity Style)
-const voiceRecordingDock = document.getElementById('voice-recording-dock');
-const voiceRecordingBar = document.getElementById('voice-recording-bar');
-const voiceWavesWrapper = document.getElementById('voice-waves-wrapper');
-const voiceStopBtn = document.getElementById('voice-stop-btn');
-const voiceSendBtn = document.getElementById('voice-send-btn');
-const voiceLiveBubble = document.getElementById('voice-live-bubble');
-const voiceLiveText = document.getElementById('voice-live-text');
-const voiceStatusLabel = document.getElementById('voice-status-label');
+const voiceRecordingDock = getEl('voice-recording-dock');
+const voiceRecordingBar = getEl('voice-recording-bar');
+const voiceWavesWrapper = getEl('voice-waves-wrapper');
+const voiceStopBtn = getEl('voice-stop-btn');
+const voiceSendBtn = getEl('voice-send-btn');
+const voiceLiveBubble = getEl('voice-live-bubble');
+const voiceLiveText = getEl('voice-live-text');
+const voiceStatusLabel = getEl('voice-status-label');
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
 let recognition = null;
 let isVoiceActive = false;
 let explicitlyStopped = false;
@@ -1252,77 +1253,368 @@ function initHalftoneBackground() {
   animationId = requestAnimationFrame(render);
 }
 
+// ==========================================================================
+// Text-To-Speech (TTS) Voice Engine (Native Browser + ElevenLabs Hybrid)
+// ==========================================================================
+let isTtsEnabled = true;
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const saved = window.localStorage.getItem('vi_tts_enabled');
+    if (saved !== null) {
+      isTtsEnabled = saved === 'true';
+    }
+  }
+} catch (e) {
+  console.warn('[TTS] Storage access warning:', e);
+}
+
+let currentTtsAudio = null;
+let activeTtsBtn = null;
+let cachedSpeechVoices = [];
+
+function loadTtsVoices() {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      cachedSpeechVoices = window.speechSynthesis.getVoices() || [];
+    } catch (e) {
+      cachedSpeechVoices = [];
+    }
+  }
+}
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  loadTtsVoices();
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = loadTtsVoices;
+  }
+}
+
 /**
- * Initialize event listeners and UI components on load
+ * Discovers the most authentic Arabic voice available in the browser.
+ * Prioritizes Iraqi Arabic (ar-IQ), then regional/natural voices.
  */
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize Dynamic Halftone Dots Background
-  initHalftoneBackground();
+function getBestArabicVoice() {
+  if (!cachedSpeechVoices || cachedSpeechVoices.length === 0) {
+    loadTtsVoices();
+  }
+  if (!cachedSpeechVoices || cachedSpeechVoices.length === 0) return null;
 
-  // Initialize Theme Switcher (White & Violet / Black & Emerald)
-  initThemeToggle();
+  // 1. Exact Iraqi match
+  let voice = cachedSpeechVoices.find(v => v.lang === 'ar-IQ' || v.lang === 'ar_IQ');
+  if (voice) return voice;
 
-  // Initialize Header Balance Privacy Eye Toggle & Sync
-  initWalletEyeToggle();
-  syncWalletHeader();
+  // 2. High-quality natural Arabic voices (Salma, Google, Microsoft Natural, Laila, Maged, Tarik)
+  const premiumKeywords = ['salma', 'natural', 'google', 'shakir', 'maged', 'tarik', 'laila', 'arabic'];
+  voice = cachedSpeechVoices.find(v => {
+    const lang = (v.lang || '').toLowerCase();
+    const name = (v.name || '').toLowerCase();
+    return lang.startsWith('ar') && premiumKeywords.some(kw => name.includes(kw));
+  });
+  if (voice) return voice;
 
-  // Set real-time initial timestamp
-  if (welcomeTimestamp) {
-    welcomeTimestamp.textContent = getCurrentFormattedTime();
+  // 3. Any available Arabic voice
+  voice = cachedSpeechVoices.find(v => (v.lang || '').toLowerCase().startsWith('ar'));
+  return voice || null;
+}
+
+/**
+ * Sanitizes AI response text for clear, natural, and glitch-free audio pronunciation
+ * Strips internal action tags, markdown markers, and expands currency symbols.
+ * @param {string} text - Raw model response
+ * @returns {string} Clean readable Arabic text
+ */
+function cleanTextForSpeech(text) {
+  if (typeof text !== 'string') return '';
+  return text
+    // Remove internal database action tags completely
+    .replace(/<<<DB_ACTION>>>[\s\S]*?<<<END_DB_ACTION>>>/g, '')
+    // Remove markdown symbols (bold, italic, code, headers)
+    .replace(/[`*_~#]/g, '')
+    // Replace currency symbols and abbreviations with natural Arabic words
+    .replace(/\bIQD\b/gi, 'دينار عراقي')
+    .replace(/د\.ع/g, 'دينار عراقي')
+    // Clean bullet points and list dashes into short natural pauses
+    .replace(/^\s*[-•]\s*/gm, '، ')
+    .replace(/\n+/g, '، ')
+    // Strip emojis and non-standard symbols that cause synthesizer glitches
+    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+    // Normalize spacing
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Stops any active speech synthesis or audio playback immediately
+ */
+function stopSpeaking() {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
+  }
+  if (currentTtsAudio) {
+    try {
+      currentTtsAudio.pause();
+      currentTtsAudio.currentTime = 0;
+    } catch (e) {}
+    currentTtsAudio = null;
+  }
+  if (activeTtsBtn) {
+    activeTtsBtn.classList.remove('speaking');
+    activeTtsBtn = null;
+  }
+  const toggleBtn = (typeof document !== 'undefined' && typeof document.getElementById === 'function')
+    ? document.getElementById('tts-toggle-btn')
+    : null;
+  if (toggleBtn) {
+    toggleBtn.classList.remove('is-speaking');
+  }
+}
+
+/**
+ * Speaks text using ElevenLabs backend streaming if available,
+ * falling back effortlessly to browser SpeechSynthesis.
+ * @param {string} text - Message text
+ * @param {HTMLElement|null} btnElement - Optional replay button element to animate
+ */
+async function speakText(text, btnElement = null) {
+  if (typeof window === 'undefined' || typeof Audio === 'undefined') return;
+  if (typeof text !== 'string' || !text.trim()) return;
+  const clean = cleanTextForSpeech(text);
+  if (!clean) return;
+
+  stopSpeaking();
+
+  if (btnElement) {
+    activeTtsBtn = btnElement;
+    btnElement.classList.add('speaking');
+  }
+  const toggleBtn = document.getElementById('tts-toggle-btn');
+  if (toggleBtn) {
+    toggleBtn.classList.add('is-speaking');
   }
 
-  // Initialize Speech Recognition feature
-  initSpeechRecognition();
+  // 1. Try Backend ElevenLabs endpoint
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: clean })
+    });
 
-  // Initialize New Chat Button
-  initNewChatButton();
+    if (res.ok && res.headers.get('content-type')?.includes('audio')) {
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      currentTtsAudio = audio;
 
-  // Initialize AI Model Switcher (LM Studio, Gemini, Groq)
-  initModelSwitcher();
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        stopSpeaking();
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+        fallbackBrowserSpeak(clean, btnElement);
+      };
 
-  // Initialize Recent Transactions Slide-Out Drawer
-  initTransactionsDrawer();
+      await audio.play();
+      return;
+    }
+  } catch (err) {
+    // If backend /api/tts fails or ElevenLabs is unconfigured, proceed to browser fallback
+  }
 
-  // Handle Form Submission
-  chatForm.addEventListener('submit', (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    if (isRequestInProgress) return;
-    handleFormSubmit();
-  });
+  // 2. Zero-Config Browser Fallback
+  fallbackBrowserSpeak(clean, btnElement);
+}
 
-  // Handle Enter key for submission (Shift+Enter for newline)
-  userInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (isRequestInProgress) return;
-      handleFormSubmit();
+/**
+ * Native offline browser speech synthesizer fallback
+ */
+function fallbackBrowserSpeak(cleanText, btnElement = null) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    stopSpeaking();
+    return;
+  }
+
+  try {
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'ar-IQ';
+    const arabicVoice = getBestArabicVoice();
+    if (arabicVoice) {
+      utterance.voice = arabicVoice;
+      utterance.lang = arabicVoice.lang;
+    }
+
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    utterance.onend = () => {
+      stopSpeaking();
+    };
+    utterance.onerror = () => {
+      stopSpeaking();
+    };
+
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.warn('[TTS] Synthesis playback error:', e);
+    stopSpeaking();
+  }
+}
+
+/**
+ * Creates an interactive replay speech button for AI response cards
+ * @param {string} text - Message text
+ * @returns {HTMLButtonElement}
+ */
+function createSpeakButton(text) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.classList.add('feedback-btn', 'message-speak-btn');
+  btn.setAttribute('aria-label', 'استمع للرد');
+  btn.setAttribute('title', 'استمع للرد الصوتي');
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+    </svg>
+  `;
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (btn.classList.contains('speaking')) {
+      stopSpeaking();
+    } else {
+      speakText(text, btn);
     }
   });
 
-  // Auto-resize textarea height dynamically & toggle send button pop-in state
-  userInput.addEventListener('input', () => {
-    updateInputState();
-  });
+  return btn;
+}
 
-  // Quick Action Prompts
-  if (quickPromptsBar) {
-    quickPromptsBar.addEventListener('click', (e) => {
-      if (isRequestInProgress) return;
-      const button = e.target.closest('.prompt-chip');
-      if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
-      const promptText = button.getAttribute('data-prompt');
-      if (promptText) {
-        handleFormSubmit(promptText);
-      }
-    });
+/**
+ * Initializes the header TTS toggle button and synchronizes with localStorage
+ */
+function initTtsEngine() {
+  const ttsToggleBtn = document.getElementById('tts-toggle-btn');
+  if (!ttsToggleBtn) return;
+
+  function updateTtsUi() {
+    if (isTtsEnabled) {
+      ttsToggleBtn.classList.add('active');
+      ttsToggleBtn.classList.remove('muted');
+      ttsToggleBtn.setAttribute('title', 'النطق الصوتي التلقائي (مفعل)');
+      ttsToggleBtn.setAttribute('aria-label', 'النطق الصوتي التلقائي مفعل - اضغط للكتم');
+    } else {
+      ttsToggleBtn.classList.remove('active');
+      ttsToggleBtn.classList.add('muted');
+      ttsToggleBtn.setAttribute('title', 'النطق الصوتي التلقائي (مكتوم)');
+      ttsToggleBtn.setAttribute('aria-label', 'النطق الصوتي التلقائي مكتوم - اضغط للتفعيل');
+    }
   }
 
-  // Initialize Gemini-style voice visualizer canvas
-  initVoiceVisualizerCanvas();
-  window.addEventListener('resize', () => {
+  updateTtsUi();
+
+  ttsToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    isTtsEnabled = !isTtsEnabled;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('vi_tts_enabled', isTtsEnabled ? 'true' : 'false');
+      }
+    } catch (err) {}
+
+    if (!isTtsEnabled) {
+      stopSpeaking();
+    }
+    updateTtsUi();
+  });
+}
+
+/**
+ * Initialize event listeners and UI components on load
+ */
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Dynamic Halftone Dots Background
+    initHalftoneBackground();
+
+    // Initialize Theme Switcher (White & Violet / Black & Emerald)
+    initThemeToggle();
+
+    // Initialize Header Balance Privacy Eye Toggle & Sync
+    initWalletEyeToggle();
+    syncWalletHeader();
+
+    // Initialize Voice Output Engine (TTS)
+    initTtsEngine();
+
+    // Set real-time initial timestamp
+    if (welcomeTimestamp) {
+      welcomeTimestamp.textContent = getCurrentFormattedTime();
+    }
+
+    // Initialize Speech Recognition feature
+    initSpeechRecognition();
+
+    // Initialize New Chat Button
+    initNewChatButton();
+
+    // Initialize AI Model Switcher (LM Studio, Gemini, Groq)
+    initModelSwitcher();
+
+    // Initialize Recent Transactions Slide-Out Drawer
+    initTransactionsDrawer();
+
+    // Handle Form Submission
+    if (chatForm) {
+      chatForm.addEventListener('submit', (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (isRequestInProgress) return;
+        handleFormSubmit();
+      });
+    }
+
+    // Handle Enter key for submission (Shift+Enter for newline)
+    if (userInput) {
+      userInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          if (isRequestInProgress) return;
+          handleFormSubmit();
+        }
+      });
+
+      // Auto-resize textarea height dynamically & toggle send button pop-in state
+      userInput.addEventListener('input', () => {
+        updateInputState();
+      });
+    }
+
+    // Quick Action Prompts
+    if (quickPromptsBar) {
+      quickPromptsBar.addEventListener('click', (e) => {
+        if (isRequestInProgress) return;
+        const button = e.target.closest('.prompt-chip');
+        if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
+        const promptText = button.getAttribute('data-prompt');
+        if (promptText) {
+          handleFormSubmit(promptText);
+        }
+      });
+    }
+
+    // Initialize Gemini-style voice visualizer canvas
     initVoiceVisualizerCanvas();
-  }, { passive: true });
-});
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', () => {
+        initVoiceVisualizerCanvas();
+      }, { passive: true });
+    }
+  });
+}
 
 /**
  * Updates textarea height and toggles .has-text for pop-up send button
@@ -1745,6 +2037,9 @@ function createFeedbackActions(userQuery = '', botReply = '', msgId = '') {
     sendFeedbackToServer(willBeActive ? 'dislike' : 'remove', msgId, userQuery, botReply);
   });
 
+  // Replay speech button for instant message listening
+  const speakBtn = createSpeakButton(botReply);
+  actionsGroup.appendChild(speakBtn);
   actionsGroup.appendChild(likeBtn);
   actionsGroup.appendChild(dislikeBtn);
   return actionsGroup;
@@ -1782,6 +2077,14 @@ function appendMessage(text, sender, relatedUserQuery = '') {
     const msgId = 'msg_' + Date.now();
     const feedbackActions = createFeedbackActions(relatedUserQuery, text, msgId);
     footerEl.appendChild(feedbackActions);
+
+    // Automatic vocal response if TTS is enabled
+    if (isTtsEnabled) {
+      const speakBtn = (feedbackActions && typeof feedbackActions.querySelector === 'function')
+        ? feedbackActions.querySelector('.message-speak-btn')
+        : null;
+      speakText(text, speakBtn);
+    }
   }
 
   contentWrapper.appendChild(bubbleEl);
@@ -2018,6 +2321,12 @@ if (typeof module !== 'undefined' && module.exports) {
     getOrCreateSessionId,
     getRequestInProgress: () => isRequestInProgress,
     setRequestInProgress: (val) => { isRequestInProgress = val; },
-    formatFintechMessage
+    formatFintechMessage,
+    cleanTextForSpeech,
+    getTtsEnabled: () => isTtsEnabled,
+    setTtsEnabled: (val) => { isTtsEnabled = val; },
+    stopSpeaking,
+    speakText
   };
 }
+
