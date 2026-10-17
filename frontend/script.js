@@ -734,7 +734,7 @@ function initThemeToggle() {
  * Live Balance & Privacy Eye Toggle State
  * Default is hidden (isBalanceHidden = true) with stars per user requirement
  */
-let currentWalletBalance = 2200000;
+let currentWalletBalance = 3000000;
 let isBalanceHidden = true;
 
 /**

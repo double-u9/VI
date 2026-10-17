@@ -425,7 +425,7 @@ The system is engineered with an active self-healing architecture structured acr
       "id": "usr_1001",
       "name": "محمد",
       "phone": "+9647801234567",
-      "balance": 2200000,
+      "balance": 3000000,
       "currency": "IQD"
     },
     "contacts": [

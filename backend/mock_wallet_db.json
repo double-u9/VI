@@ -3,7 +3,7 @@
     "id": "usr_1001",
     "name": "محمد",
     "phone": "+9647801234567",
-    "balance": 2200000,
+    "balance": 3000000,
     "currency": "IQD",
     "wallet_provider": "VI"
   },
@@ -88,26 +88,5 @@
       "status": "unpaid"
     }
   ],
-  "recent_transactions": [
-    {
-      "id": "trx_319298",
-      "type": "TRANSFER",
-      "recipient": "كرار حيدر",
-      "phone": "+9647845645621",
-      "amount": 700000,
-      "currency": "IQD",
-      "status": "SUCCESS",
-      "date": "2026-10-05"
-    },
-    {
-      "id": "trx_027987",
-      "type": "TRANSFER",
-      "recipient": "الوالدة",
-      "phone": "+9647803344556",
-      "amount": 100000,
-      "currency": "IQD",
-      "status": "SUCCESS",
-      "date": "2026-10-05"
-    }
-  ]
+  "recent_transactions": []
 }

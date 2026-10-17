@@ -8,7 +8,7 @@ const INITIAL_DB = {
     "id": "usr_1001",
     "name": "محمد",
     "phone": "+9647801234567",
-    "balance": 2200000,
+    "balance": 3000000,
     "currency": "IQD",
     "wallet_provider": "VI"
   },
@@ -93,28 +93,7 @@ const INITIAL_DB = {
       "status": "unpaid"
     }
   ],
-  "recent_transactions": [
-    {
-      "id": "trx_319298",
-      "type": "TRANSFER",
-      "recipient": "كرار حيدر",
-      "phone": "+9647845645621",
-      "amount": 700000,
-      "currency": "IQD",
-      "status": "SUCCESS",
-      "date": "2026-10-05"
-    },
-    {
-      "id": "trx_027987",
-      "type": "TRANSFER",
-      "recipient": "الوالدة",
-      "phone": "+9647803344556",
-      "amount": 100000,
-      "currency": "IQD",
-      "status": "SUCCESS",
-      "date": "2026-10-05"
-    }
-  ]
+  "recent_transactions": []
 };
 
 function resetDatabase() {
@@ -124,7 +103,7 @@ function resetDatabase() {
 
 if (require.main === module) {
     resetDatabase();
-    console.log('✅ [Database Reset]: mock_wallet_db.json successfully reset to initial default values (Balance: 2,200,000 IQD).');
+    console.log('✅ [Database Reset]: mock_wallet_db.json successfully reset to initial default values (Balance: 3,000,000 IQD).');
 }
 
 module.exports = { resetDatabase, INITIAL_DB };
