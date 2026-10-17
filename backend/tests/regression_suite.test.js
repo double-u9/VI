@@ -1904,20 +1904,29 @@ describe('VI Wallet Regression Suite - Task 5: Text-To-Speech (TTS) Voice Engine
     });
 
     describe('3. Backend /api/tts Endpoint & Fallback Protocol', () => {
-        test('Returns 501 fallback: browser when ElevenLabs key is not configured', async () => {
+        test('Streams high-quality Arabic audio (Google Cloud or ElevenLabs) or returns graceful fallback', async () => {
             const res = await fetch(`${serverUrl}/api/tts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: 'مرحبا، شلونك اليوم؟' })
             });
 
-            // Either 501 (not configured) or 200 (if local key provided in environment)
-            if (!process.env.ELEVENLABS_API_KEY) {
-                assert.equal(res.status, 501);
+            assert.ok([200, 501].includes(res.status));
+            if (res.status === 200) {
+                assert.ok(res.headers.get('content-type')?.includes('audio'));
+            } else {
                 const body = await res.json();
                 assert.equal(body.fallback, 'browser');
-            } else {
-                assert.ok([200, 500, 501].includes(res.status));
+            }
+        });
+
+        test('splitTextIntoTtsChunks splits long text at sentence boundaries under maxLength', () => {
+            const { splitTextIntoTtsChunks } = require('../server');
+            const sample = 'مرحبا بك في محفظة فاي. رصيدك الحالي ممتاز وعندك فواتير بحاجة للمراجعة. تحب نسددها هسة؟';
+            const chunks = splitTextIntoTtsChunks(sample, 40);
+            assert.ok(chunks.length >= 2);
+            for (const c of chunks) {
+                assert.ok(c.length <= 40);
             }
         });
 

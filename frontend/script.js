@@ -1444,6 +1444,10 @@ function fallbackBrowserSpeak(cleanText, btnElement = null) {
     if (arabicVoice) {
       utterance.voice = arabicVoice;
       utterance.lang = arabicVoice.lang;
+    } else {
+      console.warn('[TTS] No native Arabic voice installed on this system; skipping synthesis to prevent English accent distortion.');
+      stopSpeaking();
+      return;
     }
 
     utterance.rate = 1.0;
@@ -2046,12 +2050,61 @@ function createFeedbackActions(userQuery = '', botReply = '', msgId = '') {
 }
 
 /**
+ * Streams text progressively (letter-by-letter / chunk-by-chunk) into target bubble element
+ * with smooth auto-scroll and blinking cursor, providing an instantaneous AI streaming experience.
+ * @param {HTMLElement} targetEl - Chat bubble element
+ * @param {string} fullText - Final complete response
+ * @param {Function} onComplete - Callback executed when streaming finishes
+ */
+function streamTextMessage(targetEl, fullText, onComplete) {
+  if (!targetEl || !fullText) {
+    if (typeof onComplete === 'function') onComplete();
+    return;
+  }
+
+  // Hide global typing indicator as soon as streaming begins
+  showTypingIndicator(false);
+
+  let charIndex = 0;
+  const len = fullText.length;
+  // Dynamic step: fast and responsive (2 to 4 chars per 16ms frame)
+  const step = len > 350 ? 4 : (len > 150 ? 3 : 2);
+  const intervalMs = 15;
+
+  targetEl.innerHTML = '<span class="streaming-text"></span><span class="streaming-cursor"></span>';
+  const textSpan = (typeof targetEl.querySelector === 'function') ? targetEl.querySelector('.streaming-text') : null;
+
+  const timer = setInterval(() => {
+    if (typeof document === 'undefined') {
+      clearInterval(timer);
+      return;
+    }
+    charIndex += step;
+    if (charIndex >= len) {
+      charIndex = len;
+      clearInterval(timer);
+      if (typeof onComplete === 'function') {
+        onComplete();
+      }
+      return;
+    }
+
+    const currentSlice = fullText.substring(0, charIndex);
+    if (textSpan) {
+      textSpan.innerHTML = escapeHtml(currentSlice).replace(/\n/g, '<br>');
+    }
+    scrollToBottom();
+  }, intervalMs);
+}
+
+/**
  * Appends a message bubble to the chat container
  * @param {string} text - Message text
  * @param {'user'|'ai'} sender - Sender type
  * @param {string} relatedUserQuery - The user question that triggered this response (for feedback correlation)
+ * @param {boolean} stream - Whether to stream the response with character-by-character animation
  */
-function appendMessage(text, sender, relatedUserQuery = '') {
+function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
   const messageEl = document.createElement('div');
   messageEl.classList.add('message', `${sender}-message`, 'animate-fade-in');
 
@@ -2061,10 +2114,6 @@ function appendMessage(text, sender, relatedUserQuery = '') {
   const bubbleEl = document.createElement('div');
   bubbleEl.classList.add('msg-bubble');
 
-  // Format line breaks and fintech badges safely
-  const formattedHtml = formatFintechMessage(text, sender);
-  bubbleEl.innerHTML = formattedHtml;
-
   const footerEl = document.createElement('div');
   footerEl.classList.add('msg-footer');
 
@@ -2073,17 +2122,14 @@ function appendMessage(text, sender, relatedUserQuery = '') {
   timestampEl.textContent = getCurrentFormattedTime();
   footerEl.appendChild(timestampEl);
 
+  let feedbackActions = null;
   if (sender === 'ai') {
     const msgId = 'msg_' + Date.now();
-    const feedbackActions = createFeedbackActions(relatedUserQuery, text, msgId);
+    feedbackActions = createFeedbackActions(relatedUserQuery, text, msgId);
     footerEl.appendChild(feedbackActions);
-
-    // Automatic vocal response if TTS is enabled
-    if (isTtsEnabled) {
-      const speakBtn = (feedbackActions && typeof feedbackActions.querySelector === 'function')
-        ? feedbackActions.querySelector('.message-speak-btn')
-        : null;
-      speakText(text, speakBtn);
+    if (stream) {
+      footerEl.style.opacity = '0';
+      footerEl.style.transition = 'opacity 0.25s ease';
     }
   }
 
@@ -2104,8 +2150,41 @@ function appendMessage(text, sender, relatedUserQuery = '') {
     messageEl.appendChild(contentWrapper);
   }
 
-  messagesContainer.appendChild(messageEl);
+  if (messagesContainer) {
+    messagesContainer.appendChild(messageEl);
+  }
   scrollToBottom();
+
+  const isRealBrowser = (typeof window !== 'undefined' && typeof window.location !== 'undefined' && typeof window.location.href === 'string' && typeof requestAnimationFrame === 'function');
+
+  // Instant render for user messages or non-streaming environments (tests / headless)
+  if (sender !== 'ai' || !stream || !isRealBrowser) {
+    bubbleEl.innerHTML = formatFintechMessage(text, sender);
+    if (footerEl) footerEl.style.opacity = '1';
+    if (sender === 'ai' && isTtsEnabled) {
+      const speakBtn = (feedbackActions && typeof feedbackActions.querySelector === 'function')
+        ? feedbackActions.querySelector('.message-speak-btn')
+        : null;
+      speakText(text, speakBtn);
+    }
+    return messageEl;
+  }
+
+  // Live streaming typewriter animation for AI responses
+  streamTextMessage(bubbleEl, text, () => {
+    bubbleEl.innerHTML = formatFintechMessage(text, 'ai');
+    footerEl.style.opacity = '1';
+    scrollToBottom();
+
+    if (isTtsEnabled) {
+      const speakBtn = (feedbackActions && typeof feedbackActions.querySelector === 'function')
+        ? feedbackActions.querySelector('.message-speak-btn')
+        : null;
+      speakText(text, speakBtn);
+    }
+  });
+
+  return messageEl;
 }
 
 /**
@@ -2113,6 +2192,7 @@ function appendMessage(text, sender, relatedUserQuery = '') {
  * @param {string} errorMessage - Error description
  */
 function appendErrorMessage(errorMessage) {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
   const messageEl = document.createElement('div');
   messageEl.classList.add('message', 'ai-message', 'animate-fade-in');
 
@@ -2140,7 +2220,9 @@ function appendErrorMessage(errorMessage) {
 
   messageEl.appendChild(avatarEl);
   messageEl.appendChild(contentWrapper);
-  messagesContainer.appendChild(messageEl);
+  if (messagesContainer) {
+    messagesContainer.appendChild(messageEl);
+  }
 }
 
 /**

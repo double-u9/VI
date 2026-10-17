@@ -3255,3 +3255,35 @@ button,
     box-shadow: 0 0 12px var(--accent-glow);
   }
 }
+
+/* ==========================================================================
+   20. Live AI Typewriter Streaming Cursor
+   ========================================================================== */
+.streaming-text {
+  display: inline;
+  word-break: break-word;
+}
+
+.streaming-cursor {
+  display: inline-block;
+  width: 3px;
+  height: 1.15em;
+  background-color: var(--accent-primary);
+  margin-inline-start: 4px;
+  vertical-align: -2px;
+  border-radius: 2px;
+  animation: cursorBlink 0.65s infinite ease-in-out;
+}
+
+@keyframes cursorBlink {
+  0%, 100% {
+    opacity: 1;
+    transform: scaleY(1);
+    box-shadow: 0 0 8px var(--accent-primary);
+  }
+  50% {
+    opacity: 0.15;
+    transform: scaleY(0.7);
+    box-shadow: none;
+  }
+}
