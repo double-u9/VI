@@ -24,16 +24,16 @@
   --secondary-accent: #6366f1;
   --secondary-accent-glow: 0 0 20px rgba(99, 102, 241, 0.2);
 
-  /* Background Surfaces: Pure Titanium & Pearl White */
+  /* Background Surfaces: Frosted Crystalline Liquid Glass */
   --bg-deep: #f8fafc;
   --bg-surface: #ffffff;
-  --bg-card: rgba(255, 255, 255, 0.94);
-  --bg-card-hover: rgba(248, 250, 252, 1);
-  --bg-header: rgba(255, 255, 255, 0.84);
-  --bg-input-bar: rgba(255, 255, 255, 0.86);
-  --app-layout-bg: rgba(255, 255, 255, 0.95);
-  --app-layout-border: rgba(124, 58, 237, 0.16);
-  --app-layout-shadow: 0 25px 70px -15px rgba(109, 40, 217, 0.09), 0 0 40px rgba(124, 58, 237, 0.06);
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card-hover: rgba(248, 250, 252, 0.95);
+  --bg-header: rgba(255, 255, 255, 0.82);
+  --bg-input-bar: rgba(255, 255, 255, 0.84);
+  --app-layout-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.86) 0%, rgba(248, 246, 255, 0.78) 100%);
+  --app-layout-border: rgba(255, 255, 255, 0.90);
+  --app-layout-shadow: 0 30px 90px -15px rgba(109, 40, 217, 0.16), inset 0 1px 2px 0 rgba(255, 255, 255, 0.95), 0 0 50px rgba(124, 58, 237, 0.08);
 
   /* Grids & Ambient Orbs */
   --bg-grid-line: rgba(124, 58, 237, 0.035);
@@ -47,47 +47,47 @@
   --chat-orb-3: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.38) 0%, rgba(139, 92, 246, 0.18) 50%, transparent 75%);
 
   /* Header Fading Transition (Seamless blend with no hard border line) */
-  --header-bg-gradient: linear-gradient(to bottom, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.78) 65%, rgba(255, 255, 255, 0) 100%);
+  --header-bg-gradient: linear-gradient(to bottom, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.75) 65%, rgba(255, 255, 255, 0) 100%);
 
-  /* Message Bubbles */
-  --bg-user-bubble: linear-gradient(135deg, #6d28d9 0%, #7c3aed 55%, #8b5cf6 100%);
+  /* Message Bubbles: Liquid Frosted Glass */
+  --bg-user-bubble: linear-gradient(135deg, rgba(109, 40, 217, 0.95) 0%, rgba(124, 58, 237, 0.92) 55%, rgba(139, 92, 246, 0.95) 100%);
   --bg-user-bubble-hover: linear-gradient(135deg, #5b21b6 0%, #6d28d9 100%);
   --text-user-bubble: #ffffff;
-  --bg-ai-bubble: #ffffff;
-  --border-ai-bubble: rgba(226, 232, 240, 0.95);
-  --shadow-ai-bubble: 0 4px 20px rgba(0, 0, 0, 0.04);
+  --bg-ai-bubble: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(246, 243, 255, 0.80) 100%);
+  --border-ai-bubble: rgba(255, 255, 255, 0.92);
+  --shadow-ai-bubble: 0 12px 35px -6px rgba(124, 58, 237, 0.10), inset 0 1px 2px rgba(255, 255, 255, 0.95), 0 2px 8px rgba(0, 0, 0, 0.03);
 
   /* Welcome Card & Features */
-  --welcome-card-bg: linear-gradient(145deg, #ffffff 0%, #faf5ff 100%);
-  --welcome-card-border: rgba(124, 58, 237, 0.18);
+  --welcome-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.88) 0%, rgba(246, 243, 255, 0.78) 100%);
+  --welcome-card-border: rgba(255, 255, 255, 0.92);
   --welcome-title-color: #0f172a;
   --welcome-desc-color: #475569;
-  --welcome-feature-bg: #f8fafc;
-  --welcome-feature-border: rgba(226, 232, 240, 0.9);
-  --welcome-feature-hover-bg: #f3e8ff;
+  --welcome-feature-bg: rgba(255, 255, 255, 0.65);
+  --welcome-feature-border: rgba(124, 58, 237, 0.14);
+  --welcome-feature-hover-bg: rgba(255, 255, 255, 0.95);
   --welcome-feature-hover-border: rgba(124, 58, 237, 0.35);
   --welcome-feature-text-strong: #0f172a;
   --welcome-feature-text-span: #64748b;
 
-  /* Input Field ("أبيض على رصاصي" as requested by user) */
-  --input-wrapper-bg: #f1f5f9;
-  --input-wrapper-border: rgba(203, 213, 225, 0.85);
-  --input-wrapper-focus-bg: #ffffff;
-  --input-wrapper-focus-border: #7c3aed;
-  --input-wrapper-focus-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15), 0 0 20px rgba(124, 58, 237, 0.18);
+  /* Input Field */
+  --input-wrapper-bg: transparent;
+  --input-wrapper-border: transparent;
+  --input-wrapper-focus-bg: transparent;
+  --input-wrapper-focus-border: transparent;
+  --input-wrapper-focus-shadow: none;
   --input-text-color: #0f172a;
   --input-placeholder-color: #94a3b8;
 
   /* Mic Button */
-  --mic-btn-bg: #f8fafc;
+  --mic-btn-bg: rgba(255, 255, 255, 0.85);
   --mic-btn-border: rgba(124, 58, 237, 0.28);
   --mic-btn-color: #7c3aed;
-  --mic-btn-hover-bg: rgba(124, 58, 237, 0.08);
+  --mic-btn-hover-bg: rgba(124, 58, 237, 0.12);
   --mic-btn-hover-border: #7c3aed;
   --mic-pulse-glow: rgba(124, 58, 237, 0.65);
 
   /* Voice Bar (Gemini / Antigravity Style) */
-  --voice-bar-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(246, 243, 255, 0.96));
+  --voice-bar-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(246, 243, 255, 0.88));
   --voice-bar-border: rgba(124, 58, 237, 0.32);
   --voice-bar-shadow: 0 16px 40px -10px rgba(124, 58, 237, 0.22), 0 0 25px rgba(124, 58, 237, 0.12);
   --voice-wave-color: #7c3aed;
@@ -104,33 +104,33 @@
   --send-btn-color: #ffffff;
 
   /* Confirmation Card */
-  --confirm-card-bg: linear-gradient(145deg, #faf5ff 0%, #ffffff 100%);
-  --confirm-card-border: 1.5px solid rgba(124, 58, 237, 0.45);
+  --confirm-card-bg: linear-gradient(145deg, rgba(250, 245, 255, 0.85) 0%, rgba(255, 255, 255, 0.90) 100%);
+  --confirm-card-border: 1px solid rgba(124, 58, 237, 0.45);
   --confirm-card-top-bar: linear-gradient(90deg, #7c3aed, #a855f7);
-  --confirm-card-shadow: 0 10px 28px -4px rgba(124, 58, 237, 0.14);
+  --confirm-card-shadow: 0 12px 35px -6px rgba(124, 58, 237, 0.14), inset 0 1px 2px rgba(255, 255, 255, 0.95);
 
   /* Success Card */
-  --success-card-bg: linear-gradient(145deg, #f0fdf4 0%, #ffffff 100%);
-  --success-card-border: 1.5px solid rgba(16, 185, 129, 0.45);
+  --success-card-bg: linear-gradient(145deg, rgba(240, 253, 244, 0.85) 0%, rgba(255, 255, 255, 0.90) 100%);
+  --success-card-border: 1px solid rgba(16, 185, 129, 0.45);
   --success-card-top-bar: linear-gradient(90deg, #10b981, #059669);
-  --success-card-shadow: 0 10px 28px -4px rgba(16, 185, 129, 0.14);
+  --success-card-shadow: 0 12px 35px -6px rgba(16, 185, 129, 0.14), inset 0 1px 2px rgba(255, 255, 255, 0.95);
 
-  /* Amount Text Highlight (Box removed, color preserved) */
+  /* Amount Text Highlight */
   --amount-pill-bg: transparent;
   --amount-pill-color: #6d28d9;
   --amount-pill-border: transparent;
   --amount-pill-shadow: none;
 
   /* Quick Prompts Bar & Chips */
-  --prompts-bar-bg: rgba(255, 255, 255, 0.85);
-  --prompts-bar-border: rgba(226, 232, 240, 0.8);
-  --chip-bg: #ffffff;
-  --chip-border: rgba(226, 232, 240, 0.95);
+  --prompts-bar-bg: transparent;
+  --prompts-bar-border: transparent;
+  --chip-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(246, 243, 255, 0.75) 100%);
+  --chip-border: rgba(255, 255, 255, 0.92);
   --chip-text: #334155;
-  --chip-hover-bg: linear-gradient(145deg, rgba(124, 58, 237, 0.08), rgba(168, 85, 247, 0.04));
+  --chip-hover-bg: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(168, 85, 247, 0.08));
   --chip-hover-border: #7c3aed;
   --chip-hover-text: #6d28d9;
-  --chip-hover-shadow: 0 0 16px rgba(124, 58, 237, 0.2), 0 6px 16px rgba(0, 0, 0, 0.06);
+  --chip-hover-shadow: 0 0 20px rgba(124, 58, 237, 0.25), 0 10px 24px rgba(109, 40, 217, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.95);
 
   /* Typography Colors */
   --text-main: #1e293b;
@@ -141,25 +141,25 @@
   --border-glass: rgba(124, 58, 237, 0.2);
 
   /* Wallet Pill */
-  --wallet-pill-bg: #f8fafc;
-  --wallet-pill-border: rgba(124, 58, 237, 0.22);
+  --wallet-pill-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(246, 243, 255, 0.75) 100%);
+  --wallet-pill-border: rgba(255, 255, 255, 0.92);
   --wallet-pill-text: #475569;
   --wallet-badge-bg: rgba(124, 58, 237, 0.12);
   --wallet-badge-text: #6d28d9;
 
   /* Theme Toggle Pill */
-  --toggle-pill-bg: #f1f5f9;
-  --toggle-pill-border: rgba(124, 58, 237, 0.25);
+  --toggle-pill-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(246, 243, 255, 0.75) 100%);
+  --toggle-pill-border: rgba(255, 255, 255, 0.92);
   --toggle-pill-text: #475569;
   --toggle-track-bg: #e2e8f0;
   --toggle-thumb-bg: #7c3aed;
   --toggle-thumb-shadow: 0 2px 6px rgba(124, 58, 237, 0.45);
 
   /* Floating Input Island Tokens */
-  --floating-input-bg: rgba(255, 255, 255, 0.95);
-  --floating-input-border: rgba(124, 58, 237, 0.22);
-  --floating-input-shadow: 0 16px 36px -6px rgba(109, 40, 217, 0.14), 0 2px 10px rgba(0, 0, 0, 0.04);
-  --floating-input-focus-shadow: 0 20px 42px -6px rgba(109, 40, 217, 0.22), 0 0 0 3px rgba(124, 58, 237, 0.15), 0 0 25px rgba(124, 58, 237, 0.20);
+  --floating-input-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(246, 243, 255, 0.80) 100%);
+  --floating-input-border: rgba(255, 255, 255, 0.92);
+  --floating-input-shadow: 0 20px 50px -10px rgba(124, 58, 237, 0.14), inset 0 1px 2px 0 rgba(255, 255, 255, 0.95), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --floating-input-focus-shadow: 0 24px 55px -10px rgba(124, 58, 237, 0.22), 0 0 0 3px rgba(124, 58, 237, 0.16), 0 0 30px rgba(124, 58, 237, 0.22), inset 0 1px 2px rgba(255, 255, 255, 0.98);
 
   /* Gemini Bottom Glow Tokens */
   --gemini-glow-color: rgba(124, 58, 237, 0.22);
@@ -194,16 +194,16 @@
   --secondary-accent: #8acc44;
   --secondary-accent-glow: 0 0 18px rgba(138, 204, 68, 0.25);
 
-  /* Deep Cosmic Surfaces (Subtle Pine-Teal Infusion) */
+  /* Deep Cosmic Surfaces: Obsidian Frosted Liquid Glass */
   --bg-deep: #050a0e;
   --bg-surface: #091319;
-  --bg-card: rgba(12, 23, 29, 0.80);
-  --bg-card-hover: rgba(16, 31, 39, 0.90);
-  --bg-header: rgba(7, 14, 19, 0.78);
-  --bg-input-bar: rgba(7, 14, 19, 0.82);
-  --app-layout-bg: rgba(8, 16, 22, 0.90);
-  --app-layout-border: rgba(61, 164, 108, 0.22);
-  --app-layout-shadow: 0 25px 80px -15px rgba(0, 0, 0, 0.92), 0 0 50px -10px rgba(12, 144, 131, 0.14);
+  --bg-card: rgba(14, 25, 33, 0.72);
+  --bg-card-hover: rgba(18, 32, 42, 0.82);
+  --bg-header: rgba(7, 14, 19, 0.72);
+  --bg-input-bar: rgba(7, 14, 19, 0.75);
+  --app-layout-bg: linear-gradient(145deg, rgba(14, 25, 33, 0.82) 0%, rgba(6, 13, 18, 0.90) 100%);
+  --app-layout-border: rgba(255, 255, 255, 0.14);
+  --app-layout-shadow: 0 30px 90px -15px rgba(0, 0, 0, 0.92), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.18), 0 0 50px -10px rgba(12, 144, 131, 0.16);
 
   /* Grids & Ambient Orbs */
   --bg-grid-line: rgba(61, 164, 108, 0.04);
@@ -217,34 +217,34 @@
   --chat-orb-3: radial-gradient(ellipse at center, rgba(145, 225, 75, 0.50) 0%, rgba(18, 147, 129, 0.22) 45%, transparent 75%);
 
   /* Header Fading Transition (Seamless blend with no hard border line) */
-  --header-bg-gradient: linear-gradient(to bottom, rgba(8, 16, 22, 0.96) 0%, rgba(8, 16, 22, 0.80) 65%, rgba(8, 16, 22, 0) 100%);
+  --header-bg-gradient: linear-gradient(to bottom, rgba(8, 16, 22, 0.94) 0%, rgba(8, 16, 22, 0.76) 65%, rgba(8, 16, 22, 0) 100%);
 
-  /* Message Bubbles (Gradient Matching the User Robot Asset) */
-  --bg-user-bubble: linear-gradient(135deg, #73c350 0%, #3da46c 52%, #0c9083 100%);
+  /* Message Bubbles: Liquid Obsidian Glass */
+  --bg-user-bubble: linear-gradient(135deg, rgba(115, 195, 80, 0.95) 0%, rgba(61, 164, 108, 0.92) 52%, rgba(12, 144, 131, 0.95) 100%);
   --bg-user-bubble-hover: linear-gradient(135deg, #80cf5d 0%, #46b379 52%, #0e9e90 100%);
   --text-user-bubble: #ffffff;
-  --bg-ai-bubble: rgba(13, 25, 31, 0.88);
-  --border-ai-bubble: rgba(61, 164, 108, 0.22);
-  --shadow-ai-bubble: 0 4px 18px rgba(0, 0, 0, 0.35);
+  --bg-ai-bubble: linear-gradient(135deg, rgba(18, 31, 40, 0.78) 0%, rgba(11, 20, 26, 0.86) 100%);
+  --border-ai-bubble: rgba(255, 255, 255, 0.14);
+  --shadow-ai-bubble: 0 14px 38px -6px rgba(0, 0, 0, 0.60), inset 0 1px 1.5px rgba(255, 255, 255, 0.16), 0 2px 8px rgba(0, 0, 0, 0.25);
 
   /* Welcome Card & Features */
-  --welcome-card-bg: linear-gradient(145deg, rgba(13, 25, 32, 0.94) 0%, rgba(8, 17, 22, 0.97) 100%);
-  --welcome-card-border: rgba(61, 164, 108, 0.28);
+  --welcome-card-bg: linear-gradient(145deg, rgba(18, 32, 42, 0.82) 0%, rgba(10, 19, 25, 0.88) 100%);
+  --welcome-card-border: rgba(255, 255, 255, 0.14);
   --welcome-title-color: #ffffff;
   --welcome-desc-color: #cbd5e1;
-  --welcome-feature-bg: rgba(17, 33, 42, 0.65);
-  --welcome-feature-border: rgba(255, 255, 255, 0.08);
-  --welcome-feature-hover-bg: rgba(22, 42, 54, 0.85);
-  --welcome-feature-hover-border: rgba(61, 164, 108, 0.35);
+  --welcome-feature-bg: linear-gradient(135deg, rgba(20, 36, 46, 0.65) 0%, rgba(13, 25, 33, 0.75) 100%);
+  --welcome-feature-border: rgba(255, 255, 255, 0.10);
+  --welcome-feature-hover-bg: linear-gradient(135deg, rgba(26, 46, 58, 0.85) 0%, rgba(17, 32, 42, 0.92) 100%);
+  --welcome-feature-hover-border: rgba(115, 195, 80, 0.45);
   --welcome-feature-text-strong: #f8fafc;
   --welcome-feature-text-span: #94a3b8;
 
   /* Input Field */
-  --input-wrapper-bg: rgba(12, 23, 30, 0.88);
-  --input-wrapper-border: rgba(61, 164, 108, 0.22);
-  --input-wrapper-focus-bg: rgba(15, 29, 38, 0.96);
-  --input-wrapper-focus-border: #52ba6e;
-  --input-wrapper-focus-shadow: 0 0 0 3px rgba(61, 164, 108, 0.16), 0 0 20px rgba(12, 144, 131, 0.20);
+  --input-wrapper-bg: transparent;
+  --input-wrapper-border: transparent;
+  --input-wrapper-focus-bg: transparent;
+  --input-wrapper-focus-border: transparent;
+  --input-wrapper-focus-shadow: none;
   --input-text-color: #f8fafc;
   --input-placeholder-color: #64748b;
 
@@ -274,16 +274,16 @@
   --send-btn-color: #ffffff;
 
   /* Confirmation Card */
-  --confirm-card-bg: rgba(255, 200, 59, 0.03);
-  --confirm-card-border: 1px solid rgba(255, 200, 59, 0.35);
+  --confirm-card-bg: linear-gradient(145deg, rgba(42, 32, 10, 0.68) 0%, rgba(22, 16, 6, 0.80) 100%);
+  --confirm-card-border: 1px solid rgba(255, 200, 59, 0.40);
   --confirm-card-top-bar: linear-gradient(90deg, #ffc83b, #f59e0b);
-  --confirm-card-shadow: 0 4px 20px -4px rgba(255, 200, 59, 0.12);
+  --confirm-card-shadow: 0 14px 40px -6px rgba(0, 0, 0, 0.65), inset 0 1px 1.5px rgba(255, 255, 255, 0.15);
 
   /* Success Card */
-  --success-card-bg: rgba(61, 164, 108, 0.03);
-  --success-card-border: 1px solid rgba(61, 164, 108, 0.35);
+  --success-card-bg: linear-gradient(145deg, rgba(12, 38, 28, 0.68) 0%, rgba(6, 22, 16, 0.80) 100%);
+  --success-card-border: 1px solid rgba(61, 164, 108, 0.40);
   --success-card-top-bar: linear-gradient(90deg, #73c350, #0c9083);
-  --success-card-shadow: 0 4px 20px -4px rgba(61, 164, 108, 0.12);
+  --success-card-shadow: 0 14px 40px -6px rgba(0, 0, 0, 0.65), inset 0 1px 1.5px rgba(255, 255, 255, 0.15);
 
   /* Amount Text Highlight (Box removed, color preserved) */
   --amount-pill-bg: transparent;
@@ -292,15 +292,15 @@
   --amount-pill-shadow: none;
 
   /* Quick Prompts Bar & Chips */
-  --prompts-bar-bg: rgba(7, 14, 19, 0.75);
-  --prompts-bar-border: rgba(61, 164, 108, 0.10);
-  --chip-bg: linear-gradient(145deg, rgba(15, 29, 36, 0.88), rgba(11, 22, 28, 0.96));
-  --chip-border: rgba(61, 164, 108, 0.22);
-  --chip-text: #cbd5e1;
-  --chip-hover-bg: linear-gradient(145deg, rgba(115, 195, 80, 0.14), rgba(12, 144, 131, 0.12));
-  --chip-hover-border: #73c350;
+  --prompts-bar-bg: transparent;
+  --prompts-bar-border: transparent;
+  --chip-bg: linear-gradient(135deg, rgba(18, 33, 42, 0.75) 0%, rgba(11, 22, 28, 0.85) 100%);
+  --chip-border: rgba(255, 255, 255, 0.14);
+  --chip-text: #e2e8f0;
+  --chip-hover-bg: linear-gradient(135deg, rgba(115, 195, 80, 0.20), rgba(12, 144, 131, 0.20));
+  --chip-hover-border: rgba(115, 195, 80, 0.65);
   --chip-hover-text: #ffffff;
-  --chip-hover-shadow: 0 0 16px rgba(61, 164, 108, 0.22), 0 8px 20px rgba(0, 0, 0, 0.45);
+  --chip-hover-shadow: 0 0 20px rgba(61, 164, 108, 0.30), 0 10px 24px rgba(0, 0, 0, 0.60), inset 0 1px 1.5px rgba(255, 255, 255, 0.22);
 
   /* Typography Colors */
   --text-main: #f8fafc;
@@ -311,25 +311,25 @@
   --border-glass: rgba(61, 164, 108, 0.20);
 
   /* Wallet Pill */
-  --wallet-pill-bg: rgba(14, 27, 33, 0.78);
-  --wallet-pill-border: rgba(61, 164, 108, 0.26);
+  --wallet-pill-bg: linear-gradient(135deg, rgba(18, 33, 42, 0.75) 0%, rgba(11, 22, 28, 0.85) 100%);
+  --wallet-pill-border: rgba(255, 255, 255, 0.14);
   --wallet-pill-text: #e2e8f0;
-  --wallet-badge-bg: rgba(61, 164, 108, 0.14);
+  --wallet-badge-bg: rgba(61, 164, 108, 0.18);
   --wallet-badge-text: #52ba6e;
 
   /* Theme Toggle Pill */
-  --toggle-pill-bg: rgba(14, 27, 33, 0.85);
-  --toggle-pill-border: rgba(61, 164, 108, 0.30);
+  --toggle-pill-bg: linear-gradient(135deg, rgba(18, 33, 42, 0.75) 0%, rgba(11, 22, 28, 0.85) 100%);
+  --toggle-pill-border: rgba(255, 255, 255, 0.14);
   --toggle-pill-text: #e2e8f0;
   --toggle-track-bg: rgba(7, 14, 19, 0.92);
   --toggle-thumb-bg: linear-gradient(135deg, #73c350, #0c9083);
   --toggle-thumb-shadow: 0 2px 8px rgba(61, 164, 108, 0.45);
 
   /* Floating Input Island Tokens */
-  --floating-input-bg: rgba(14, 25, 31, 0.94);
-  --floating-input-border: rgba(61, 164, 108, 0.26);
-  --floating-input-shadow: 0 18px 44px -6px rgba(0, 0, 0, 0.70), 0 0 22px rgba(12, 144, 131, 0.16);
-  --floating-input-focus-shadow: 0 22px 48px -6px rgba(0, 0, 0, 0.80), 0 0 0 3px rgba(61, 164, 108, 0.18), 0 0 28px rgba(18, 147, 129, 0.28);
+  --floating-input-bg: linear-gradient(135deg, rgba(18, 31, 40, 0.80) 0%, rgba(10, 19, 25, 0.88) 100%);
+  --floating-input-border: rgba(255, 255, 255, 0.15);
+  --floating-input-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.85), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.20), 0 0 24px rgba(12, 144, 131, 0.18);
+  --floating-input-focus-shadow: 0 26px 65px -10px rgba(0, 0, 0, 0.90), 0 0 0 3px rgba(61, 164, 108, 0.25), 0 0 32px rgba(18, 147, 129, 0.35), inset 0 1px 1.8px rgba(255, 255, 255, 0.28);
 
   /* Gemini Bottom Glow Tokens */
   --gemini-glow-color: rgba(18, 147, 129, 0.40);
@@ -523,8 +523,9 @@ button,
   margin: 14px auto;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--app-layout-border);
-  background-color: var(--app-layout-bg);
-  backdrop-filter: blur(30px) saturate(180%);
+  background: var(--app-layout-bg);
+  backdrop-filter: blur(40px) saturate(210%);
+  -webkit-backdrop-filter: blur(40px) saturate(210%);
   box-shadow: var(--app-layout-shadow);
   overflow: hidden;
   transition: all 0.35s ease;
@@ -540,7 +541,8 @@ button,
   padding: 1.15rem 1.85rem 1.35rem;
   background: var(--header-bg-gradient);
   border-bottom: none;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
   z-index: 50;
   transition: all 0.3s ease;
 }
@@ -916,13 +918,15 @@ button,
   cursor: pointer;
   direction: rtl; /* Preserves switch thumb position logic */
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
 
 .theme-toggle-pill:hover {
   border-color: var(--accent-primary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px var(--accent-surface-hover);
+  box-shadow: 0 6px 18px var(--accent-surface-hover);
 }
 
 .theme-toggle-track {
@@ -1071,7 +1075,9 @@ button,
   border: 1px solid var(--wallet-pill-border);
   padding: 0.36rem 0.78rem 0.36rem 1.05rem;
   border-radius: var(--radius-pill);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   direction: ltr;
   user-select: none;
   -webkit-user-select: none;
@@ -1309,18 +1315,23 @@ button,
   color: var(--text-user-bubble);
   border-radius: var(--radius-pill);
   padding: 0.72rem 1.45rem;
-  box-shadow: var(--send-btn-shadow);
+  box-shadow: var(--send-btn-shadow), inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   font-weight: 600;
 }
 
 /* AI Message Bubble (points down-left to circular avatar) */
 .ai-message .msg-bubble {
-  background-color: var(--bg-ai-bubble);
+  background: var(--bg-ai-bubble);
   color: var(--text-main);
   border: 1px solid var(--border-ai-bubble);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 6px;
   border-bottom-right-radius: var(--radius-xl);
   box-shadow: var(--shadow-ai-bubble);
+  backdrop-filter: blur(32px) saturate(210%);
+  -webkit-backdrop-filter: blur(32px) saturate(210%);
 }
 
 .msg-timestamp {
@@ -1405,7 +1416,9 @@ button,
   border: 1.5px solid var(--welcome-card-border) !important;
   padding: 1.5rem 1.85rem !important;
   border-radius: var(--radius-2xl) !important;
-  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.06), 0 0 30px var(--accent-surface) !important;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.12), inset 0 1px 1.5px rgba(255, 255, 255, 0.22), 0 0 30px var(--accent-surface) !important;
+  backdrop-filter: blur(36px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(210%) !important;
 }
 
 .welcome-title {
@@ -1439,6 +1452,8 @@ button,
   border: 1px solid var(--welcome-feature-border);
   padding: 0.95rem;
   border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   transition: all 0.25s ease;
 }
 
@@ -1538,7 +1553,8 @@ button,
   border-radius: var(--radius-xl);
   padding: 1.25rem 1.5rem;
   margin: 0.5rem 0;
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
   position: relative;
   overflow: hidden;
 }
@@ -2021,9 +2037,9 @@ button,
   background: var(--chip-bg);
   border: 1px solid var(--chip-border);
   color: var(--chip-text);
-  padding: 0.42rem 1.15rem;
+  padding: 0.44rem 1.25rem;
   border-radius: var(--radius-pill);
-  font-size: 0.84rem;
+  font-size: 0.85rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -2032,10 +2048,10 @@ button,
   align-items: center;
   justify-content: center;
   text-align: center;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
   position: relative;
 }
 
@@ -2131,11 +2147,12 @@ button,
   margin: 0 auto;
   width: 100%;
   background: var(--floating-input-bg);
-  border: 1.5px solid var(--floating-input-border);
+  border: 1px solid var(--floating-input-border);
   border-radius: var(--radius-pill);
   padding: 0.35rem 0.5rem 0.35rem 1.2rem;
   box-shadow: var(--floating-input-shadow);
-  backdrop-filter: blur(25px);
+  backdrop-filter: blur(36px) saturate(210%);
+  -webkit-backdrop-filter: blur(36px) saturate(210%);
   transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -2745,8 +2762,8 @@ button,
   display: flex;
   flex-direction: column;
   background: var(--app-layout-bg);
-  backdrop-filter: blur(36px) saturate(190%);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  backdrop-filter: blur(40px) saturate(210%);
+  -webkit-backdrop-filter: blur(40px) saturate(210%);
   border-left: 1px solid var(--border-glass);
   border-right: 1.5px solid var(--accent-border);
   box-shadow: 25px 0 60px rgba(0, 0, 0, 0.45), 0 0 35px var(--accent-surface);
@@ -2768,15 +2785,15 @@ button,
 }
 
 [data-theme="dark"] .transactions-drawer {
-  background: linear-gradient(168deg, rgba(8, 17, 23, 0.96) 0%, rgba(5, 10, 14, 0.98) 100%);
-  border-right-color: rgba(61, 164, 108, 0.32);
-  box-shadow: 30px 0 70px rgba(0, 0, 0, 0.85), 0 0 40px rgba(12, 144, 131, 0.16);
+  background: linear-gradient(168deg, rgba(8, 17, 23, 0.88) 0%, rgba(5, 10, 14, 0.94) 100%);
+  border-right-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 30px 0 70px rgba(0, 0, 0, 0.85), inset 0 1px 1.5px rgba(255, 255, 255, 0.14), 0 0 40px rgba(12, 144, 131, 0.16);
 }
 
 [data-theme="light"] .transactions-drawer {
-  background: linear-gradient(168deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 248, 255, 0.96) 100%);
-  border-right-color: rgba(124, 58, 237, 0.22);
-  box-shadow: 30px 0 70px rgba(109, 40, 217, 0.12), 0 0 40px rgba(124, 58, 237, 0.08);
+  background: linear-gradient(168deg, rgba(255, 255, 255, 0.88) 0%, rgba(250, 248, 255, 0.82) 100%);
+  border-right-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 30px 0 70px rgba(109, 40, 217, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.95), 0 0 40px rgba(124, 58, 237, 0.08);
 }
 
 /* Drawer Header */
@@ -2874,7 +2891,9 @@ button,
   border-radius: var(--radius-xl);
   background: var(--welcome-card-bg);
   border: 1.5px solid var(--accent-border);
-  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.12), 0 0 20px var(--accent-surface);
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.12), inset 0 1px 1.5px rgba(255, 255, 255, 0.15), 0 0 20px var(--accent-surface);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -3018,6 +3037,8 @@ button,
   border-radius: var(--radius-lg);
   background: var(--welcome-feature-bg);
   border: 1px solid var(--welcome-feature-border);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
