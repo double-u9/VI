@@ -3292,5 +3292,884 @@ describe('VI Wallet Regression Suite - Task 12: Desktop Workstation Layout & Col
     });
 });
 
+describe('VI Wallet Regression Suite - Task 13: Tier-1 Apple Pay Slide to Confirm (اسحب لتأكيد التحويل) Interactive Slider', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const frontend = require('../../frontend/script.js');
+
+    const originalFetch = global.fetch;
+
+    beforeEach(() => {
+        frontend.setRequestInProgress(false);
+        global.fetch = async () => ({
+            ok: true,
+            json: async () => ({ response: 'تم تأكيد التحويل بنجاح' })
+        });
+        global.document = {
+            getElementById: () => null,
+            querySelectorAll: () => [],
+            querySelector: () => null,
+            createElement: () => ({
+                classList: { add() {}, remove() {}, contains: () => false },
+                style: {},
+                getContext: () => null,
+                setAttribute: () => {},
+                removeAttribute: () => {},
+                appendChild: () => {}
+            })
+        };
+    });
+
+    after(() => {
+        global.fetch = originalFetch;
+        delete global.document;
+    });
+
+    test('renderFintechActionButtons produces Apple Pay slider track markup with accessibility attributes and cancel button', () => {
+        const html = frontend.renderFintechActionButtons();
+
+        assert.ok(html.includes('class="slide-to-confirm-track'), 'Must render .slide-to-confirm-track');
+        assert.ok(html.includes('role="slider"'), 'Must have role="slider"');
+        assert.ok(html.includes('tabindex="0"'), 'Must have tabindex="0" for keyboard accessibility');
+        assert.ok(html.includes('aria-label="اسحب لتأكيد التحويل"'), 'Must have proper Arabic aria-label');
+        assert.ok(html.includes('aria-valuemin="0"'), 'Must define aria-valuemin');
+        assert.ok(html.includes('aria-valuemax="100"'), 'Must define aria-valuemax');
+        assert.ok(html.includes('aria-valuenow="0"'), 'Must define initial aria-valuenow');
+        assert.ok(html.includes('class="slide-progress-fill"'), 'Must render progress fill container');
+        assert.ok(html.includes('class="slide-shimmer-text"'), 'Must render metallic shimmer text container');
+        assert.ok(html.includes('اسحب لتأكيد التحويل'), 'Must display Arabic slide text');
+        assert.ok(html.includes('class="slide-to-confirm-thumb"'), 'Must render draggable thumb');
+        assert.ok(html.includes('class="thumb-icon-arrow"'), 'Thumb must contain direction arrow icon');
+        assert.ok(html.includes('class="thumb-icon-check"'), 'Thumb must contain checkmark icon');
+        assert.ok(html.includes('class="fintech-action-btn fintech-btn-cancel"'), 'Must contain cancel button');
+    });
+
+    test('renderConfirmationCard alias functions properly and outputs valid card markup with slider', () => {
+        assert.equal(typeof frontend.renderConfirmationCard, 'function', 'renderConfirmationCard must be exported as a function');
+        
+        const cardHtml = frontend.renderConfirmationCard({
+            recipient: 'علي كاظم',
+            phoneOrAccount: '07801234567',
+            amount: '50,000 د.ع',
+            balanceAfter: '120,000 د.ع',
+            isBill: false,
+            introMessage: 'هل تود المتابعة؟'
+        });
+
+        assert.ok(cardHtml.includes('fintech-card confirm-card'), 'Must render confirm-card container');
+        assert.ok(cardHtml.includes('علي كاظم'), 'Must render recipient name');
+        assert.ok(cardHtml.includes('50,000 د.ع'), 'Must render amount');
+        assert.ok(cardHtml.includes('slide-to-confirm-track'), 'Must embed slide to confirm slider');
+        assert.ok(cardHtml.includes('fintech-btn-cancel'), 'Must embed cancel button');
+    });
+
+    test('CSS stylesheet contains luxury slide-to-confirm rules, metallic shimmer animations, and mobile layout', () => {
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        // Track rules
+        assert.ok(css.includes('.slide-to-confirm-track'), 'Must style .slide-to-confirm-track');
+        assert.ok(css.includes('border-radius: 9999px'), 'Track must use pill capsule border radius');
+        assert.ok(css.includes('backdrop-filter: blur'), 'Track must utilize glassmorphic blur');
+        assert.ok(css.includes(':focus-visible'), 'Must define accessible focus-visible outline');
+
+        // Progress fill & shimmer text
+        assert.ok(css.includes('.slide-progress-fill'), 'Must style progress fill');
+        assert.ok(css.includes('.slide-shimmer-text'), 'Must style shimmer text');
+        assert.ok(css.includes('@keyframes slideMetallicShimmer'), 'Must contain metallic shimmer animation');
+
+        // Thumb handle & icon morphing
+        assert.ok(css.includes('.slide-to-confirm-thumb'), 'Must style draggable thumb');
+        assert.ok(css.includes('.thumb-icon-check'), 'Must style checkmark icon');
+        assert.ok(css.includes('.slide-to-confirm-thumb.is-success'), 'Must morph thumb to checkmark on success');
+
+        // Mobile responsiveness
+        assert.ok(css.includes('.slide-to-confirm-track {\n    width: 100%;'), 'Must expand to 100% width on mobile');
+    });
+
+    test('Spring-back physics return: releases before 85% completion threshold apply cubic-bezier(0.175, 0.885, 0.32, 1.275)', () => {
+        const mockTrack = {
+            classList: {
+                classes: new Set(['slide-to-confirm-track']),
+                contains(c) { return this.classes.has(c); },
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); }
+            },
+            getAttribute: (attr) => attr === 'aria-disabled' ? 'false' : null,
+            setAttribute: (attr, val) => {},
+            removeAttribute: (attr) => {},
+            getBoundingClientRect: () => ({ width: 300, left: 100, right: 400 }),
+            closest: function(sel) {
+                if (!sel || sel.includes('slide-to-confirm-track')) return this;
+                return { querySelector: () => null };
+            },
+            querySelector: (sel) => {
+                if (sel === '.slide-to-confirm-thumb') return mockThumb;
+                if (sel === '.slide-progress-fill') return mockFill;
+                if (sel === '.slide-track-text') return mockText;
+                return null;
+            }
+        };
+
+        const mockThumb = {
+            offsetWidth: 40,
+            style: {},
+            classList: {
+                classes: new Set(),
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+
+        const mockFill = { style: {} };
+        const mockText = { style: {} };
+
+        global.window = { getComputedStyle: () => ({ direction: 'rtl' }) };
+
+        // 1. Start drag at clientX = 350
+        frontend.startSlideDrag({
+            target: mockTrack,
+            clientX: 350
+        });
+
+        // 2. Drag only 50px to the left (50 / 252 ≈ 19.8% completion, well below 85%)
+        frontend.onSlideDragMove({
+            clientX: 300,
+            cancelable: true
+        });
+
+        assert.equal(mockThumb.style.transform, 'translateX(-50px)');
+
+        // 3. Release drag
+        frontend.onSlideDragEnd({
+            clientX: 300
+        });
+
+        // 4. Verify spring-back cubic bezier and reset to 0px
+        assert.ok(mockThumb.style.transition.includes('cubic-bezier(0.175, 0.885, 0.32, 1.275)'), 'Must return via cubic-bezier(0.175, 0.885, 0.32, 1.275)');
+        assert.equal(mockThumb.style.transform, 'translateX(0px)', 'Thumb must spring back to 0px');
+        assert.equal(mockFill.style.width, '0px', 'Fill width must spring back to 0px');
+        assert.equal(mockText.style.opacity, '1', 'Text opacity must reset to 1');
+
+        delete global.window;
+    });
+
+    test('Snap to completion: drag past 85% triggers verified checkmark morph, haptic vibration [15, 30, 20], and success chime', async () => {
+        let vibrationPattern = null;
+        if (typeof global.navigator === 'undefined') {
+            global.navigator = {};
+        }
+        global.navigator.vibrate = (pattern) => { vibrationPattern = pattern; };
+
+        frontend.setTtsEnabled(true);
+        frontend.setRequestInProgress(false);
+
+        const mockCard = { querySelector: () => null, classList: { add() {} } };
+        const mockTrack = {
+            classList: {
+                classes: new Set(['slide-to-confirm-track']),
+                contains(c) { return this.classes.has(c); },
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); }
+            },
+            getAttribute: (attr) => attr === 'aria-disabled' ? 'false' : null,
+            setAttribute: (attr, val) => {},
+            removeAttribute: (attr) => {},
+            getBoundingClientRect: () => ({ width: 300, left: 100, right: 400 }),
+            closest: function(sel) {
+                if (!sel || sel.includes('slide-to-confirm-track')) return this;
+                if (sel.includes('fintech-card')) return mockCard;
+                return null;
+            },
+            querySelector: (sel) => {
+                if (sel === '.slide-to-confirm-thumb') return mockThumb;
+                if (sel === '.slide-progress-fill') return mockFill;
+                if (sel === '.slide-track-text') return mockText;
+                if (sel === '.slide-shimmer-text') return mockShimmer;
+                return null;
+            }
+        };
+
+        const mockThumb = {
+            offsetWidth: 40,
+            style: {},
+            classList: {
+                classes: new Set(),
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+
+        const mockFill = { style: {} };
+        const mockText = { style: {} };
+        const mockShimmer = { textContent: '' };
+
+        global.window = { getComputedStyle: () => ({ direction: 'rtl' }) };
+
+        // 1. Start drag at clientX = 350
+        frontend.startSlideDrag({
+            target: mockTrack,
+            clientX: 350
+        });
+
+        // 2. Drag 230px to left (230 / 252 ≈ 91.2% completion, past 85% threshold)
+        frontend.onSlideDragMove({
+            clientX: 120,
+            cancelable: true
+        });
+
+        // 3. Release past 85% threshold
+        frontend.onSlideDragEnd({
+            clientX: 120
+        });
+
+        // 4. Verify completed state, morph, and haptic pattern
+        assert.ok(mockTrack.classList.contains('is-confirmed'), 'Track must receive is-confirmed class');
+        assert.ok(mockThumb.classList.contains('is-success'), 'Thumb must receive is-success for checkmark morph');
+        assert.equal(mockFill.style.width, '100%', 'Progress fill must expand to 100%');
+        assert.equal(mockShimmer.textContent, 'تم التأكيد بنجاح', 'Shimmer text must update to confirmed state');
+        assert.deepEqual(vibrationPattern, [15, 30, 20], 'Must trigger haptic pattern [15, 30, 20]');
+
+        // Settle microtask queue
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        delete global.navigator.vibrate;
+        delete global.window;
+    });
+
+    test('Keyboard accessibility: Enter and Space keys trigger smooth slide completion', async () => {
+        let vibrationFired = false;
+        if (typeof global.navigator === 'undefined') {
+            global.navigator = {};
+        }
+        global.navigator.vibrate = () => { vibrationFired = true; };
+
+        frontend.setRequestInProgress(false);
+
+        const mockCard = { querySelector: () => null, classList: { add() {} } };
+        const mockTrack = {
+            classList: {
+                classes: new Set(['slide-to-confirm-track']),
+                contains(c) { return this.classes.has(c); },
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); }
+            },
+            getAttribute: () => 'false',
+            setAttribute: () => {},
+            removeAttribute: () => {},
+            getBoundingClientRect: () => ({ width: 300 }),
+            closest: function(sel) {
+                if (!sel || sel.includes('slide-to-confirm-track')) return this;
+                if (sel.includes('fintech-card')) return mockCard;
+                return null;
+            },
+            querySelector: (sel) => {
+                if (sel === '.slide-to-confirm-thumb') return mockThumb;
+                if (sel === '.slide-progress-fill') return mockFill;
+                if (sel === '.slide-track-text') return mockText;
+                if (sel === '.slide-shimmer-text') return mockShimmer;
+                return null;
+            }
+        };
+
+        const mockThumb = {
+            offsetWidth: 40,
+            style: {},
+            classList: {
+                classes: new Set(),
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+
+        const mockFill = { style: {} };
+        const mockText = { style: {} };
+        const mockShimmer = { textContent: '' };
+
+        global.window = { getComputedStyle: () => ({ direction: 'rtl' }) };
+
+        let prevented = false;
+        frontend.handleSlideKeyboard({
+            target: mockTrack,
+            key: 'Enter',
+            preventDefault: () => { prevented = true; }
+        });
+
+        assert.equal(prevented, true, 'Keyboard event must prevent default scroll/submit');
+        assert.ok(mockThumb.style.transition.includes('cubic-bezier(0.16, 1, 0.3, 1)'), 'Must animate thumb smoothly');
+
+        // Allow async timeout (220ms) inside handleSlideKeyboard to complete cleanly
+        await new Promise(resolve => setTimeout(resolve, 260));
+
+        delete global.navigator.vibrate;
+        delete global.window;
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 14: Dual-Currency Financial Toggle and Converter Widget (IQD ⇄ USD)', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const { EXCHANGE_RATE_CONFIG, getExchangeRate } = require('../server');
+    const frontend = require('../../frontend/script.js');
+
+    test('1. Backend Exchange Rate Config and /api/exchange-rate Endpoint Integrity', async () => {
+        // Verify server configuration export
+        assert.ok(EXCHANGE_RATE_CONFIG, 'EXCHANGE_RATE_CONFIG must be exported');
+        assert.equal(EXCHANGE_RATE_CONFIG.base_currency, 'IQD');
+        assert.equal(EXCHANGE_RATE_CONFIG.target_currency, 'USD');
+        assert.equal(typeof EXCHANGE_RATE_CONFIG.iqd_per_usd, 'number');
+        assert.ok(EXCHANGE_RATE_CONFIG.iqd_per_usd > 0);
+
+        const currentRate = getExchangeRate();
+        assert.equal(currentRate.base_currency, 'IQD');
+        assert.equal(currentRate.target_currency, 'USD');
+        assert.equal(currentRate.usd_sample, 100);
+        assert.equal(currentRate.iqd_sample, 153000);
+        assert.ok(currentRate.formatted_rate.includes('100$ = 153,000 د.ع'));
+    });
+
+    test('2. Mathematical Precision & Dynamic Conversions (IQD ⇄ USD)', () => {
+        frontend.setExchangeRateValue(1530);
+
+        // IQD to USD conversions
+        assert.equal(frontend.convertIqdToUsd(1530), 1.00);
+        assert.equal(frontend.convertIqdToUsd(153000), 100.00);
+        assert.equal(frontend.convertIqdToUsd(2250000), 1470.59);
+        assert.equal(frontend.convertIqdToUsd(0), 0);
+        assert.equal(frontend.convertIqdToUsd(-500), 0);
+
+        // USD to IQD conversions (Maintaining integer precision for base ledger)
+        assert.equal(frontend.convertUsdToIqd(1), 1530);
+        assert.equal(frontend.convertUsdToIqd(100), 153000);
+        assert.equal(frontend.convertUsdToIqd(1470.588), 2250000);
+        assert.equal(frontend.convertUsdToIqd(0), 0);
+        assert.equal(frontend.convertUsdToIqd(-10), 0);
+    });
+
+    test('3. Dual Balance Formatting (Primary & Subtle Secondary Equivalents)', () => {
+        frontend.setExchangeRateValue(1530);
+
+        // Test IQD active currency
+        frontend.setActiveCurrency('IQD', false);
+        assert.equal(frontend.getActiveCurrency(), 'IQD');
+        const iqdDual = frontend.formatDualBalance(2250000, false);
+        assert.equal(iqdDual.primary, '2,250,000 د.ع');
+        assert.equal(iqdDual.secondary, '≈ $1,470.59');
+        assert.equal(iqdDual.primaryCurrency, 'IQD');
+        assert.equal(iqdDual.secondaryCurrency, 'USD');
+
+        // Test USD active currency
+        frontend.setActiveCurrency('USD', false);
+        assert.equal(frontend.getActiveCurrency(), 'USD');
+        const usdDual = frontend.formatDualBalance(2250000, false);
+        assert.equal(usdDual.primary, '$1,470.59');
+        assert.equal(usdDual.secondary, '≈ 2,250,000 د.ع');
+        assert.equal(usdDual.primaryCurrency, 'USD');
+        assert.equal(usdDual.secondaryCurrency, 'IQD');
+
+        // Test Hidden Privacy Mode (Eye toggle mask)
+        const hiddenDual = frontend.formatDualBalance(2250000, true);
+        assert.equal(hiddenDual.primary, '••••••');
+        assert.equal(hiddenDual.secondary, '••••••');
+
+        // Reset to IQD default
+        frontend.setActiveCurrency('IQD', false);
+    });
+
+    test('4. Currency Switcher Pill State, localStorage Persistence, and Flip Toggle', () => {
+        let storageMap = {};
+        global.localStorage = {
+            getItem: (k) => storageMap[k] || null,
+            setItem: (k, v) => { storageMap[k] = String(v); },
+            removeItem: (k) => { delete storageMap[k]; }
+        };
+
+        // Switch to USD
+        frontend.setActiveCurrency('USD', false);
+        assert.equal(frontend.getActiveCurrency(), 'USD');
+        assert.equal(global.localStorage.getItem('vi_active_currency'), 'USD');
+
+        // Toggle back to IQD
+        const nextCurr = frontend.toggleActiveCurrency();
+        assert.equal(nextCurr, 'IQD');
+        assert.equal(frontend.getActiveCurrency(), 'IQD');
+        assert.equal(global.localStorage.getItem('vi_active_currency'), 'IQD');
+
+        delete global.localStorage;
+    });
+
+    test('5. 3D Flip Transition Class Application (.balance-is-flipping)', () => {
+        const addedClasses = [];
+        const mockFlipEl = {
+            classList: {
+                add: (c) => addedClasses.push(c),
+                remove: () => {}
+            }
+        };
+
+        const origDoc = global.document;
+        global.document = {
+            getElementById: () => null,
+            querySelectorAll: (sel) => {
+                if (sel === '.balance-flip-container') return [mockFlipEl];
+                return [];
+            }
+        };
+
+        // Calling setActiveCurrency with animate=true triggers flip animation class
+        frontend.setActiveCurrency('USD', true);
+        assert.ok(addedClasses.includes('balance-is-flipping'), 'Must apply balance-is-flipping class during transition');
+
+        global.document = origDoc;
+        frontend.setActiveCurrency('IQD', false);
+    });
+
+    test('6. Quick Transfer Dual Chips & Integer Base IQD Precision Maintenance', () => {
+        frontend.setExchangeRateValue(1530);
+        frontend.setActiveCurrency('IQD', false);
+
+        const mockChip5k = {
+            getAttribute: () => '5000',
+            querySelector: (sel) => {
+                if (sel === '.chip-primary') return mockChip5kPrimary;
+                if (sel === '.chip-secondary') return mockChip5kSecondary;
+                return null;
+            }
+        };
+        const mockChip5kPrimary = { textContent: '' };
+        const mockChip5kSecondary = { textContent: '' };
+
+        const origDoc = global.document;
+        global.document = {
+            getElementById: () => null,
+            querySelectorAll: (sel) => {
+                if (sel === '.amount-wheel-chip') return [mockChip5k];
+                return [];
+            }
+        };
+
+        // In IQD mode: 5,000 د.ع primary, ≈ $3.27 secondary
+        frontend.updateQuickTransferChips();
+        assert.equal(mockChip5kPrimary.textContent, '5,000 د.ع');
+        assert.equal(mockChip5kSecondary.textContent, '≈ $3.27');
+
+        // In USD mode: $3.27 primary, ≈ 5,000 د.ع secondary
+        frontend.setActiveCurrency('USD', false);
+        frontend.updateQuickTransferChips();
+        assert.equal(mockChip5kPrimary.textContent, '$3.27');
+        assert.equal(mockChip5kSecondary.textContent, '≈ 5,000 د.ع');
+
+        global.document = origDoc;
+        frontend.setActiveCurrency('IQD', false);
+    });
+
+    test('7. HTML & CSS Component Integrity: Glassy Pills, Tickers, and Animations', () => {
+        const html = fs.readFileSync(path.join(__dirname, '../../frontend/index.html'), 'utf-8');
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        // HTML checks
+        assert.ok(!html.includes('id="currency-toggle-btn"'), 'Header currency-toggle-btn removed per user request');
+        assert.ok(html.includes('id="companion-currency-toggle-btn"'), 'Companion rail must contain currency toggle button');
+        assert.ok(html.includes('balance-flip-container'), 'Balance displays must have balance-flip-container');
+        assert.ok(html.includes('id="companion-rail-balance-secondary"'), 'Companion rail must have secondary valuation container');
+        assert.ok(html.includes('id="companion-exchange-ticker"'), 'Companion rail must display exchange ticker');
+        assert.ok(html.includes('id="quick-transfer-currency-toggle"'), 'Quick transfer modal must have currency switch badge');
+        assert.ok(html.includes('id="quick-transfer-secondary-val"'), 'Quick transfer modal must have live conversion equivalent');
+
+        // CSS checks
+        assert.ok(css.includes('.currency-toggle-pill'), 'CSS must style glassy currency toggle pill');
+        assert.ok(css.includes('.currency-pill-glider'), 'CSS must define sliding pill glider');
+        assert.ok(css.includes('.balance-flip-container'), 'CSS must define 3D perspective container');
+        assert.ok(css.includes('.balance-is-flipping'), 'CSS must define flip animation trigger');
+        assert.ok(css.includes('@keyframes currencyFlipIn'), 'CSS must define fluid 3D number flip keyframes');
+        assert.ok(css.includes('.companion-exchange-ticker'), 'CSS must style companion live exchange ticker');
+        assert.ok(css.includes('.quick-transfer-currency-badge'), 'CSS must style modal currency switch badge');
+        assert.ok(css.includes('.amount-wheel-chip .chip-secondary'), 'CSS must style secondary subtle equivalent typography');
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 15: Tier-1 Apple iOS 18 Micro-Interactions & Skeleton Shimmer Physics', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const frontend = require('../../frontend/script.js');
+
+    test('1. Motion Tokens & Physics: Apple iOS 18 Cubic-Beziers & Durations', () => {
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        // Verify tokens in :root
+        assert.ok(css.includes('--ease-apple-spring: cubic-bezier(0.175, 0.885, 0.32, 1.15);'), 'Must define --ease-apple-spring');
+        assert.ok(css.includes('--ease-apple-fluid: cubic-bezier(0.32, 0.72, 0, 1);'), 'Must define --ease-apple-fluid');
+        assert.ok(css.includes('--scale-press-down: scale(0.96);'), 'Must define --scale-press-down as scale(0.96)');
+        assert.ok(css.includes('--shadow-press-down:'), 'Must define --shadow-press-down');
+        assert.ok(css.includes('--duration-apple-fast: 160ms;'), 'Must define --duration-apple-fast token');
+        assert.ok(css.includes('--duration-apple-instant: 120ms;'), 'Must define --duration-apple-instant token');
+    });
+
+    test('2. Tactile Press-Down States: scale(0.96) and Shadow Compression Across Interactive Elements', () => {
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        // Check active selector group includes prompt chips, buttons, triggers, and action cards
+        assert.ok(css.includes('.prompt-chip:active'), 'Must define active press-down on .prompt-chip');
+        assert.ok(css.includes('.amount-wheel-chip:active'), 'Must define active press-down on .amount-wheel-chip');
+        assert.ok(css.includes('.send-btn:active'), 'Must define active press-down on .send-btn');
+        assert.ok(css.includes('.companion-quick-transfer-btn:active'), 'Must define active press-down on .companion-quick-transfer-btn');
+        assert.ok(css.includes('.companion-quick-pay-btn:active'), 'Must define active press-down on .companion-quick-pay-btn');
+        assert.ok(css.includes('.companion-contact-item:active'), 'Must define active press-down on .companion-contact-item');
+        assert.ok(css.includes('.companion-bill-item:active'), 'Must define active press-down on .companion-bill-item');
+        assert.ok(css.includes('.transaction-item-card:active'), 'Must define active press-down on .transaction-item-card');
+        assert.ok(css.includes('transform: var(--scale-press-down, scale(0.96)) translateZ(0) !important;'), 'Must apply hardware-accelerated scale(0.96)');
+    });
+
+    test('3. Skeleton Shimmer Architecture: Keyframes, Sweep Gradients, and Containers', () => {
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        assert.ok(css.includes('@keyframes skeletonShimmerSweep'), 'Must define @keyframes skeletonShimmerSweep');
+        assert.ok(css.includes('@keyframes skeletonPulseGlow'), 'Must define @keyframes skeletonPulseGlow');
+        assert.ok(css.includes('.skeleton-shimmer'), 'Must define .skeleton-shimmer base class');
+        assert.ok(css.includes('.skeleton-trx-card'), 'Must define .skeleton-trx-card for drawer');
+        assert.ok(css.includes('.skeleton-contact-card'), 'Must define .skeleton-contact-card for companion rail');
+        assert.ok(css.includes('.skeleton-bill-card'), 'Must define .skeleton-bill-card for companion bills');
+        assert.ok(css.includes('[data-theme="dark"] .skeleton-shimmer'), 'Must provide dark theme shimmering gradient sweep');
+    });
+
+    test('4. JavaScript Skeleton Shimmer Generators (Transactions, Contacts, Bills)', () => {
+        assert.equal(typeof frontend.renderTransactionsSkeleton, 'function', 'renderTransactionsSkeleton must be a function');
+        assert.equal(typeof frontend.renderCompanionContactsSkeleton, 'function', 'renderCompanionContactsSkeleton must be a function');
+        assert.equal(typeof frontend.renderCompanionBillsSkeleton, 'function', 'renderCompanionBillsSkeleton must be a function');
+
+        // Test transactions skeleton generator
+        const trxHtml = frontend.renderTransactionsSkeleton(3);
+        assert.ok(trxHtml.includes('skeleton-trx-card'), 'Must render skeleton-trx-card markup');
+        assert.ok(trxHtml.includes('skeleton-trx-avatar'), 'Must render avatar shimmer');
+        assert.ok(trxHtml.includes('skeleton-trx-amount'), 'Must render amount shimmer');
+        const trxCount = (trxHtml.match(/skeleton-trx-card/g) || []).length;
+        assert.equal(trxCount, 3, 'Must render exactly 3 rows when requested');
+
+        // Test contacts skeleton generator
+        const contactsHtml = frontend.renderCompanionContactsSkeleton(4);
+        assert.ok(contactsHtml.includes('skeleton-contact-card'), 'Must render skeleton-contact-card markup');
+        assert.ok(contactsHtml.includes('skeleton-contact-avatar'), 'Must render contact avatar shimmer');
+        assert.ok(contactsHtml.includes('skeleton-contact-btn'), 'Must render contact transfer button shimmer');
+        const contactCount = (contactsHtml.match(/skeleton-contact-card/g) || []).length;
+        assert.equal(contactCount, 4, 'Must render exactly 4 contacts rows');
+
+        // Test bills skeleton generator
+        const billsHtml = frontend.renderCompanionBillsSkeleton(3);
+        assert.ok(billsHtml.includes('skeleton-bill-card'), 'Must render skeleton-bill-card markup');
+        assert.ok(billsHtml.includes('skeleton-bill-icon'), 'Must render bill icon shimmer');
+        assert.ok(billsHtml.includes('skeleton-bill-btn'), 'Must render bill pay button shimmer');
+        const billCount = (billsHtml.match(/skeleton-bill-card/g) || []).length;
+        assert.equal(billCount, 3, 'Must render exactly 3 bills rows');
+    });
+
+    test('5. Accessibility: prefers-reduced-motion Media Queries and Non-Animated Fallback', () => {
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        // Check reduced motion queries for active states and shimmers
+        assert.ok(css.includes('@media (prefers-reduced-motion: reduce)'), 'Must define prefers-reduced-motion media query');
+        assert.ok(css.includes('transform: none !important;'), 'Must cleanly disable active transforms on reduced motion');
+        assert.ok(css.includes('animation: none !important;'), 'Must cleanly disable skeleton animations on reduced motion');
+    });
+
+    test('6. HTML Initial Hydration Markup Integrity', () => {
+        const html = fs.readFileSync(path.join(__dirname, '../../frontend/index.html'), 'utf-8');
+
+        assert.ok(html.includes('skeleton-contact-card'), 'Index HTML must include initial skeleton-contact-card placeholders');
+        assert.ok(html.includes('skeleton-bill-card'), 'Index HTML must include initial skeleton-bill-card placeholders');
+        assert.ok(html.includes('skeleton-trx-card'), 'Index HTML must include initial skeleton-trx-card placeholders');
+        assert.ok(html.includes('skeleton-shimmer'), 'Index HTML must include skeleton-shimmer sweeps');
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 16: Bespoke Fintech Pulse (نبض المحفظة) Visual Analytics Card', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const frontend = require('../../frontend/script.js');
+
+    test('1. calculateFintechPulseData: Mathematical Distribution Precision & 100% Sum Guarantee', () => {
+        assert.equal(typeof frontend.calculateFintechPulseData, 'function');
+
+        // Test with zero transactions (100% balance)
+        const emptyData = frontend.calculateFintechPulseData([], 3000000);
+        assert.equal(emptyData.billsSpent, 0);
+        assert.equal(emptyData.transfersSpent, 0);
+        assert.equal(emptyData.balance, 3000000);
+        assert.equal(emptyData.totalPool, 3000000);
+        assert.equal(emptyData.balancePct, 100);
+        assert.equal(emptyData.billsPct, 0);
+        assert.equal(emptyData.transfersPct, 0);
+
+        // Test with mixed spending transactions
+        const sampleTrxs = [
+            { id: 't1', type: 'BILL', amount: 100000 },
+            { id: 't2', type: 'BILL_PAYMENT', amount: 50000 },
+            { id: 't3', type: 'TRANSFER', amount: 350000, recipient: 'أحمد' }
+        ];
+        const data = frontend.calculateFintechPulseData(sampleTrxs, 500000);
+        // Total pool: 150000 + 350000 + 500000 = 1,000,000
+        assert.equal(data.billsSpent, 150000);
+        assert.equal(data.transfersSpent, 350000);
+        assert.equal(data.balance, 500000);
+        assert.equal(data.totalPool, 1000000);
+        assert.equal(data.billsPct, 15);
+        assert.equal(data.transfersPct, 35);
+        assert.equal(data.balancePct, 50);
+        assert.equal(data.billsPct + data.transfersPct + data.balancePct, 100);
+    });
+
+    test('2. getFintechPulseInsight: Proactive Contextual Iraqi AI Guidance Generation', () => {
+        assert.equal(typeof frontend.getFintechPulseInsight, 'function');
+
+        // Zero expenses tip
+        const zeroTip = frontend.getFintechPulseInsight({ billsSpent: 0, transfersSpent: 0, balancePct: 100 });
+        assert.ok(zeroTip.includes('عاشت إيدك'), 'Tip should include authentic Iraqi praise');
+        assert.ok(zeroTip.includes('أقل بـ 15%'), 'Tip should include comparative context');
+
+        // High balance retention tip
+        const highBalTip = frontend.getFintechPulseInsight({ billsSpent: 50000, transfersSpent: 50000, balancePct: 80 });
+        assert.ok(highBalTip.includes('عاشت إيدك') && highBalTip.includes('أمان'));
+
+        // High bills tip
+        const highBillsTip = frontend.getFintechPulseInsight({ billsSpent: 300000, transfersSpent: 50000, billsPct: 45, balancePct: 40 });
+        assert.ok(highBillsTip.includes('فواتير') && highBillsTip.includes('التزامك'));
+
+        // High transfers tip
+        const highTransfersTip = frontend.getFintechPulseInsight({ billsSpent: 50000, transfersSpent: 300000, transfersPct: 45, balancePct: 40 });
+        assert.ok(highTransfersTip.includes('التحويلات') || highTransfersTip.includes('مصاريفك'));
+    });
+
+    test('3. Segment State Management (get/setFintechPulseActiveSegment)', () => {
+        assert.equal(typeof frontend.getFintechPulseActiveSegment, 'function');
+        assert.equal(typeof frontend.setFintechPulseActiveSegment, 'function');
+
+        frontend.setFintechPulseActiveSegment('transfers');
+        assert.equal(frontend.getFintechPulseActiveSegment(), 'transfers');
+
+        frontend.setFintechPulseActiveSegment('bills');
+        assert.equal(frontend.getFintechPulseActiveSegment(), 'bills');
+
+        frontend.setFintechPulseActiveSegment('balance');
+        assert.equal(frontend.getFintechPulseActiveSegment(), 'balance');
+
+        // Invalid fallback
+        frontend.setFintechPulseActiveSegment('unknown_key');
+        assert.equal(frontend.getFintechPulseActiveSegment(), 'balance');
+    });
+
+    test('4. renderFintechPulse: SVG Donut Dash-Array, Center Text, and Proactive Badge Hydration', () => {
+        const segBalance = { setAttribute: (k, v) => { segBalance[k] = v; } };
+        const segTransfers = { setAttribute: (k, v) => { segTransfers[k] = v; } };
+        const segBills = { setAttribute: (k, v) => { segBills[k] = v; } };
+
+        const centerPct = { textContent: '' };
+        const centerLabel = { textContent: '' };
+        const pctBalance = { textContent: '' };
+        const amountBalance = { textContent: '' };
+        const pctTransfers = { textContent: '' };
+        const amountTransfers = { textContent: '' };
+        const pctBills = { textContent: '' };
+        const amountBills = { textContent: '' };
+        const insightText = { textContent: '' };
+
+        const mockElements = {
+            'pulse-seg-balance': segBalance,
+            'pulse-seg-transfers': segTransfers,
+            'pulse-seg-bills': segBills,
+            'pulse-center-pct': centerPct,
+            'pulse-center-label': centerLabel,
+            'pulse-pct-balance': pctBalance,
+            'pulse-amount-balance': amountBalance,
+            'pulse-pct-transfers': pctTransfers,
+            'pulse-amount-transfers': amountTransfers,
+            'pulse-pct-bills': pctBills,
+            'pulse-amount-bills': amountBills,
+            'pulse-ai-insight-text': insightText
+        };
+
+        const origDoc = global.document;
+        global.document = {
+            getElementById: (id) => mockElements[id] || null,
+            querySelectorAll: () => [],
+            querySelector: () => null
+        };
+
+        frontend.setFintechPulseActiveSegment('balance');
+        const res = frontend.renderFintechPulse();
+        assert.ok(res, 'renderFintechPulse should return calculated data object');
+        assert.ok(segBalance['stroke-dasharray'], 'Balance segment must have stroke-dasharray computed');
+        assert.ok(segTransfers['stroke-dasharray'], 'Transfers segment must have stroke-dasharray computed');
+        assert.ok(segBills['stroke-dasharray'], 'Bills segment must have stroke-dasharray computed');
+        assert.ok(centerPct.textContent.includes('%'), 'Center percentage must be populated');
+        assert.equal(centerLabel.textContent, 'الرصيد المتاح');
+        assert.ok(insightText.textContent.length > 0, 'AI insight text must be populated');
+
+        global.document = origDoc;
+    });
+
+    test('5. HTML Component Integrity: Donut SVG, Micro-Gradients, Filter Glow, and AI Badge', () => {
+        const html = fs.readFileSync(path.join(__dirname, '../../frontend/index.html'), 'utf-8');
+
+        assert.ok(html.includes('id="companion-pulse-section"'), 'index.html must include companion-pulse-section');
+        assert.ok(html.includes('id="companion-pulse-card"'), 'index.html must include companion-pulse-card');
+        assert.ok(html.includes('id="pulse-donut-svg"'), 'index.html must include pulse-donut-svg');
+        assert.ok(html.includes('id="pulse-grad-balance"'), 'SVG defs must include pulse-grad-balance linearGradient');
+        assert.ok(html.includes('id="pulse-grad-transfers"'), 'SVG defs must include pulse-grad-transfers linearGradient');
+        assert.ok(html.includes('id="pulse-grad-bills"'), 'SVG defs must include pulse-grad-bills linearGradient');
+        assert.ok(html.includes('id="pulse-donut-glow"'), 'SVG defs must include glowing dual-theme feDropShadow filter');
+        assert.ok(html.includes('id="pulse-seg-balance"'), 'Must have pulse-seg-balance circle');
+        assert.ok(html.includes('id="pulse-seg-transfers"'), 'Must have pulse-seg-transfers circle');
+        assert.ok(html.includes('id="pulse-seg-bills"'), 'Must have pulse-seg-bills circle');
+        assert.ok(html.includes('id="pulse-chip-balance"'), 'Must have pulse-chip-balance interactive chip');
+        assert.ok(html.includes('id="pulse-chip-transfers"'), 'Must have pulse-chip-transfers interactive chip');
+        assert.ok(html.includes('id="pulse-chip-bills"'), 'Must have pulse-chip-bills interactive chip');
+        assert.ok(html.includes('id="pulse-ai-insight-badge"'), 'Must have glassmorphic pulse-ai-insight-badge');
+        assert.ok(html.includes('id="pulse-ai-insight-text"'), 'Must have pulse-ai-insight-text container');
+    });
+
+    test('6. CSS Architecture: Micro-Animations, Glassmorphic Styling, and Reduced Motion', () => {
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        assert.ok(css.includes('.companion-pulse-card'), 'CSS must style .companion-pulse-card');
+        assert.ok(css.includes('.pulse-donut-svg'), 'CSS must style .pulse-donut-svg');
+        assert.ok(css.includes('.pulse-donut-segment'), 'CSS must style .pulse-donut-segment with transitions');
+        assert.ok(css.includes('.pulse-legend-chip'), 'CSS must style .pulse-legend-chip');
+        assert.ok(css.includes('.pulse-ai-insight-badge'), 'CSS must style glassmorphic .pulse-ai-insight-badge');
+        assert.ok(css.includes('@keyframes pulseCardEntrance'), 'CSS must define pulseCardEntrance keyframes');
+        assert.ok(css.includes('@keyframes pulseSparkleGlow'), 'CSS must define pulseSparkleGlow keyframes');
+        assert.ok(css.includes('.pulse-legend-chip:active'), 'Reduced motion must include .pulse-legend-chip:active');
+    });
+});
+
+/* ==========================================================================
+   TASK 17 REGRESSION SUITE: Robust Disambiguation Selection,
+   Multi-Format Number Parser, Session Persistence & Interactive Disambiguation UI
+   ========================================================================== */
+
+describe('Task 17 Regression Suite: Contact Disambiguation & Interactive Selection Cards', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const frontend = require('../../frontend/script.js');
+
+    const mockCandidates = [
+        { id: 'cnt_101', name: 'أحمد كمال', alias: 'أحمد كمال (صديق الجامعة)', phone: '+9647801122334', wallet_provider: 'ZainCash' },
+        { id: 'cnt_102', name: 'أحمد جاسم', alias: 'أحمد جاسم (الفيترجي / المصلح)', phone: '+9647802233445', wallet_provider: 'AsiaHawala' }
+    ];
+
+    test('1. resolveContactSelection: Digits, Arabic-Indic numerals, and punctuated numbers', () => {
+        // Standard ASCII digits
+        assert.equal(resolveContactSelection('1', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('2', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection(' 1 ', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('1.', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('2.', mockCandidates)?.id, 'cnt_102');
+
+        // Arabic-Indic Numerals
+        assert.equal(resolveContactSelection('١', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('٢', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection('١.', mockCandidates)?.id, 'cnt_101');
+    });
+
+    test('2. resolveContactSelection: Prefixed choices and Iraqi Arabic textual ordinals', () => {
+        // Prefixed strings
+        assert.equal(resolveContactSelection('رقم 1', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('رقم 2', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection('الرقم 1', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('خيار 1', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('الخيار 1', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('الخيار رقم 2', mockCandidates)?.id, 'cnt_102');
+
+        // Textual Arabic words & ordinals
+        assert.equal(resolveContactSelection('واحد', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('اثنين', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection('ثنين', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection('الاول', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('الأول', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('الثاني', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection('ثاني', mockCandidates)?.id, 'cnt_102');
+    });
+
+    test('3. resolveContactSelection: Phone suffix and distinctive alias keywords', () => {
+        // Distinguishing phone tails
+        assert.equal(resolveContactSelection('2334', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('3445', mockCandidates)?.id, 'cnt_102');
+
+        // Name distinctions & Iraqi relationship aliases
+        assert.equal(resolveContactSelection('كمال', mockCandidates)?.id, 'cnt_101');
+        assert.equal(resolveContactSelection('جاسم', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection('الفيترجي', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection('المصلح', mockCandidates)?.id, 'cnt_102');
+        assert.equal(resolveContactSelection('صديق الجامعة', mockCandidates)?.id, 'cnt_101');
+
+        // Out of bounds / non-matching
+        assert.equal(resolveContactSelection('9', mockCandidates), null);
+        assert.equal(resolveContactSelection('عمر', mockCandidates), null);
+    });
+
+    test('4. parseDisambiguationData: Extract structured candidates from assistant message', () => {
+        assert.equal(typeof frontend.parseDisambiguationData, 'function');
+
+        const botMsg = `يا هلا عيوني، عندك أكثر من جهة اتصال باسم "أحمد" بمحفظتك:
+1 أحمد كمال (صديق الجامعة) (+9647801122334)
+2 أحمد جاسم (الفيترجي / المصلح) (+9647802233445)
+
+يا واحد منهم تقصد؟ يرجى كتابة الرقم أو الاسم الكامل حتى أجهّزلك التحويل.`;
+
+        const parsed = frontend.parseDisambiguationData(botMsg);
+        assert.ok(parsed, 'Must successfully parse disambiguation data');
+        assert.equal(parsed.name, 'أحمد');
+        assert.equal(parsed.options.length, 2);
+        assert.equal(parsed.options[0].number, '1');
+        assert.equal(parsed.options[0].name, 'أحمد كمال');
+        assert.equal(parsed.options[0].subtitle, 'صديق الجامعة');
+        assert.equal(parsed.options[0].phone, '+9647801122334');
+        assert.equal(parsed.options[1].number, '2');
+        assert.equal(parsed.options[1].name, 'أحمد جاسم');
+        assert.equal(parsed.options[1].subtitle, 'الفيترجي / المصلح');
+        assert.equal(parsed.options[1].phone, '+9647802233445');
+
+        // Non-disambiguation message should return null
+        assert.equal(frontend.parseDisambiguationData('تم تحويل المبلغ بنجاح'), null);
+    });
+
+    test('5. renderDisambiguationCard: Interactive 1-tap options and accessible markup', () => {
+        assert.equal(typeof frontend.renderDisambiguationCard, 'function');
+
+        const mockData = {
+            name: 'أحمد',
+            options: [
+                { number: '1', name: 'أحمد كمال', subtitle: 'صديق الجامعة', phone: '+9647801122334' },
+                { number: '2', name: 'أحمد جاسم', subtitle: 'الفيترجي / المصلح', phone: '+9647802233445' }
+            ]
+        };
+
+        const cardHtml = frontend.renderDisambiguationCard(mockData);
+        assert.ok(cardHtml.includes('class="fintech-disambiguation-card"'), 'Must contain container class');
+        assert.ok(cardHtml.includes('class="disambiguation-header"'), 'Must contain header');
+        assert.ok(cardHtml.includes('اختر جهة الاتصال المطلوبة'), 'Must contain friendly header title');
+        assert.ok(cardHtml.includes('data-choice-number="1"'), 'Must have data attribute for option 1');
+        assert.ok(cardHtml.includes('data-choice-number="2"'), 'Must have data attribute for option 2');
+        assert.ok(cardHtml.includes('option-badge'), 'Must render option number badge');
+        assert.ok(cardHtml.includes('option-avatar'), 'Must render option avatar');
+        assert.ok(cardHtml.includes('option-name'), 'Must render option name');
+        assert.ok(cardHtml.includes('option-subtitle'), 'Must render option subtitle');
+        assert.ok(cardHtml.includes('option-phone'), 'Must render option phone');
+    });
+
+    test('6. CSS Architecture: Disambiguation Card, Hover Dynamics & Badges', () => {
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        assert.ok(css.includes('.fintech-disambiguation-card'), 'CSS must define .fintech-disambiguation-card');
+        assert.ok(css.includes('.disambiguation-option-btn'), 'CSS must define .disambiguation-option-btn');
+        assert.ok(css.includes('.disambiguation-option-btn:hover'), 'CSS must define interactive hover states');
+        assert.ok(css.includes('.disambiguation-option-btn .option-badge'), 'CSS must style .option-badge');
+        assert.ok(css.includes('.disambiguation-option-btn .option-avatar'), 'CSS must style .option-avatar');
+        assert.ok(css.includes('@keyframes disambiguationCardEntrance'), 'CSS must include smooth entrance animation');
+        assert.ok(css.includes('body.light-theme .fintech-disambiguation-card'), 'CSS must support light theme');
+    });
+});
+
+
 
 

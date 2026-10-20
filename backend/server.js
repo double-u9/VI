@@ -632,8 +632,33 @@ function addContactMutation({ name, phone, alias, wallet_provider }) {
 
 /* ==========================================================================
    Multi-User Session State Store & Pruning Manager
-   ========================================================================== */
+/**
+ * Dual-Currency Exchange Rate Configuration (IQD ⇄ USD)
+ * Default baseline: 100 USD = 153,000 IQD => 1 USD = 1,530 IQD
+ * Configurable dynamically via process.env.IQD_PER_USD
+ */
+const EXCHANGE_RATE_CONFIG = {
+    base_currency: 'IQD',
+    target_currency: 'USD',
+    iqd_per_usd: parseFloat(process.env.IQD_PER_USD || '1530'),
+    usd_sample: 100,
+    iqd_sample: 153000,
+    formatted_rate: '100$ = 153,000 د.ع',
+    rate_1_usd: 1530,
+    last_updated: new Date().toISOString()
+};
 
+function getExchangeRate() {
+    const rate = parseFloat(process.env.IQD_PER_USD || EXCHANGE_RATE_CONFIG.iqd_per_usd || '1530');
+    return {
+        ...EXCHANGE_RATE_CONFIG,
+        iqd_per_usd: rate,
+        rate_1_usd: rate,
+        formatted_rate: `100$ = ${(rate * 100).toLocaleString('en-US')} د.ع`
+    };
+}
+
+const SESSIONS_CACHE_FILE = path.join(__dirname, '.session_cache.json');
 const sessions = new Map();
 const DEFAULT_SESSION_ID = 'default_session';
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 Hours
@@ -652,6 +677,37 @@ function createInitialSessionState() {
     };
 }
 
+function loadSessionsFromDisk() {
+    try {
+        if (fs.existsSync(SESSIONS_CACHE_FILE)) {
+            const raw = fs.readFileSync(SESSIONS_CACHE_FILE, 'utf-8');
+            const data = JSON.parse(raw);
+            if (data && typeof data === 'object') {
+                for (const [id, s] of Object.entries(data)) {
+                    sessions.set(id, s);
+                }
+            }
+        }
+    } catch (_) {}
+}
+
+let saveSessionTimeout = null;
+function persistSessionsToDisk() {
+    if (saveSessionTimeout) clearTimeout(saveSessionTimeout);
+    saveSessionTimeout = setTimeout(() => {
+        try {
+            const obj = {};
+            for (const [id, s] of sessions.entries()) {
+                obj[id] = s;
+            }
+            fs.writeFileSync(SESSIONS_CACHE_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+        } catch (_) {}
+    }, 60);
+}
+
+// Load persisted sessions on startup
+loadSessionsFromDisk();
+
 const MAX_CONVERSATION_HISTORY = 12;
 
 function trimConversationHistory(history, limit = MAX_CONVERSATION_HISTORY) {
@@ -669,6 +725,7 @@ function appendToConversationHistory(session, role, content) {
     }
     session.conversationHistory.push({ role, content });
     session.conversationHistory = trimConversationHistory(session.conversationHistory, MAX_CONVERSATION_HISTORY);
+    persistSessionsToDisk();
 }
 
 function recordSessionTurn(session, userMessage, assistantReply) {
@@ -679,6 +736,7 @@ function recordSessionTurn(session, userMessage, assistantReply) {
     if (assistantReply) {
         appendToConversationHistory(session, 'assistant', assistantReply);
     }
+    persistSessionsToDisk();
 }
 
 function getSession(sessionId) {
@@ -694,17 +752,21 @@ function getSession(sessionId) {
 function resetSession(sessionId) {
     const validId = (typeof sessionId === 'string' && sessionId.trim()) ? sessionId.trim() : DEFAULT_SESSION_ID;
     sessions.set(validId, createInitialSessionState());
+    persistSessionsToDisk();
 }
 
 // Basic cleanup interval to prune inactive sessions older than 24 hours
 setInterval(() => {
     const now = Date.now();
+    let pruned = false;
     for (const [id, session] of sessions.entries()) {
         if (id !== DEFAULT_SESSION_ID && (now - session.lastActive > SESSION_TTL_MS)) {
             sessions.delete(id);
+            pruned = true;
             console.log(`[Session Pruned]: Inactive session "${id}" removed from memory.`);
         }
     }
+    if (pruned) persistSessionsToDisk();
 }, 60 * 60 * 1000).unref();
 
 
@@ -870,21 +932,41 @@ function findAmbiguousContacts(userMessage, contacts) {
 
 function resolveContactSelection(userMessage, matches) {
     if (!userMessage || !Array.isArray(matches) || matches.length === 0) return null;
+    const cleanDigits = normalizeDigits(userMessage);
     const raw = userMessage.trim().toLowerCase();
-    const normalized = normalizeArabic(raw);
+    const normalized = normalizeArabic(cleanDigits).replace(/[.,!?،؟\-_()]/g, ' ').trim();
 
-    // Number matching: "1", "2", "3", "4" or "الاول", "الثاني", "الثالث", "الرابع"
-    if (raw === '1' || normalized === 'الاول' || normalized.startsWith('الاول ')) {
-        return matches[0] || null;
+    // 1. Direct number / Arabic word / Ordinal mapping:
+    const numMap = {
+        '1': 0, 'واحد': 0, 'الاول': 0, 'اول': 0,
+        '2': 1, 'اثنين': 1, 'ثنين': 1, 'الثاني': 1, 'ثاني': 1,
+        '3': 2, 'تلاثة': 2, 'ثلاثة': 2, 'الثالث': 2, 'ثالث': 2,
+        '4': 3, 'اربعة': 3, 'أربعة': 3, 'الرابع': 3, 'رابع': 3,
+        '5': 4, 'خمسة': 4, 'الخامس': 4, 'خامس': 4
+    };
+
+    // Check direct word / prefix matching:
+    for (const [kw, idx] of Object.entries(numMap)) {
+        if (matches[idx]) {
+            if (normalized === kw || 
+                normalized === `رقم ${kw}` || 
+                normalized === `الرقم ${kw}` || 
+                normalized === `خيار ${kw}` || 
+                normalized === `الخيار ${kw}` ||
+                normalized === `خيار رقم ${kw}` ||
+                normalized === `الخيار رقم ${kw}` ||
+                normalized.startsWith(`${kw} `) ||
+                normalized.endsWith(` ${kw}`)) {
+                return matches[idx];
+            }
+        }
     }
-    if (raw === '2' || normalized === 'الثاني' || normalized.startsWith('الثاني ')) {
-        return matches[1] || null;
-    }
-    if (raw === '3' || normalized === 'الثالث' || normalized.startsWith('الثالث ')) {
-        return matches[2] || null;
-    }
-    if (raw === '4' || normalized === 'الرابع' || normalized.startsWith('الرابع ')) {
-        return matches[3] || null;
+
+    // Direct single digit regex anywhere in string (e.g. "1", "1.", "رقم 1", "الخيار 1", "١")
+    const digitMatch = normalized.match(/(?:^|\s)(?:رقم\s*|الرقم\s*|خيار\s*|الخيار\s*)?([1-9])(?:\s|$)/);
+    if (digitMatch) {
+        const idx = parseInt(digitMatch[1], 10) - 1;
+        if (matches[idx]) return matches[idx];
     }
 
     // Phone digits matching:
@@ -894,7 +976,7 @@ function resolveContactSelection(userMessage, matches) {
         if (found) return found;
     }
 
-    // Distinguishing alias words (e.g. "كمال", "جاسم", "الفيترجي"):
+    // Distinguishing alias words (e.g. "كمال", "جاسم", "الفيترجي", "المصلح", "صديق الجامعة"):
     for (const c of matches) {
         const normAlias = normalizeArabic(c.alias || '');
         const normName = normalizeArabic(c.name || '');
@@ -905,6 +987,7 @@ function resolveContactSelection(userMessage, matches) {
             }
         }
         if (normAlias && normalized.includes(normAlias)) return c;
+        if (normName && normalized.includes(normName)) return c;
     }
 
     return null;
@@ -2417,6 +2500,43 @@ app.post('/api/chat', async (req, res) => {
 
         // 12. Check if user sent a standalone numbered choice when no selection prompt is active
         if (isStandaloneNumberedChoice(userMessage) && !session.pendingDisambiguation && !session.pendingBillPayment && !session.pendingTransfer && !session.pendingTransferRecipient && !session.pendingContactCreation) {
+            // Intelligent recovery: Check if the last assistant turn in conversation history asked for a contact selection
+            const history = session.conversationHistory || [];
+            const lastAssistantTurn = [...history].reverse().find(t => t.role === 'assistant');
+            if (lastAssistantTurn && (lastAssistantTurn.content.includes('عندك أكثر من جهة اتصال') || lastAssistantTurn.content.includes('يا واحد منهم تقصد'))) {
+                const nameMatch = lastAssistantTurn.content.match(/باسم\s*["']?([\u0621-\u064A\s]+?)["']?\s*بمحفظتك/);
+                const recoveredName = nameMatch ? nameMatch[1].trim() : null;
+                const ambiguous = recoveredName ? findAmbiguousContacts(recoveredName, db.contacts) : null;
+                if (ambiguous && ambiguous.matches && ambiguous.matches.length > 0) {
+                    const selected = resolveContactSelection(userMessage, ambiguous.matches);
+                    if (selected) {
+                        const lastUserTurnWithAmt = [...history].reverse().find(t => t.role === 'user' && extractAmount(t.content));
+                        const recoveredAmt = lastUserTurnWithAmt ? extractAmount(lastUserTurnWithAmt.content) : null;
+                        if (recoveredAmt) {
+                            session.pendingTransfer = {
+                                recipient: selected.alias || selected.name,
+                                phone: selected.phone,
+                                amount: recoveredAmt
+                            };
+                            persistSessionsToDisk();
+                            const remainingBal = db.user.balance - recoveredAmt;
+                            const reply = `تمام عيوني، اخترت ${selected.alias || selected.name}.\n\nتفاصيل التحويل:\n• المستلم: ${selected.alias || selected.name} (${selected.phone})\n• المبلغ: ${recoveredAmt.toLocaleString()} د.ع\n• الرصيد بعد التحويل: ${remainingBal.toLocaleString()} د.ع\n\nمتأكد تريد أحول؟ (يرجى الرد بـ "نعم" للتأكيد أو "إلغاء" للتراجع).`;
+                            recordSessionTurn(session, userMessage, reply);
+                            return res.json({ response: reply });
+                        } else {
+                            session.pendingTransferRecipient = {
+                                name: selected.alias || selected.name,
+                                phone: selected.phone
+                            };
+                            persistSessionsToDisk();
+                            const reply = `صار عيوني، اخترت ${selected.alias || selected.name} (${selected.phone}).\nشكد المبلغ اللي تريد تحوله له؟`;
+                            recordSessionTurn(session, userMessage, reply);
+                            return res.json({ response: reply });
+                        }
+                    }
+                }
+            }
+
             const reply = 'ماكو أي خيارات أو قائمة معروضة حالياً للاختيار منها. بشنو أگدر أساعدك بمحفظتك؟';
             recordSessionTurn(session, userMessage, reply);
             return res.json({ response: reply });
@@ -2581,10 +2701,21 @@ Confirm success warmly, and attach the action tag at the very end:
     }
 });
 
+app.get('/api/exchange-rate', (req, res) => {
+    try {
+        res.json(getExchangeRate());
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/db', (req, res) => {
     try {
         const db = readDatabase();
-        res.json(db);
+        res.json({
+            ...db,
+            exchange_rate: getExchangeRate()
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -2601,7 +2732,8 @@ app.get('/api/transactions', (req, res) => {
             currency: db.user.currency || 'IQD',
             userName: db.user.name || 'محمد',
             totalSpent,
-            count: trxs.length
+            count: trxs.length,
+            exchange_rate: getExchangeRate()
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -2928,5 +3060,7 @@ module.exports = {
     appendAuditLog,
     clearAuditLog,
     AUDIT_LOG_PATH,
-    splitTextIntoTtsChunks
+    splitTextIntoTtsChunks,
+    EXCHANGE_RATE_CONFIG,
+    getExchangeRate
 };

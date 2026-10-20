@@ -181,6 +181,7 @@
           </div>
         </button>
 
+
         <!-- 3. أدوات التحكم بالصوت وسرعة النطق (TTS Header Controls & Settings Popover) -->
         <div class="tts-header-group" id="tts-header-group">
           <!-- Glassy Capsule Pill merging Toggle & Settings (Image 1 Concept) -->
@@ -286,6 +287,7 @@
         <!-- 4. رصيد الحساب البنكي (مخفي من الهيدر لمنع التكرار ونقله لبطاقة الشريط الجانبي) -->
         <div class="wallet-pill" id="wallet-pill" style="display: none;">
           <span class="wallet-balance" id="wallet-balance-display">*** IQD</span>
+          <span class="wallet-balance-secondary" id="wallet-balance-secondary">*** USD</span>
         </div>
       </div>
     </header>
@@ -440,10 +442,6 @@
     <!-- Rail Header -->
     <div class="companion-rail-header">
       <div class="companion-title-group">
-        <div class="companion-badge-live" aria-hidden="true">
-          <span class="live-dot"></span>
-          <span>المساعد السريع</span>
-        </div>
         <h2 class="companion-rail-title">المحفظة السريعة</h2>
       </div>
       <button type="button" id="companion-rail-close-btn" class="companion-close-btn" aria-label="طي الشريط الجانبي">
@@ -455,7 +453,7 @@
     </div>
 
     <div class="companion-rail-body">
-      <!-- 1. Live Balance Indicator Card -->
+      <!-- 1. Live Balance Indicator Card (Dual-Currency IQD ⇄ USD with 3D Flip) -->
       <div class="companion-balance-card" id="companion-balance-card">
         <div class="companion-balance-top">
           <div class="companion-balance-label">
@@ -465,22 +463,37 @@
             </svg>
             <span>الرصيد المتاح حالياً</span>
           </div>
-          <button type="button" id="wallet-eye-btn" class="companion-balance-eye-btn is-hidden" aria-label="إظهار الرصيد">
-            <svg class="eye-icon eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-              <line x1="1" y1="1" x2="23" y2="23"></line>
-            </svg>
-            <svg class="eye-icon eye-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-          </button>
+          <div class="companion-balance-actions">
+            <!-- الزر التفاعلي لتبديل العملة في بطاقة الرصيد -->
+            <button type="button" id="companion-currency-toggle-btn" class="companion-currency-toggle-btn" 
+              aria-label="تبديل العملة بين الدينار والدولار" title="تبديل العملة (IQD ⇄ USD)">
+              <span class="companion-cur-badge-active" id="companion-cur-badge-active">IQD</span>
+              <span class="companion-cur-swap-icon" aria-hidden="true">⇄</span>
+              <span class="companion-cur-badge-alt" id="companion-cur-badge-alt">USD</span>
+            </button>
+            <button type="button" id="wallet-eye-btn" class="companion-balance-eye-btn is-hidden" aria-label="إظهار الرصيد">
+              <svg class="eye-icon eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+              <svg class="eye-icon eye-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div class="companion-balance-amount" id="companion-rail-balance">
-          *** IQD
+        <div class="companion-balance-wrapper" id="companion-balance-wrapper">
+          <div class="companion-balance-amount balance-flip-container" id="companion-rail-balance">
+            *** IQD
+          </div>
+          <div class="companion-balance-secondary" id="companion-rail-balance-secondary">
+            *** USD
+          </div>
         </div>
         <div class="companion-balance-footer">
           <span class="companion-account-holder">المحفظة: محمد • VI Pay</span>
+          <span class="companion-exchange-ticker" id="companion-exchange-ticker" title="سعر الصرف المعتمد">100$ = 153,000 د.ع</span>
         </div>
       </div>
 
@@ -500,7 +513,26 @@
         </div>
 
         <div class="companion-contacts-list" id="companion-contacts-list" role="list">
-          <!-- Populated dynamically via JavaScript with fallback initial contacts -->
+          <div class="skeleton-contact-card" aria-hidden="true">
+            <div class="companion-contact-lead" style="flex: 1; gap: 0.65rem;">
+              <div class="skeleton-shimmer skeleton-contact-avatar"></div>
+              <div class="companion-contact-info" style="flex: 1; gap: 5px;">
+                <div class="skeleton-shimmer skeleton-line" style="width: 65%; height: 12px;"></div>
+                <div class="skeleton-shimmer skeleton-line" style="width: 40%; height: 9px;"></div>
+              </div>
+            </div>
+            <div class="skeleton-shimmer skeleton-contact-btn"></div>
+          </div>
+          <div class="skeleton-contact-card" aria-hidden="true">
+            <div class="companion-contact-lead" style="flex: 1; gap: 0.65rem;">
+              <div class="skeleton-shimmer skeleton-contact-avatar"></div>
+              <div class="companion-contact-info" style="flex: 1; gap: 5px;">
+                <div class="skeleton-shimmer skeleton-line" style="width: 50%; height: 12px;"></div>
+                <div class="skeleton-shimmer skeleton-line" style="width: 35%; height: 9px;"></div>
+              </div>
+            </div>
+            <div class="skeleton-shimmer skeleton-contact-btn"></div>
+          </div>
         </div>
         <button type="button" id="companion-contacts-more-btn" class="companion-contacts-more-btn" aria-expanded="false" aria-label="عرض المزيد من جهات الاتصال">
           <span class="more-label">المزيد</span>
@@ -526,7 +558,26 @@
         </div>
 
         <div class="companion-bills-list" id="companion-bills-list" role="list">
-          <!-- Populated dynamically via JavaScript with bills and direct 'تسديد' triggers -->
+          <div class="skeleton-bill-card" aria-hidden="true">
+            <div class="companion-bill-lead" style="flex: 1; gap: 0.65rem;">
+              <div class="skeleton-shimmer skeleton-bill-icon"></div>
+              <div class="companion-bill-info" style="flex: 1; gap: 5px;">
+                <div class="skeleton-shimmer skeleton-line" style="width: 70%; height: 12px;"></div>
+                <div class="skeleton-shimmer skeleton-line" style="width: 42%; height: 10px;"></div>
+              </div>
+            </div>
+            <div class="skeleton-shimmer skeleton-bill-btn"></div>
+          </div>
+          <div class="skeleton-bill-card" aria-hidden="true">
+            <div class="companion-bill-lead" style="flex: 1; gap: 0.65rem;">
+              <div class="skeleton-shimmer skeleton-bill-icon"></div>
+              <div class="companion-bill-info" style="flex: 1; gap: 5px;">
+                <div class="skeleton-shimmer skeleton-line" style="width: 55%; height: 12px;"></div>
+                <div class="skeleton-shimmer skeleton-line" style="width: 38%; height: 10px;"></div>
+              </div>
+            </div>
+            <div class="skeleton-shimmer skeleton-bill-btn"></div>
+          </div>
         </div>
 
         <button type="button" id="companion-bills-more-btn" class="companion-contacts-more-btn companion-bills-more-btn" aria-expanded="false" aria-label="عرض المزيد من الفواتير">
@@ -535,6 +586,96 @@
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
+      </div>
+
+      <!-- 4. Fintech Pulse Section (نبض المحفظة - التحليل المالي الذكي) -->
+      <div class="companion-section companion-pulse-section" id="companion-pulse-section">
+        <div class="companion-pulse-card" id="companion-pulse-card">
+          <!-- Donut & Mini Stats Grid -->
+          <div class="pulse-chart-row">
+            <div class="pulse-donut-wrapper">
+              <svg class="pulse-donut-svg" id="pulse-donut-svg" width="112" height="112" viewBox="0 0 120 120" role="img" aria-label="مخطط نبض المحفظة">
+                <defs>
+                  <!-- Dual Theme Gradients -->
+                  <linearGradient id="pulse-grad-balance" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#10b981" />
+                    <stop offset="100%" stop-color="#059669" />
+                  </linearGradient>
+                  <linearGradient id="pulse-grad-transfers" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#06b6d4" />
+                    <stop offset="100%" stop-color="#3b82f6" />
+                  </linearGradient>
+                  <linearGradient id="pulse-grad-bills" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f59e0b" />
+                    <stop offset="100%" stop-color="#ef4444" />
+                  </linearGradient>
+                  <filter id="pulse-donut-glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3" />
+                  </filter>
+                </defs>
+                <!-- Background track -->
+                <circle class="pulse-track-bg" cx="60" cy="60" r="46" />
+                <!-- Dynamic SVG Donut Segments -->
+                <circle class="pulse-donut-segment pulse-seg-balance" id="pulse-seg-balance" cx="60" cy="60" r="46" />
+                <circle class="pulse-donut-segment pulse-seg-transfers" id="pulse-seg-transfers" cx="60" cy="60" r="46" />
+                <circle class="pulse-donut-segment pulse-seg-bills" id="pulse-seg-bills" cx="60" cy="60" r="46" />
+              </svg>
+              <!-- Center Donut Content -->
+              <div class="pulse-donut-center" id="pulse-donut-center">
+                <span class="pulse-center-pct" id="pulse-center-pct">100%</span>
+                <span class="pulse-center-label" id="pulse-center-label">الرصيد المتاح</span>
+              </div>
+            </div>
+
+            <!-- Interactive Legend Chips -->
+            <div class="pulse-legend-group" id="pulse-legend-group" role="group" aria-label="أقسام التحليل المالي">
+              <button type="button" class="pulse-legend-chip is-active" data-segment="balance" id="pulse-chip-balance" aria-label="الرصيد المتبقي">
+                <span class="pulse-chip-indicator indicator-balance"></span>
+                <div class="pulse-chip-details">
+                  <span class="pulse-chip-title">الرصيد</span>
+                  <span class="pulse-chip-amount" id="pulse-amount-balance">--</span>
+                </div>
+                <span class="pulse-chip-pct" id="pulse-pct-balance">--%</span>
+              </button>
+
+              <button type="button" class="pulse-legend-chip" data-segment="transfers" id="pulse-chip-transfers" aria-label="التحويلات المالية">
+                <span class="pulse-chip-indicator indicator-transfers"></span>
+                <div class="pulse-chip-details">
+                  <span class="pulse-chip-title">تحويلات</span>
+                  <span class="pulse-chip-amount" id="pulse-amount-transfers">--</span>
+                </div>
+                <span class="pulse-chip-pct" id="pulse-pct-transfers">--%</span>
+              </button>
+
+              <button type="button" class="pulse-legend-chip" data-segment="bills" id="pulse-chip-bills" aria-label="دفع الفواتير">
+                <span class="pulse-chip-indicator indicator-bills"></span>
+                <div class="pulse-chip-details">
+                  <span class="pulse-chip-title">فواتير</span>
+                  <span class="pulse-chip-amount" id="pulse-amount-bills">--</span>
+                </div>
+                <span class="pulse-chip-pct" id="pulse-pct-bills">--%</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Glassmorphic AI Proactive Insight Badge -->
+          <div class="pulse-ai-insight-badge" id="pulse-ai-insight-badge" role="status" aria-live="polite">
+            <div class="pulse-ai-sparkle-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path>
+              </svg>
+            </div>
+            <div class="pulse-ai-body">
+              <div class="pulse-ai-header-row">
+                <span class="pulse-ai-tag">توجيه فاي الذكي</span>
+                <span class="pulse-ai-status-dot" aria-hidden="true"></span>
+              </div>
+              <p class="pulse-ai-text" id="pulse-ai-insight-text">
+                عاشت إيدك! مصاريفك هذا الشهر أقل بـ 15% من الشهر الفات
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -563,13 +704,6 @@
       <!-- Drawer Header -->
       <div class="drawer-header">
         <div class="drawer-title-group">
-          <svg class="drawer-header-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3.5" y="2.5" width="17" height="19" rx="4.5" ry="4.5"></rect>
-            <line x1="7.5" y1="8" x2="16.5" y2="8"></line>
-            <line x1="7.5" y1="12" x2="16.5" y2="12"></line>
-            <line x1="7.5" y1="16" x2="16.5" y2="16"></line>
-          </svg>
           <h2 class="drawer-title">سجل المعاملات الأخيرة</h2>
         </div>
         <div class="drawer-header-actions">
@@ -620,7 +754,39 @@
 
       <!-- Scrollable Transactions List -->
       <div class="drawer-list-wrapper" id="drawer-transactions-list">
-        <!-- Rendered dynamically via JavaScript -->
+        <div class="skeleton-trx-card" aria-hidden="true">
+          <div class="skeleton-trx-lead">
+            <div class="skeleton-shimmer skeleton-trx-avatar"></div>
+            <div class="skeleton-trx-lines">
+              <div class="skeleton-shimmer skeleton-line title" style="width: 68%"></div>
+              <div class="skeleton-shimmer skeleton-line subtitle" style="width: 42%"></div>
+              <div class="skeleton-shimmer skeleton-line date" style="width: 28%"></div>
+            </div>
+          </div>
+          <div class="skeleton-shimmer skeleton-trx-amount"></div>
+        </div>
+        <div class="skeleton-trx-card" aria-hidden="true">
+          <div class="skeleton-trx-lead">
+            <div class="skeleton-shimmer skeleton-trx-avatar"></div>
+            <div class="skeleton-trx-lines">
+              <div class="skeleton-shimmer skeleton-line title" style="width: 52%"></div>
+              <div class="skeleton-shimmer skeleton-line subtitle" style="width: 35%"></div>
+              <div class="skeleton-shimmer skeleton-line date" style="width: 28%"></div>
+            </div>
+          </div>
+          <div class="skeleton-shimmer skeleton-trx-amount"></div>
+        </div>
+        <div class="skeleton-trx-card" aria-hidden="true">
+          <div class="skeleton-trx-lead">
+            <div class="skeleton-shimmer skeleton-trx-avatar"></div>
+            <div class="skeleton-trx-lines">
+              <div class="skeleton-shimmer skeleton-line title" style="width: 62%"></div>
+              <div class="skeleton-shimmer skeleton-line subtitle" style="width: 40%"></div>
+              <div class="skeleton-shimmer skeleton-line date" style="width: 28%"></div>
+            </div>
+          </div>
+          <div class="skeleton-shimmer skeleton-trx-amount"></div>
+        </div>
       </div>
 
       <!-- Drawer Footer Note -->
@@ -649,12 +815,6 @@
         </div>
         <h3 class="quick-transfer-title" id="quick-transfer-title">تحويل سريع للمال</h3>
       </div>
-      <button type="button" id="quick-transfer-close-btn" class="quick-transfer-close-btn" aria-label="إغلاق نافذة التحويل">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
     </div>
 
     <!-- Contact summary badge -->
@@ -671,34 +831,49 @@
       </div>
     </div>
 
-    <!-- Amount Selector / Wheel section -->
+    <!-- Amount Selector / Wheel section (Dual-Currency IQD ⇄ USD) -->
     <div class="quick-transfer-amount-section">
       <div class="quick-transfer-section-label">
         <span>حدد المبلغ المطلوب إرساله</span>
-        <span class="quick-transfer-currency-tag">دينار عراقي (IQD)</span>
+        <button type="button" id="quick-transfer-currency-toggle" class="quick-transfer-currency-badge" aria-label="تبديل عملة الإدخال (IQD ⇄ USD)" title="تبديل العملة">
+          <span class="qt-currency-name" id="quick-transfer-currency-name">دينار عراقي (IQD)</span>
+          <span class="qt-currency-swap-icon" aria-hidden="true">⇄ $</span>
+        </button>
       </div>
 
       <!-- Quick Amount Wheels / Chips -->
       <div class="quick-transfer-wheel-wrap">
         <div class="quick-transfer-wheel-track" id="quick-transfer-wheel-track" role="radiogroup" aria-label="خيارات المبالغ السريعة">
-          <button type="button" class="amount-wheel-chip" data-amount="5000">5,000</button>
-          <button type="button" class="amount-wheel-chip" data-amount="10000">10,000</button>
-          <button type="button" class="amount-wheel-chip" data-amount="25000">25,000</button>
-          <button type="button" class="amount-wheel-chip active" data-amount="50000">50,000</button>
-          <button type="button" class="amount-wheel-chip" data-amount="100000">100,000</button>
-          <button type="button" class="amount-wheel-chip" data-amount="250000">250,000</button>
-          <button type="button" class="amount-wheel-chip" data-amount="500000">500,000</button>
+          <button type="button" class="amount-wheel-chip" data-amount="5000">
+            <span class="chip-primary">5,000 د.ع</span>
+            <span class="chip-secondary">≈ $3.27</span>
+          </button>
+          <button type="button" class="amount-wheel-chip" data-amount="10000">
+            <span class="chip-primary">10,000 د.ع</span>
+            <span class="chip-secondary">≈ $6.54</span>
+          </button>
+          <button type="button" class="amount-wheel-chip" data-amount="25000">
+            <span class="chip-primary">25,000 د.ع</span>
+            <span class="chip-secondary">≈ $16.34</span>
+          </button>
+          <button type="button" class="amount-wheel-chip active" data-amount="50000">
+            <span class="chip-primary">50,000 د.ع</span>
+            <span class="chip-secondary">≈ $32.68</span>
+          </button>
         </div>
       </div>
 
       <!-- Custom amount input with stepper -->
       <div class="quick-transfer-input-box">
-        <button type="button" class="amount-step-btn" id="amount-step-minus" aria-label="إنقاص 5 آلاف">-5K</button>
+        <button type="button" class="amount-step-btn" id="amount-step-minus" aria-label="إنقاص المبلغ">-5K</button>
         <div class="amount-input-inner">
-          <input type="text" id="quick-transfer-amount-input" class="quick-transfer-amount-input" value="50,000" inputmode="numeric" placeholder="أدخل المبلغ..." aria-label="المبلغ بالدينار العراقي">
-          <span class="amount-unit">د.ع</span>
+          <input type="text" id="quick-transfer-amount-input" class="quick-transfer-amount-input" value="50,000" inputmode="numeric" placeholder="أدخل المبلغ..." aria-label="المبلغ المطلوب">
+          <span class="amount-unit" id="quick-transfer-amount-unit">د.ع</span>
         </div>
-        <button type="button" class="amount-step-btn" id="amount-step-plus" aria-label="زيادة 5 آلاف">+5K</button>
+        <button type="button" class="amount-step-btn" id="amount-step-plus" aria-label="زيادة المبلغ">+5K</button>
+      </div>
+      <div class="quick-transfer-secondary-val" id="quick-transfer-secondary-val">
+        يعادل تقريباً: <span class="qt-eq-val" id="qt-eq-val">$32.68</span> (بسعر 100$ = 153,000 د.ع)
       </div>
     </div>
 
@@ -709,13 +884,13 @@
           <line x1="22" y1="2" x2="11" y2="13"></line>
           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
         </svg>
-        <span>إرسال للذكاء الاصطناعي فاي ⚡</span>
+        <span>إرسال عبر فاي ⚡</span>
       </button>
       <button type="button" id="quick-transfer-cancel-btn" class="quick-transfer-cancel-btn">إلغاء</button>
     </div>
   </div>
 
-  <script src="script.js?v=58.0"></script>
+  <script src="script.js?v=59.0"></script>
 </body>
 
 </html>

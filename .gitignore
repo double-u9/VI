@@ -33,3 +33,5 @@ yarn-debug.log*
 test_*.html
 analyze_*.html
 calibrate_*.html
+.session_cache.json
+backend/.session_cache.json

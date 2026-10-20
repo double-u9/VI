@@ -806,12 +806,17 @@ function getBotAvatarSrc() {
  * Creates a robust circular bot avatar DOM element with multi-tiered fallback
  */
 function createBotAvatarElement() {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+    return null;
+  }
   const avatarEl = document.createElement('div');
   avatarEl.classList.add('msg-avatar');
   const imgEl = document.createElement('img');
   imgEl.classList.add('avatar-img');
   
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  const currentTheme = (document.documentElement && typeof document.documentElement.getAttribute === 'function')
+    ? (document.documentElement.getAttribute('data-theme') || 'light')
+    : 'light';
   imgEl.src = getBotAvatarSrc();
   imgEl.alt = 'المساعد المالي';
   imgEl.loading = 'eager';
@@ -819,7 +824,9 @@ function createBotAvatarElement() {
 
   // Multi-tier resilience: if network or relative path has any issue, failover gracefully
   imgEl.onerror = function() {
-    const theme = document.documentElement.getAttribute('data-theme') || 'light';
+    const theme = (typeof document !== 'undefined' && document.documentElement && typeof document.documentElement.getAttribute === 'function')
+      ? (document.documentElement.getAttribute('data-theme') || 'light')
+      : 'light';
     const filename = theme === 'light' ? 'bot-violet.png' : 'bot-emerald.png';
 
     // Attempt 1: Try root-relative /assets/
@@ -991,6 +998,102 @@ function initThemeToggle() {
 }
 
 /**
+ * Dual-Currency State & Exchange Rate Engine (IQD ⇄ USD)
+ * Baseline: 100 USD = 153,000 IQD => 1 USD = 1,530 IQD
+ * Pristine base currency precision (IQD) is preserved behind the scenes.
+ */
+let activeCurrency = 'IQD';
+let iqdPerUsdRate = 1530;
+let exchangeRateConfig = {
+  base_currency: 'IQD',
+  target_currency: 'USD',
+  iqd_per_usd: 1530,
+  usd_sample: 100,
+  iqd_sample: 153000,
+  formatted_rate: '100$ = 153,000 د.ع'
+};
+
+// Safe localStorage initialization
+try {
+  if (typeof localStorage !== 'undefined') {
+    const saved = localStorage.getItem('vi_active_currency');
+    if (saved === 'USD' || saved === 'IQD') {
+      activeCurrency = saved;
+    }
+  }
+} catch (_) {}
+
+/**
+ * Currency conversion mathematical helpers
+ */
+function convertIqdToUsd(amountIqd) {
+  const num = Number(amountIqd) || 0;
+  if (num <= 0) return 0;
+  const rate = iqdPerUsdRate || 1530;
+  return parseFloat((num / rate).toFixed(2));
+}
+
+function convertUsdToIqd(amountUsd) {
+  const num = Number(amountUsd) || 0;
+  if (num <= 0) return 0;
+  const rate = iqdPerUsdRate || 1530;
+  return Math.round(num * rate);
+}
+
+function getActiveCurrency() {
+  return activeCurrency;
+}
+
+function getExchangeRateValue() {
+  return iqdPerUsdRate;
+}
+
+function getExchangeRateConfig() {
+  return { ...exchangeRateConfig };
+}
+
+/**
+ * Formats live dual currency valuation with primary and secondary equivalent
+ * @param {number} amountIqd - Base balance/amount in Iraqi Dinars
+ * @param {boolean} isHidden - Privacy state (starred or revealed)
+ * @param {boolean} isUsdPrimary - Whether USD is the primary displayed currency
+ * @returns {{primary: string, secondary: string, primaryCurrency: string, secondaryCurrency: string}}
+ */
+function formatDualBalance(amountIqd, isHidden = isBalanceHidden, isUsdPrimary = (activeCurrency === 'USD')) {
+  const num = Number(amountIqd) || 0;
+  const rate = iqdPerUsdRate || 1530;
+  const usdVal = num / rate;
+
+  if (isHidden) {
+    return {
+      primary: '••••••',
+      secondary: '••••••',
+      primaryCurrency: isUsdPrimary ? 'USD' : 'IQD',
+      secondaryCurrency: isUsdPrimary ? 'IQD' : 'USD'
+    };
+  }
+
+  const iqdFormatted = `${num.toLocaleString('en-US')} د.ع`;
+  const usdFormatted = `$${usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  if (isUsdPrimary) {
+    return {
+      primary: usdFormatted,
+      secondary: `≈ ${iqdFormatted}`,
+      primaryCurrency: 'USD',
+      secondaryCurrency: 'IQD'
+    };
+  } else {
+    return {
+      primary: iqdFormatted,
+      secondary: `≈ ${usdFormatted}`,
+      primaryCurrency: 'IQD',
+      secondaryCurrency: 'USD'
+    };
+  }
+}
+
+/**
  * Live Balance & Privacy Eye Toggle State
  * Default is hidden (isBalanceHidden = true) with stars per user requirement
  */
@@ -998,30 +1101,275 @@ let currentWalletBalance = 3000000;
 let isBalanceHidden = true;
 
 /**
- * Updates the balance text and eye icon state in the header pill
+ * Updates the balance text and eye icon state across header and companion rail
+ * Triggers fluid 3D number flip animation when animate is true
+ * @param {boolean} animate - Whether to apply fluid flip transition
  */
-function renderWalletBalance() {
+function renderWalletBalance(animate = false) {
+  if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
   const balanceEl = document.getElementById('wallet-balance-display');
+  const balanceSecondaryEl = document.getElementById('wallet-balance-secondary');
   const eyeBtn = document.getElementById('wallet-eye-btn');
   const companionBalanceEl = document.getElementById('companion-rail-balance');
-  if (!balanceEl && !companionBalanceEl) return;
+  const companionBalanceSecondaryEl = document.getElementById('companion-rail-balance-secondary');
+  const tickerEl = document.getElementById('companion-exchange-ticker');
 
-  if (isBalanceHidden) {
-    if (balanceEl) balanceEl.textContent = '*** IQD';
-    if (companionBalanceEl) companionBalanceEl.textContent = '*** IQD';
-    if (eyeBtn) {
+  const isUsd = (activeCurrency === 'USD');
+  const dual = formatDualBalance(currentWalletBalance, isBalanceHidden, isUsd);
+
+  if (balanceEl) balanceEl.textContent = dual.primary;
+  if (balanceSecondaryEl) balanceSecondaryEl.textContent = dual.secondary;
+
+  if (companionBalanceEl) companionBalanceEl.textContent = dual.primary;
+  if (companionBalanceSecondaryEl) companionBalanceSecondaryEl.textContent = dual.secondary;
+
+  if (animate) {
+    if (companionBalanceEl) {
+      companionBalanceEl.classList.remove('balance-is-flipping');
+      void companionBalanceEl.offsetWidth; // Reflow to trigger animation
+      companionBalanceEl.classList.add('balance-is-flipping');
+      setTimeout(() => {
+        if (companionBalanceEl && companionBalanceEl.classList) {
+          companionBalanceEl.classList.remove('balance-is-flipping');
+        }
+      }, 420);
+    }
+
+    if (typeof document.querySelectorAll === 'function') {
+      const flipContainers = document.querySelectorAll('.balance-flip-container');
+      flipContainers.forEach(el => {
+        if (el && el.classList) {
+          el.classList.remove('balance-is-flipping');
+          void el.offsetWidth;
+          el.classList.add('balance-is-flipping');
+          setTimeout(() => {
+            if (el && el.classList) {
+              el.classList.remove('balance-is-flipping');
+            }
+          }, 420);
+        }
+      });
+    }
+
+    if (companionBalanceSecondaryEl) {
+      companionBalanceSecondaryEl.style.opacity = '0';
+      setTimeout(() => {
+        if (companionBalanceSecondaryEl && companionBalanceSecondaryEl.style) {
+          companionBalanceSecondaryEl.style.opacity = '0.85';
+        }
+      }, 150);
+    }
+  }
+
+  if (eyeBtn) {
+    if (isBalanceHidden) {
       eyeBtn.classList.add('is-hidden');
       eyeBtn.setAttribute('aria-label', 'إظهار الرصيد');
-    }
-  } else {
-    const formatted = `${Number(currentWalletBalance).toLocaleString('en-US')} IQD`;
-    if (balanceEl) balanceEl.textContent = formatted;
-    if (companionBalanceEl) companionBalanceEl.textContent = formatted;
-    if (eyeBtn) {
+    } else {
       eyeBtn.classList.remove('is-hidden');
       eyeBtn.setAttribute('aria-label', 'إخفاء الرصيد');
     }
   }
+
+  if (tickerEl && exchangeRateConfig && exchangeRateConfig.formatted_rate) {
+    tickerEl.textContent = exchangeRateConfig.formatted_rate;
+  }
+
+  updateCurrencyTogglePills();
+  if (typeof renderFintechPulse === 'function') {
+    renderFintechPulse();
+  }
+}
+
+/**
+ * Updates all currency toggle pills (Header, Companion Card, Quick Transfer)
+ */
+function updateCurrencyTogglePills() {
+  if (typeof document === 'undefined') return;
+
+  // 1. Header Currency Switch Pill
+  const headerPill = document.getElementById('currency-toggle-btn');
+  if (headerPill) {
+    headerPill.setAttribute('data-active', activeCurrency);
+    const iqdItem = headerPill.querySelector('.currency-iqd');
+    const usdItem = headerPill.querySelector('.currency-usd');
+    if (iqdItem) iqdItem.classList.toggle('active', activeCurrency === 'IQD');
+    if (usdItem) usdItem.classList.toggle('active', activeCurrency === 'USD');
+  }
+
+  // 2. Companion Balance Card Switcher
+  const compActive = document.getElementById('companion-cur-badge-active');
+  const compAlt = document.getElementById('companion-cur-badge-alt');
+  if (compActive) compActive.textContent = activeCurrency;
+  if (compAlt) compAlt.textContent = (activeCurrency === 'IQD') ? 'USD' : 'IQD';
+
+  // 3. Quick Transfer Modal Currency Badge
+  const qtName = document.getElementById('quick-transfer-currency-name');
+  const qtUnit = document.getElementById('quick-transfer-amount-unit');
+  if (qtName) {
+    qtName.textContent = activeCurrency === 'USD' ? 'دولار أمريكي (USD)' : 'دينار عراقي (IQD)';
+  }
+  if (qtUnit) {
+    qtUnit.textContent = activeCurrency === 'USD' ? '$' : 'د.ع';
+  }
+}
+
+/**
+ * Updates quick transfer amount wheel chips to show dual-currency valuation
+ */
+function updateQuickTransferChips() {
+  if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+  const chips = document.querySelectorAll('.amount-wheel-chip');
+  chips.forEach(chip => {
+    const rawAmt = parseInt(chip.getAttribute('data-amount'), 10);
+    if (isNaN(rawAmt)) return;
+    let primaryEl = chip.querySelector('.chip-primary');
+    let secondaryEl = chip.querySelector('.chip-secondary');
+    if (!primaryEl) {
+      chip.innerHTML = '<span class="chip-primary"></span><span class="chip-secondary"></span>';
+      primaryEl = chip.querySelector('.chip-primary');
+      secondaryEl = chip.querySelector('.chip-secondary');
+    }
+    const usdVal = (rawAmt / iqdPerUsdRate).toFixed(2);
+    if (activeCurrency === 'USD') {
+      primaryEl.textContent = `$${usdVal}`;
+      secondaryEl.textContent = `≈ ${rawAmt.toLocaleString('en-US')} د.ع`;
+    } else {
+      primaryEl.textContent = `${rawAmt.toLocaleString('en-US')} د.ع`;
+      secondaryEl.textContent = `≈ $${usdVal}`;
+    }
+  });
+}
+
+/**
+ * Updates quick transfer modal custom input unit and secondary equivalent valuation
+ */
+function updateQuickTransferInputVal() {
+  if (typeof document === 'undefined') return;
+  const inputEl = document.getElementById('quick-transfer-amount-input');
+  const eqValSpan = document.getElementById('qt-eq-val');
+  const unitSpan = document.getElementById('quick-transfer-amount-unit');
+  if (!inputEl) return;
+  if (unitSpan) {
+    unitSpan.textContent = activeCurrency === 'USD' ? '$' : 'د.ع';
+  }
+  const rawDigits = inputEl.value.replace(/[^\d.]/g, '');
+  const num = parseFloat(rawDigits) || 0;
+  if (activeCurrency === 'USD') {
+    const iqdEquivalent = Math.round(num * iqdPerUsdRate);
+    if (eqValSpan) {
+      eqValSpan.textContent = `${iqdEquivalent.toLocaleString('en-US')} د.ع`;
+    }
+  } else {
+    const usdEquivalent = (num / iqdPerUsdRate).toFixed(2);
+    if (eqValSpan) {
+      eqValSpan.textContent = `$${Number(usdEquivalent).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+  }
+}
+
+/**
+ * Sets the active currency with smooth animation, persistence, and reactive updates
+ * @param {'IQD'|'USD'} curr - Target currency code
+ * @param {boolean} animate - Whether to animate balance flip
+ */
+function setActiveCurrency(curr, animate = true) {
+  if (curr !== 'IQD' && curr !== 'USD') return;
+  activeCurrency = curr;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('vi_active_currency', curr);
+    }
+  } catch (_) {}
+
+  renderWalletBalance(animate);
+  updateCurrencyTogglePills();
+  updateQuickTransferChips();
+  updateQuickTransferInputVal();
+  if (typeof renderFintechPulse === 'function') {
+    renderFintechPulse();
+  }
+
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    try {
+      window.dispatchEvent(new CustomEvent('currency-changed', {
+        detail: { currency: activeCurrency, rate: iqdPerUsdRate }
+      }));
+    } catch (_) {}
+  }
+}
+
+/**
+ * Toggles the active currency between IQD and USD
+ * @returns {'IQD'|'USD'} The newly activated currency
+ */
+function toggleActiveCurrency() {
+  const next = activeCurrency === 'IQD' ? 'USD' : 'IQD';
+  setActiveCurrency(next, true);
+  return next;
+}
+
+/**
+ * Fetches the live configurable exchange rate from the backend
+ */
+async function fetchExchangeRate() {
+  if (typeof fetch === 'undefined') return;
+  try {
+    const res = await fetch('/api/exchange-rate');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && typeof data.iqd_per_usd === 'number' && data.iqd_per_usd > 0) {
+      iqdPerUsdRate = data.iqd_per_usd;
+      exchangeRateConfig = data;
+      renderWalletBalance(false);
+      updateQuickTransferChips();
+      updateQuickTransferInputVal();
+    }
+  } catch (_) {
+    // Graceful fallback to default 1530
+  }
+}
+
+/**
+ * Initializes the Currency Switcher Pills and event listeners
+ */
+function initCurrencySwitch() {
+  if (typeof document === 'undefined') return;
+
+  const headerPill = document.getElementById('currency-toggle-btn');
+  const compBtn = document.getElementById('companion-currency-toggle-btn');
+  const qtToggle = document.getElementById('quick-transfer-currency-toggle');
+
+  if (headerPill) {
+    headerPill.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleActiveCurrency();
+    });
+  }
+
+  if (compBtn) {
+    compBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleActiveCurrency();
+    });
+  }
+
+  if (qtToggle) {
+    qtToggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleActiveCurrency();
+      const inputEl = document.getElementById('quick-transfer-amount-input');
+      if (inputEl) {
+        inputEl.value = (activeCurrency === 'USD')
+          ? (currentTransferAmount / iqdPerUsdRate).toFixed(2)
+          : Number(currentTransferAmount).toLocaleString('en-US');
+      }
+    });
+  }
+
+  updateCurrencyTogglePills();
+  updateQuickTransferChips();
+  updateQuickTransferInputVal();
 }
 
 /**
@@ -1052,8 +1400,14 @@ async function syncWalletHeader() {
     const db = await res.json();
     if (db && db.user && typeof db.user.balance === 'number') {
       currentWalletBalance = db.user.balance;
-      renderWalletBalance();
     }
+    if (db && db.exchange_rate && typeof db.exchange_rate.iqd_per_usd === 'number') {
+      iqdPerUsdRate = db.exchange_rate.iqd_per_usd;
+      exchangeRateConfig = db.exchange_rate;
+    }
+    renderWalletBalance();
+    updateQuickTransferChips();
+    updateQuickTransferInputVal();
   } catch (err) {
     // Graceful fallback to default in HTML
     renderWalletBalance();
@@ -1108,6 +1462,39 @@ function closeTransactionsDrawer() {
   if (drawer) drawer.classList.remove('is-open');
   if (backdrop) backdrop.classList.remove('is-open');
   if (toggleBtn) toggleBtn.classList.remove('is-active');
+}
+
+/**
+ * Renders sleek pulsating skeleton shimmer placeholders for the transactions drawer
+ * @param {number} count - Number of skeleton rows to render
+ * @returns {string} The rendered HTML
+ */
+function renderTransactionsSkeleton(count = 4) {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    const titleWidth = (i % 2 === 0) ? '68%' : '52%';
+    const subWidth = (i % 2 === 0) ? '42%' : '35%';
+    html += `
+      <div class="skeleton-trx-card" aria-hidden="true">
+        <div class="skeleton-trx-lead">
+          <div class="skeleton-shimmer skeleton-trx-avatar"></div>
+          <div class="skeleton-trx-lines">
+            <div class="skeleton-shimmer skeleton-line title" style="width: ${titleWidth}"></div>
+            <div class="skeleton-shimmer skeleton-line subtitle" style="width: ${subWidth}"></div>
+            <div class="skeleton-shimmer skeleton-line date" style="width: 28%"></div>
+          </div>
+        </div>
+        <div class="skeleton-shimmer skeleton-trx-amount"></div>
+      </div>
+    `;
+  }
+  if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+    const listContainer = document.getElementById('drawer-transactions-list');
+    if (listContainer) {
+      listContainer.innerHTML = html;
+    }
+  }
+  return html;
 }
 
 function renderTransactionsList() {
@@ -1184,6 +1571,11 @@ async function fetchAndRenderTransactions(showSpinner = false) {
     refreshIcon.classList.add('spinning');
   }
 
+  // Display sleek pulsating skeleton shimmer placeholders during data hydration
+  if (showSpinner || !cachedTransactions || cachedTransactions.length === 0) {
+    renderTransactionsSkeleton(4);
+  }
+
   try {
     const res = await fetch('/api/transactions');
     if (!res.ok) return;
@@ -1222,6 +1614,9 @@ async function fetchAndRenderTransactions(showSpinner = false) {
       renderTransactionsList();
       if (typeof renderCompanionLedger === 'function') {
         renderCompanionLedger();
+      }
+      if (typeof renderFintechPulse === 'function') {
+        renderFintechPulse();
       }
     }
   } catch (err) {
@@ -1266,6 +1661,8 @@ function initTransactionsDrawer() {
     refreshBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       fetchAndRenderTransactions(true);
+      if (typeof fetchCompanionContacts === 'function') fetchCompanionContacts();
+      if (typeof fetchCompanionBills === 'function') fetchCompanionBills();
     });
   }
 
@@ -2211,6 +2608,17 @@ function initFintechActionButtons() {
       return;
     }
 
+    // 2b. Check if clicked a disambiguation option button (1-tap ambiguous contact choice)
+    const disambigBtn = event.target && event.target.closest ? event.target.closest('.disambiguation-option-btn') : null;
+    if (disambigBtn) {
+      event.preventDefault();
+      const choice = disambigBtn.getAttribute('data-choice');
+      if (choice && typeof handleFormSubmit === 'function') {
+        handleFormSubmit(choice);
+      }
+      return;
+    }
+
     // 3. Check if clicked an action button (confirm or cancel)
     const btn = event.target && event.target.closest ? event.target.closest('.fintech-action-btn') : null;
     if (!btn || btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
@@ -2254,6 +2662,383 @@ function initFintechActionButtons() {
 }
 
 /**
+ * ==========================================================================
+ * Tier-1 Apple Pay Style "Slide to Confirm" (اسحب لتأكيد التحويل) Interactive Slider
+ * Features:
+ * - Touch (touchstart, touchmove, touchend, touchcancel) & Mouse (mousedown, mousemove, mouseup) / Pointer gesture tracking
+ * - Smooth gesture tracking in RTL layout
+ * - Tactile spring-back physics return (cubic-bezier(0.175, 0.885, 0.32, 1.275)) if released prior to 85% completion threshold
+ * - Dynamic metallic shimmer sweep along track
+ * - Past 85% threshold: morphs thumb icon into verified checkmark, triggers haptic vibration via navigator.vibrate([15, 30, 20]),
+ *   plays Apple Pay success chime, launches micro-confetti, and dispatches confirmation payload to chat API
+ * - Full keyboard accessibility (tabindex="0", role="slider", Enter/Space triggers)
+ * ==========================================================================
+ */
+
+let activeSlider = null;
+
+function getEventClientX(e) {
+  if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
+  if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
+  return typeof e.clientX === 'number' ? e.clientX : 0;
+}
+
+function startSlideDrag(e) {
+  if (activeSlider) return;
+
+  const track = (e.target && typeof e.target.closest === 'function') 
+    ? (e.target.classList && e.target.classList.contains && e.target.classList.contains('slide-to-confirm-track') ? e.target : e.target.closest('.slide-to-confirm-track'))
+    : (e.target || null);
+  if (!track) return;
+
+  // Verify not disabled, locked, or completed
+  const isDisabled = typeof track.getAttribute === 'function' ? track.getAttribute('aria-disabled') === 'true' : false;
+  const isConfirmed = track.classList && typeof track.classList.contains === 'function' && track.classList.contains('is-confirmed');
+  const isLocked = track.classList && typeof track.classList.contains === 'function' && track.classList.contains('btn-locked');
+
+  if (isDisabled || isConfirmed || isLocked || isRequestInProgress) {
+    return;
+  }
+
+  const thumb = track.querySelector ? track.querySelector('.slide-to-confirm-thumb') : null;
+  const progressFill = track.querySelector ? track.querySelector('.slide-progress-fill') : null;
+  const trackText = track.querySelector ? track.querySelector('.slide-track-text') : null;
+  if (!thumb) return;
+
+  const actionsBar = (typeof track.closest === 'function') ? track.closest('.fintech-actions-bar') : null;
+  if (actionsBar && actionsBar.classList && typeof actionsBar.classList.add === 'function') {
+    actionsBar.classList.add('is-slider-active');
+  }
+
+  const trackRect = (typeof track.getBoundingClientRect === 'function') 
+    ? track.getBoundingClientRect() 
+    : { width: 280, left: 0, right: 280 };
+  const fullWidth = (actionsBar && actionsBar.clientWidth) ? actionsBar.clientWidth : (trackRect.width || 280);
+  const thumbWidth = thumb.offsetWidth || 40;
+  const maxTravel = Math.max(0, fullWidth - thumbWidth - 8);
+
+  const computedStyle = (typeof window !== 'undefined' && window.getComputedStyle) ? window.getComputedStyle(track) : null;
+  const isRtl = !computedStyle || computedStyle.direction === 'rtl';
+
+  const clientX = getEventClientX(e);
+
+  activeSlider = {
+    track,
+    thumb,
+    progressFill,
+    trackText,
+    card: (typeof track.closest === 'function') ? track.closest('.fintech-card') : null,
+    startX: clientX,
+    maxTravel,
+    thumbWidth,
+    isRtl,
+    isDragging: true,
+    completed: false,
+    hasHapticTick: false,
+    pointerId: e.pointerId != null ? e.pointerId : null,
+    isTouch: !!(e.touches || e.changedTouches)
+  };
+
+  thumb.style.transition = 'none';
+  if (progressFill) progressFill.style.transition = 'none';
+  if (trackText) trackText.style.transition = 'none';
+  track.classList.add('is-dragging');
+
+  if (e.pointerId != null && typeof track.setPointerCapture === 'function') {
+    try { track.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+}
+
+function onSlideDragMove(e) {
+  if (!activeSlider || !activeSlider.isDragging || activeSlider.completed) return;
+
+  if (e.cancelable && activeSlider.isTouch) {
+    e.preventDefault();
+  }
+
+  // Dynamically update maxTravel if track width expanded when cancel button collapsed
+  const currentTrackWidth = activeSlider.track.clientWidth || 0;
+  if (currentTrackWidth > 0) {
+    activeSlider.maxTravel = Math.max(0, currentTrackWidth - activeSlider.thumbWidth - 8);
+  }
+
+  const clientX = getEventClientX(e);
+  const rawDelta = activeSlider.isRtl 
+    ? (activeSlider.startX - clientX) 
+    : (clientX - activeSlider.startX);
+  const clampedDelta = Math.max(0, Math.min(activeSlider.maxTravel, rawDelta));
+  const progress = activeSlider.maxTravel > 0 ? (clampedDelta / activeSlider.maxTravel) : 0;
+
+  const sign = activeSlider.isRtl ? '-' : '';
+  activeSlider.thumb.style.transform = `translateX(${sign}${clampedDelta}px)`;
+
+  if (activeSlider.progressFill) {
+    activeSlider.progressFill.style.width = `${clampedDelta + (activeSlider.thumbWidth / 2)}px`;
+  }
+  if (activeSlider.trackText) {
+    activeSlider.trackText.style.opacity = Math.max(0, 1 - (progress * 1.5)).toFixed(3);
+  }
+
+  activeSlider.track.setAttribute('aria-valuenow', Math.round(progress * 100));
+
+  // Dynamic tactile haptic tick when reaching 85% threshold during drag
+  if (progress >= 0.85 && !activeSlider.hasHapticTick) {
+    activeSlider.hasHapticTick = true;
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      try { navigator.vibrate(10); } catch (_) {}
+    }
+    activeSlider.thumb.classList.add('ready-to-snap');
+  } else if (progress < 0.85 && activeSlider.hasHapticTick) {
+    activeSlider.hasHapticTick = false;
+    activeSlider.thumb.classList.remove('ready-to-snap');
+  }
+}
+
+function onSlideDragEnd(e) {
+  if (!activeSlider || !activeSlider.isDragging || activeSlider.completed) return;
+
+  const clientX = getEventClientX(e);
+  const rawDelta = activeSlider.isRtl 
+    ? (activeSlider.startX - clientX) 
+    : (clientX - activeSlider.startX);
+  const clampedDelta = Math.max(0, Math.min(activeSlider.maxTravel, rawDelta));
+  const progress = activeSlider.maxTravel > 0 ? (clampedDelta / activeSlider.maxTravel) : 0;
+
+  activeSlider.track.classList.remove('is-dragging');
+
+  if (activeSlider.pointerId != null && typeof activeSlider.track.releasePointerCapture === 'function') {
+    try { activeSlider.track.releasePointerCapture(activeSlider.pointerId); } catch (_) {}
+  }
+
+  if (progress >= 0.85) {
+    // 85% completion threshold achieved -> Trigger Apple Pay confirmed execution!
+    executeSlideCompletion(activeSlider);
+    activeSlider = null;
+  } else {
+    // Released prior to reaching 85% completion threshold:
+    // Restore cancel button and tactile spring-back physics return: cubic-bezier(0.175, 0.885, 0.32, 1.275)
+    const actionsBar = (activeSlider && activeSlider.track && typeof activeSlider.track.closest === 'function')
+      ? activeSlider.track.closest('.fintech-actions-bar')
+      : null;
+    if (actionsBar && actionsBar.classList && typeof actionsBar.classList.remove === 'function' && !activeSlider.track.classList.contains('is-confirmed')) {
+      actionsBar.classList.remove('is-slider-active');
+    }
+
+    const thumb = activeSlider.thumb;
+    const progressFill = activeSlider.progressFill;
+    const trackText = activeSlider.trackText;
+    const track = activeSlider.track;
+
+    thumb.classList.remove('ready-to-snap');
+    thumb.style.transition = 'transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    thumb.style.transform = 'translateX(0px)';
+
+    if (progressFill) {
+      progressFill.style.transition = 'width 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+      progressFill.style.width = '0px';
+    }
+    if (trackText) {
+      trackText.style.transition = 'opacity 0.35s ease';
+      trackText.style.opacity = '1';
+    }
+
+    track.setAttribute('aria-valuenow', '0');
+    activeSlider = null;
+  }
+}
+
+function executeSlideCompletion(slider) {
+  if (!slider || slider.completed) return;
+  slider.completed = true;
+
+  const track = slider.track;
+  const thumb = slider.thumb;
+  const fill = slider.progressFill;
+  const text = slider.trackText;
+  const card = slider.card;
+
+  const actionsBar = (track && typeof track.closest === 'function') ? track.closest('.fintech-actions-bar') : null;
+  if (actionsBar && actionsBar.classList && typeof actionsBar.classList.add === 'function') {
+    actionsBar.classList.add('is-slider-active', 'is-confirmed');
+  }
+
+  track.classList.remove('is-dragging');
+  track.classList.add('is-confirmed', 'slide-completed');
+  track.setAttribute('aria-disabled', 'true');
+  track.setAttribute('aria-valuenow', '100');
+  track.removeAttribute('tabindex');
+
+  // 1. Snap thumb to 100% completion (docked on far LEFT)
+  const currentTrackWidth = track.clientWidth || 0;
+  if (currentTrackWidth > 0) {
+    slider.maxTravel = Math.max(0, currentTrackWidth - slider.thumbWidth - 8);
+  }
+  const sign = slider.isRtl ? '-' : '';
+  thumb.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+  thumb.style.transform = `translateX(${sign}${slider.maxTravel}px)`;
+  thumb.classList.remove('ready-to-snap');
+  thumb.classList.add('is-success');
+
+  // Ensure thumb is docked permanently on the left
+  setTimeout(() => {
+    if (thumb && track.classList.contains('is-confirmed')) {
+      thumb.style.right = 'auto';
+      thumb.style.left = '4px';
+      thumb.style.transform = 'none';
+    }
+  }, 220);
+
+  // 2. Expand progress fill to 100%
+  if (fill) {
+    fill.style.transition = 'width 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+    fill.style.width = '100%';
+  }
+
+  // 3. Update track label
+  const shimmerText = track.querySelector('.slide-shimmer-text');
+  if (shimmerText) {
+    shimmerText.textContent = 'تم التأكيد بنجاح';
+  }
+  if (text) {
+    text.style.transition = 'opacity 0.25s ease';
+    text.style.opacity = '1';
+  }
+
+  // 4. Trigger tactile haptic vibration via navigator.vibrate([15, 30, 20])
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    try {
+      navigator.vibrate([15, 30, 20]);
+    } catch (_) {}
+  }
+
+  // 5. Execute existing playApplePaySuccessChime audio cue
+  if (typeof playApplePaySuccessChime === 'function') {
+    playApplePaySuccessChime();
+  }
+
+  // 6. Micro-confetti burst from the thumb
+  if (typeof launchMicroConfetti === 'function') {
+    launchMicroConfetti(thumb);
+  }
+
+  // 7. Lock and fade sibling cancel button
+  if (card) {
+    const cancelBtn = card.querySelector('.fintech-btn-cancel');
+    if (cancelBtn) {
+      cancelBtn.disabled = true;
+      cancelBtn.setAttribute('aria-disabled', 'true');
+      cancelBtn.classList.add('btn-locked');
+      cancelBtn.style.opacity = '0.2';
+      cancelBtn.style.pointerEvents = 'none';
+    }
+  }
+
+  // 8. Dispatch confirmation payload to chat API
+  handleFormSubmit('نعم متأكد', {
+    silentUserBubble: true,
+    sourceCard: card,
+    actionType: 'confirm',
+    triggerBtn: track
+  });
+}
+
+function handleSlideKeyboard(e) {
+  const track = (e.target && typeof e.target.closest === 'function') 
+    ? (e.target.classList && e.target.classList.contains && e.target.classList.contains('slide-to-confirm-track') ? e.target : e.target.closest('.slide-to-confirm-track'))
+    : (e.target || null);
+  if (!track) return;
+
+  if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+    if (e.preventDefault) e.preventDefault();
+    const isDisabled = typeof track.getAttribute === 'function' ? track.getAttribute('aria-disabled') === 'true' : false;
+    const isConfirmed = track.classList && typeof track.classList.contains === 'function' && track.classList.contains('is-confirmed');
+    const isLocked = track.classList && typeof track.classList.contains === 'function' && track.classList.contains('btn-locked');
+
+    if (isDisabled || isConfirmed || isLocked || isRequestInProgress) {
+      return;
+    }
+
+    const actionsBar = (track && typeof track.closest === 'function') ? track.closest('.fintech-actions-bar') : null;
+    if (actionsBar && actionsBar.classList && typeof actionsBar.classList.add === 'function') {
+      actionsBar.classList.add('is-slider-active');
+    }
+
+    const thumb = track.querySelector('.slide-to-confirm-thumb');
+    const fill = track.querySelector('.slide-progress-fill');
+    const text = track.querySelector('.slide-track-text');
+    if (!thumb) return;
+
+    const trackRect = (typeof track.getBoundingClientRect === 'function') 
+      ? track.getBoundingClientRect() 
+      : { width: 280, left: 0, right: 280 };
+    const thumbWidth = thumb.offsetWidth || 40;
+    const maxTravel = Math.max(0, (trackRect.width || 280) - thumbWidth - 8);
+    const computedStyle = (typeof window !== 'undefined' && window.getComputedStyle) ? window.getComputedStyle(track) : null;
+    const isRtl = !computedStyle || computedStyle.direction === 'rtl';
+
+    const sliderState = {
+      track,
+      thumb,
+      progressFill: fill,
+      trackText: text,
+      card: track.closest('.fintech-card'),
+      maxTravel,
+      thumbWidth,
+      isRtl,
+      completed: false
+    };
+
+    const sign = isRtl ? '-' : '';
+    thumb.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)';
+    thumb.style.transform = `translateX(${sign}${maxTravel}px)`;
+    if (fill) {
+      fill.style.transition = 'width 0.28s cubic-bezier(0.16, 1, 0.3, 1)';
+      fill.style.width = '100%';
+    }
+    if (text) {
+      text.style.transition = 'opacity 0.2s ease';
+      text.style.opacity = '0';
+    }
+
+    setTimeout(() => {
+      executeSlideCompletion(sliderState);
+    }, 220);
+  }
+}
+
+function initSlideToConfirm() {
+  if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
+
+  // Pointer events (modern unified)
+  if (typeof window !== 'undefined' && 'PointerEvent' in window) {
+    document.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      startSlideDrag(e);
+    });
+    document.addEventListener('pointermove', onSlideDragMove);
+    document.addEventListener('pointerup', onSlideDragEnd);
+    document.addEventListener('pointercancel', onSlideDragEnd);
+  } else {
+    // Touch events
+    document.addEventListener('touchstart', startSlideDrag, { passive: true });
+    document.addEventListener('touchmove', onSlideDragMove, { passive: false });
+    document.addEventListener('touchend', onSlideDragEnd);
+    document.addEventListener('touchcancel', onSlideDragEnd);
+
+    // Mouse fallback
+    document.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      startSlideDrag(e);
+    });
+    document.addEventListener('mousemove', onSlideDragMove);
+    document.addEventListener('mouseup', onSlideDragEnd);
+  }
+
+  // Keyboard accessibility
+  document.addEventListener('keydown', handleSlideKeyboard);
+}
+
+/**
  * Initialize event listeners and UI components on load
  */
 if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
@@ -2272,6 +3057,10 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
 
     // Initialize Theme Switcher (White & Violet / Black & Emerald)
     initThemeToggle();
+
+    // Initialize Dual-Currency Toggle & Converter Widget (IQD ⇄ USD)
+    initCurrencySwitch();
+    fetchExchangeRate();
 
     // Initialize Header Balance Privacy Eye Toggle & Sync
     initWalletEyeToggle();
@@ -2302,6 +3091,9 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
 
     // Initialize Interactive Fintech Confirmation Action Buttons
     initFintechActionButtons();
+
+    // Initialize Tier-1 Apple Pay "Slide to Confirm" Interactive Slider
+    initSlideToConfirm();
 
     // Handle Form Submission
     if (chatForm) {
@@ -2581,11 +3373,12 @@ async function handleFormSubmit(customMessage = null, options = {}) {
   let messageText = '';
   if (typeof customMessage === 'string' && customMessage.trim()) {
     messageText = customMessage.trim();
-  } else {
+  } else if (userInput && typeof userInput.value === 'string') {
     messageText = userInput.value.trim();
   }
 
   if (!messageText) return;
+  if (typeof document === 'undefined') return;
 
   // Immediately stop any active voice speech and finish any active stream when user submits!
   stopSpeaking();
@@ -2607,24 +3400,27 @@ async function handleFormSubmit(customMessage = null, options = {}) {
     });
   }
 
-  // Lock any active fintech confirmation buttons in past cards to prevent stale double clicks
+  // Lock any active fintech confirmation buttons and slide tracks in past cards to prevent stale double clicks
   if (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function') {
-    const pendingBtns = document.querySelectorAll('.fintech-action-btn:not([disabled])');
+    const pendingBtns = document.querySelectorAll('.fintech-action-btn:not([disabled]), .slide-to-confirm-track:not([aria-disabled="true"])');
     pendingBtns.forEach(b => {
       b.disabled = true;
       b.setAttribute('aria-disabled', 'true');
       b.classList.add('btn-locked');
+      b.removeAttribute('tabindex');
     });
   }
 
   // 3. Clear input & reset textarea height and send button state immediately
-  userInput.value = '';
-  updateInputState();
+  if (userInput) userInput.value = '';
+  if (typeof updateInputState === 'function') updateInputState();
 
   // 4. If transitioning from welcome screen, wait for exit animation (~300ms) to finish cleanly
-  const appLayout = document.getElementById('app-layout');
-  const wasHero = appLayout && appLayout.classList.contains('hero-mode');
-  if (wasHero) {
+  const appLayout = typeof document !== 'undefined' && typeof document.getElementById === 'function' 
+    ? document.getElementById('app-layout') 
+    : null;
+  const wasHero = appLayout && appLayout.classList && appLayout.classList.contains && appLayout.classList.contains('hero-mode');
+  if (wasHero && typeof exitHeroMode === 'function') {
     await exitHeroMode();
   }
 
@@ -2645,8 +3441,9 @@ async function handleFormSubmit(customMessage = null, options = {}) {
     const replyText = typeof result === 'object' ? result.text : result;
 
     // Natural deliberative thinking duration:
-    // Snappy and responsive ~450ms
-    const minThinkingMs = 450;
+    // Snappy and responsive ~450ms (0ms in headless test mode)
+    const isHeadless = typeof window === 'undefined' || typeof document === 'undefined';
+    const minThinkingMs = isHeadless ? 0 : 450;
     const elapsed = Date.now() - startTime;
     if (elapsed < minThinkingMs) {
       await new Promise(resolve => setTimeout(resolve, minThinkingMs - elapsed));
@@ -2671,7 +3468,36 @@ async function handleFormSubmit(customMessage = null, options = {}) {
     if (targetCard) {
       if (actionType === 'confirm' || isSuccessReply) {
         targetCard.classList.add('card-resolved', 'card-confirmed');
-        const confirmBtn = targetCard.querySelector('.fintech-btn-confirm');
+        const slideTrack = targetCard.querySelector('.slide-to-confirm-track');
+        if (slideTrack) {
+          slideTrack.classList.add('is-confirmed', 'slide-completed', 'btn-completed');
+          const actionsBar = (typeof slideTrack.closest === 'function') ? slideTrack.closest('.fintech-actions-bar') : null;
+          if (actionsBar && actionsBar.classList && typeof actionsBar.classList.add === 'function') {
+            actionsBar.classList.add('is-slider-active', 'is-confirmed');
+          }
+          slideTrack.setAttribute('aria-disabled', 'true');
+          slideTrack.removeAttribute('tabindex');
+          const shimmerText = slideTrack.querySelector('.slide-shimmer-text');
+          if (shimmerText) {
+            shimmerText.textContent = 'تم التأكيد بنجاح';
+          }
+          const trackText = slideTrack.querySelector('.slide-track-text');
+          if (trackText) {
+            trackText.style.opacity = '1';
+          }
+          const thumb = slideTrack.querySelector('.slide-to-confirm-thumb');
+          if (thumb) {
+            thumb.classList.add('is-success');
+            thumb.style.right = 'auto';
+            thumb.style.left = '4px';
+            thumb.style.transform = 'none';
+          }
+          const progressFill = slideTrack.querySelector('.slide-progress-fill');
+          if (progressFill) {
+            progressFill.style.width = '100%';
+          }
+        }
+        const confirmBtn = targetCard.querySelector('.fintech-btn-confirm:not(.slide-to-confirm-track)');
         const cancelBtn = targetCard.querySelector('.fintech-btn-cancel');
         if (confirmBtn) {
           confirmBtn.classList.remove('btn-processing');
@@ -2692,6 +3518,13 @@ async function handleFormSubmit(customMessage = null, options = {}) {
         }
       } else if (actionType === 'cancel' || isCancelReply) {
         targetCard.classList.add('card-resolved', 'card-cancelled');
+        const slideTrack = targetCard.querySelector('.slide-to-confirm-track');
+        if (slideTrack) {
+          slideTrack.classList.add('is-cancelled', 'btn-locked');
+          slideTrack.setAttribute('aria-disabled', 'true');
+          slideTrack.removeAttribute('tabindex');
+          slideTrack.style.display = 'none';
+        }
         const confirmBtn = targetCard.querySelector('.fintech-btn-confirm');
         const cancelBtn = targetCard.querySelector('.fintech-btn-cancel');
         if (cancelBtn) {
@@ -2716,17 +3549,21 @@ async function handleFormSubmit(customMessage = null, options = {}) {
     }
 
     // 9. Append AI Response (associated with the user query for accurate feedback logging)
-    appendMessage(replyText, 'ai', messageText);
+    if (typeof document !== 'undefined') {
+      appendMessage(replyText, 'ai', messageText);
 
-    // 10. Update live balance in header & sync transactions drawer
-    syncWalletHeader();
-    fetchAndRenderTransactions();
+      // 10. Update live balance in header & sync transactions drawer & companion rail
+      syncWalletHeader();
+      fetchAndRenderTransactions();
+      if (typeof fetchCompanionContacts === 'function') fetchCompanionContacts();
+      if (typeof fetchCompanionBills === 'function') fetchCompanionBills();
 
-    // 10. Auto-open transactions drawer if the server flagged it (e.g. user asked for recent transactions)
-    if (typeof result === 'object' && result.openDrawer) {
-      setTimeout(() => {
-        openTransactionsDrawer();
-      }, 400);
+      // 10. Auto-open transactions drawer if the server flagged it (e.g. user asked for recent transactions)
+      if (typeof result === 'object' && result.openDrawer) {
+        setTimeout(() => {
+          openTransactionsDrawer();
+        }, 400);
+      }
     }
   } catch (error) {
     showTypingIndicator(false);
@@ -2741,17 +3578,21 @@ async function handleFormSubmit(customMessage = null, options = {}) {
       }
     }
     // Render friendly error message if server is unreachable
-    appendErrorMessage(
-      `تعذر الاتصال بالخادم المحلي (${API_CONFIG.ENDPOINT}).\nيرجى التأكد من تشغيل خادم الـ Backend المحلي أو نموذج الذكاء الاصطناعي.`
-    );
+    if (typeof document !== 'undefined' && typeof appendErrorMessage === 'function') {
+      appendErrorMessage(
+        `تعذر الاتصال بالخادم المحلي (${API_CONFIG.ENDPOINT}).\nيرجى التأكد من تشغيل خادم الـ Backend المحلي أو نموذج الذكاء الاصطناعي.`
+      );
+    }
   } finally {
     // 11. Reliable cleanup path: unlock guard & restore controls after both successful and failed requests
     isRequestInProgress = false;
     showTypingIndicator(false);
     setInputState(true);
-    scrollToBottom();
-    if (userInput && typeof userInput.focus === 'function') {
-      userInput.focus();
+    if (typeof document !== 'undefined') {
+      scrollToBottom();
+      if (userInput && typeof userInput.focus === 'function') {
+        userInput.focus();
+      }
     }
   }
 }
@@ -2819,7 +3660,9 @@ async function sendMessageToBackend(userMessage) {
  * Helper to dispatch feedback (like/dislike/remove) to the backend API asynchronously
  */
 function sendFeedbackToServer(type, msgId, userMessage, botResponse) {
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  const currentTheme = (typeof document !== 'undefined' && document.documentElement && typeof document.documentElement.getAttribute === 'function')
+    ? (document.documentElement.getAttribute('data-theme') || 'light')
+    : 'light';
   fetch('/api/feedback', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -3027,6 +3870,9 @@ function streamTextMessage(targetEl, fullText, onComplete) {
  * @param {boolean} stream - Whether to stream the response with character-by-character animation
  */
 function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function' || !messagesContainer) {
+    return null;
+  }
   const messageEl = document.createElement('div');
   messageEl.classList.add('message', `${sender}-message`, 'animate-fade-in');
 
@@ -3197,6 +4043,7 @@ function showTypingIndicator(show) {
  * @param {boolean} enabled - UI state
  */
 function setInputState(enabled) {
+  if (typeof document === 'undefined') return;
   if (userInput) {
     userInput.disabled = !enabled;
     userInput.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
@@ -3209,8 +4056,8 @@ function setInputState(enabled) {
     micBtn.disabled = !enabled;
     micBtn.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
   }
-  const stopBtn = document.getElementById('voice-stop-btn');
-  const sendVoiceBtn = document.getElementById('voice-send-btn');
+  const stopBtn = document.getElementById ? document.getElementById('voice-stop-btn') : null;
+  const sendVoiceBtn = document.getElementById ? document.getElementById('voice-send-btn') : null;
   if (stopBtn) {
     stopBtn.disabled = !enabled;
     stopBtn.setAttribute('aria-disabled', !enabled ? 'true' : 'false');
@@ -3249,11 +4096,16 @@ function autoResizeTextarea() {
  * Smoothly scrolls the chat window to the bottom
  */
 function scrollToBottom() {
+  if (!chatWindow) return;
   const rAF = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function' ? window.requestAnimationFrame : (cb) => setTimeout(cb, 0));
   rAF(() => {
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-    setTimeout(() => {
+    if (chatWindow) {
       chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+    setTimeout(() => {
+      if (chatWindow) {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
     }, 50);
   });
 }
@@ -3479,21 +4331,44 @@ function renderFintechFlowWidget(details) {
 }
 
 /**
- * Renders Interactive Glass Action Buttons ([ تأكيد وإرسال ] & [ إلغاء ])
+ * Renders Interactive Glass Action Bar with Tier-1 Apple Pay "Slide to Confirm" (اسحب لتأكيد التحويل) Slider & Cancel Button
  * @returns {string} HTML string
  */
 function renderFintechActionButtons() {
   return `
     <div class="fintech-actions-bar" role="group" aria-label="خيارات التأكيد السريع">
-      <button type="button" class="fintech-action-btn fintech-btn-confirm" data-action="confirm" aria-label="تأكيد العملية فوريًا">
-        <span class="btn-shine"></span>
-        <span class="btn-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        </span>
-        <span class="btn-label">تأكيد وإرسال</span>
-      </button>
+      <div class="slide-to-confirm-track fintech-btn-confirm" 
+           role="slider" 
+           tabindex="0" 
+           aria-label="اسحب لتأكيد التحويل" 
+           aria-valuemin="0" 
+           aria-valuemax="100" 
+           aria-valuenow="0" 
+           data-action="confirm">
+        <div class="slide-progress-fill"></div>
+        <div class="slide-track-text">
+          <span class="slide-shimmer-text">اسحب لتأكيد التحويل</span>
+          <span class="slide-track-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+          </span>
+        </div>
+        <div class="slide-to-confirm-thumb" aria-hidden="true">
+          <span class="thumb-icon-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+          </span>
+          <span class="thumb-icon-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </span>
+        </div>
+      </div>
 
       <button type="button" class="fintech-action-btn fintech-btn-cancel" data-action="cancel" aria-label="إلغاء العملية والتراجع">
         <span class="btn-icon">
@@ -3506,6 +4381,13 @@ function renderFintechActionButtons() {
       </button>
     </div>
   `;
+}
+
+/**
+ * Alias for renderFintechConfirmationCard for test and external caller compatibility
+ */
+function renderConfirmationCard(data) {
+  return renderFintechConfirmationCard(data);
 }
 
 /**
@@ -3643,7 +4525,7 @@ function playApplePaySuccessChime() {
  * @returns {HTMLCanvasElement|null}
  */
 function launchMicroConfetti(originElement) {
-  if (typeof document === 'undefined' || !originElement) return null;
+  if (typeof document === 'undefined' || !originElement || typeof document.createElement !== 'function') return null;
 
   const prefersReducedMotion = typeof window !== 'undefined' && 
                                window.matchMedia && 
@@ -4001,6 +4883,118 @@ function renderFintechContactsCard(data) {
 }
 
 /**
+ * Parses ambiguous contact disambiguation response data
+ */
+function parseDisambiguationData(text) {
+  if (!text || typeof text !== 'string') return null;
+  const isAmbiguousPrompt = (text.includes('أكثر من جهة اتصال') || text.includes('اكثر من جهة اتصال')) &&
+                            (text.includes('يا واحد منهم تقصد') || text.includes('يرجى كتابة الرقم') || text.includes('تقصد؟'));
+  if (!isAmbiguousPrompt) return null;
+
+  const nameMatch = text.match(/باسم\s*["']?([\u0621-\u064A\s]+?)["']?\s*بمحفظتك/);
+  const name = nameMatch ? nameMatch[1].trim() : '';
+
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const options = [];
+  let promptText = '';
+
+  for (const line of lines) {
+    const match = line.match(/^(\d+)[\.\-–\)]?\s+(.+)$/);
+    if (match) {
+      const num = match[1];
+      const rest = match[2];
+      let phone = '';
+      let alias = '';
+      let optName = rest;
+
+      const phoneMatch = rest.match(/\(?\s*(\+?964\d{8,10}|07\d{8,9})\s*\)?/);
+      if (phoneMatch) {
+        phone = phoneMatch[1].trim();
+        optName = optName.replace(phoneMatch[0], '').trim();
+      }
+
+      const aliasMatch = optName.match(/\(([^)]+)\)/);
+      if (aliasMatch) {
+        alias = aliasMatch[1].trim();
+        optName = optName.replace(aliasMatch[0], '').trim();
+      }
+
+      optName = optName.replace(/^[•\s\-_()]+|[•\s\-_()]+$/g, '').trim();
+      options.push({
+        number: num,
+        num: num,
+        name: optName,
+        subtitle: alias,
+        alias: alias,
+        phone: phone,
+        raw: rest
+      });
+    } else if (options.length === 0) {
+      if (!promptText) promptText = line;
+      else promptText += ' ' + line;
+    }
+  }
+
+  if (options.length >= 2) {
+    return { name, promptText, options };
+  }
+  return null;
+}
+
+/**
+ * Renders an interactive fintech disambiguation card with 1-tap contact buttons
+ */
+function renderDisambiguationCard(data) {
+  if (!data || !Array.isArray(data.options)) return '';
+
+  const optionsHtml = data.options.map(opt => {
+    const initial = typeof getContactInitial === 'function' ? getContactInitial(opt.name) : opt.name.charAt(0);
+    const grad = typeof getContactGradient === 'function' ? getContactGradient(opt.name) : 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+    const subtext = opt.subtitle || opt.alias || opt.phone || '';
+    const choiceNum = opt.number || opt.num;
+
+    return `
+      <button type="button" class="disambiguation-option-btn" data-choice="${escapeHtml(choiceNum)}" data-choice-number="${escapeHtml(choiceNum)}" data-name="${escapeHtml(opt.name)}" aria-label="اختيار ${escapeHtml(opt.name)}">
+        <span class="disambiguation-num-badge option-badge">${escapeHtml(choiceNum)}</span>
+        <span class="disambiguation-avatar option-avatar" style="background: ${grad}">${escapeHtml(initial)}</span>
+        <span class="disambiguation-info">
+          <span class="disambiguation-name option-name">${escapeHtml(opt.name)}</span>
+          ${subtext ? `<span class="disambiguation-subtext option-subtitle">${escapeHtml(subtext)}</span>` : ''}
+        </span>
+        ${opt.phone ? `<span class="disambiguation-phone option-phone">${escapeHtml(opt.phone)}</span>` : ''}
+        <span class="disambiguation-action-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </span>
+      </button>
+    `;
+  }).join('');
+
+  return `
+    <div class="fintech-disambiguation-card" role="region" aria-label="تحديد جهة الاتصال">
+      <div class="disambiguation-header">
+        <span class="disambiguation-header-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </span>
+        <span class="disambiguation-header-text">${escapeHtml(data.promptText || 'اختر جهة الاتصال المطلوبة:')}</span>
+      </div>
+      <div class="disambiguation-options-grid">
+        ${optionsHtml}
+      </div>
+      <div class="disambiguation-card-footer">
+        <span>💡 اضغط على جهة الاتصال المطلوبة، أو اكتب رقمها (1 أو 2).</span>
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Formats fintech messages with rich badges, currency pills, visual transfer streams, and action cards
  * @param {string} text - Raw message string
  * @param {'user'|'ai'} sender - Sender type
@@ -4009,6 +5003,12 @@ function renderFintechContactsCard(data) {
 function formatFintechMessage(text, sender) {
   if (sender === 'user') {
     return escapeHtml(text).replace(/\n/g, '<br>');
+  }
+
+  // Check if this is an ambiguous contact disambiguation response (Tier-1 Interactive Disambiguation Card)
+  const disambiguationData = parseDisambiguationData(text);
+  if (disambiguationData) {
+    return renderDisambiguationCard(disambiguationData);
   }
 
   // 1. Escape HTML first to prevent XSS
@@ -4173,6 +5173,37 @@ function handleQuickContactTransfer(contactName, contactPhone = '', contactAlias
 
 let isShowingAllCompanionContacts = false;
 
+/**
+ * Renders sleek pulsating skeleton shimmer placeholders for companion contacts list
+ * @param {number} count - Number of skeleton rows to render
+ * @returns {string} The rendered HTML
+ */
+function renderCompanionContactsSkeleton(count = 4) {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    const nameWidth = (i % 2 === 0) ? '65%' : '50%';
+    html += `
+      <div class="skeleton-contact-card" aria-hidden="true">
+        <div class="companion-contact-lead" style="flex: 1; gap: 0.65rem;">
+          <div class="skeleton-shimmer skeleton-contact-avatar"></div>
+          <div class="companion-contact-info" style="flex: 1; gap: 5px;">
+            <div class="skeleton-shimmer skeleton-line" style="width: ${nameWidth}; height: 12px;"></div>
+            <div class="skeleton-shimmer skeleton-line" style="width: 40%; height: 9px;"></div>
+          </div>
+        </div>
+        <div class="skeleton-shimmer skeleton-contact-btn"></div>
+      </div>
+    `;
+  }
+  if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+    const listEl = document.getElementById('companion-contacts-list');
+    if (listEl) {
+      listEl.innerHTML = html;
+    }
+  }
+  return html;
+}
+
 function renderCompanionContacts() {
   if (typeof document === 'undefined') return;
   const listEl = document.getElementById('companion-contacts-list');
@@ -4272,6 +5303,37 @@ function getBillIconSvg(biller = '') {
   return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`;
 }
 
+/**
+ * Renders sleek pulsating skeleton shimmer placeholders for companion bills cards
+ * @param {number} count - Number of skeleton rows to render
+ * @returns {string} The rendered HTML
+ */
+function renderCompanionBillsSkeleton(count = 3) {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    const titleWidth = (i % 2 === 0) ? '70%' : '55%';
+    html += `
+      <div class="skeleton-bill-card" aria-hidden="true">
+        <div class="companion-bill-lead" style="flex: 1; gap: 0.65rem;">
+          <div class="skeleton-shimmer skeleton-bill-icon"></div>
+          <div class="companion-bill-info" style="flex: 1; gap: 5px;">
+            <div class="skeleton-shimmer skeleton-line" style="width: ${titleWidth}; height: 12px;"></div>
+            <div class="skeleton-shimmer skeleton-line" style="width: 42%; height: 10px;"></div>
+          </div>
+        </div>
+        <div class="skeleton-shimmer skeleton-bill-btn"></div>
+      </div>
+    `;
+  }
+  if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+    const listEl = document.getElementById('companion-bills-list');
+    if (listEl) {
+      listEl.innerHTML = html;
+    }
+  }
+  return html;
+}
+
 function renderCompanionBills() {
   if (typeof document === 'undefined') return;
   const listEl = document.getElementById('companion-bills-list');
@@ -4353,8 +5415,11 @@ function handleQuickBillPayment(billName) {
   handleFormSubmit(promptText);
 }
 
-async function fetchCompanionBills() {
+async function fetchCompanionBills(showSkeleton = false) {
   if (typeof fetch !== 'function') return;
+  if (showSkeleton || !cachedCompanionBills || cachedCompanionBills.length === 0) {
+    renderCompanionBillsSkeleton(3);
+  }
   try {
     const res = await fetch('/api/bills');
     if (!res.ok) return;
@@ -4415,8 +5480,11 @@ function renderCompanionLedger() {
   listEl.innerHTML = html;
 }
 
-async function fetchCompanionContacts() {
+async function fetchCompanionContacts(showSkeleton = false) {
   if (typeof fetch !== 'function') return;
+  if (showSkeleton || !cachedCompanionContacts || cachedCompanionContacts.length === 0) {
+    renderCompanionContactsSkeleton(4);
+  }
   try {
     const res = await fetch('/api/contacts');
     if (!res.ok) return;
@@ -4428,6 +5496,271 @@ async function fetchCompanionContacts() {
   } catch (err) {
     // Non-blocking fallback to default contacts
   }
+}
+
+/* ==========================================================================
+   Section 31.5: Fintech Pulse (نبض المحفظة) Visual Analytics & Micro-Donut
+   ========================================================================== */
+let activeFintechPulseSegment = 'balance'; // 'balance' | 'transfers' | 'bills'
+
+/**
+ * Calculates distribution statistics and percentages for the Fintech Pulse widget.
+ * Segments:
+ * 1. Bills Payment (دفع الفواتير)
+ * 2. Transfers (التحويلات الشخصية)
+ * 3. Remaining Balance (الرصيد المتبقي)
+ */
+function calculateFintechPulseData(transactions = cachedTransactions, balance = currentWalletBalance) {
+  const trxs = Array.isArray(transactions) ? transactions : [];
+  let billsSpent = 0;
+  let transfersSpent = 0;
+
+  for (const t of trxs) {
+    const amt = Math.max(0, Number(t.amount || 0));
+    if (t.type === 'TRANSFER' || t.recipient) {
+      transfersSpent += amt;
+    } else if (t.type === 'BILL' || t.type === 'BILL_PAYMENT' || t.biller) {
+      billsSpent += amt;
+    } else {
+      billsSpent += amt;
+    }
+  }
+
+  const currentBal = Math.max(0, Number(balance !== undefined && balance !== null ? balance : 3000000));
+  const totalPool = billsSpent + transfersSpent + currentBal;
+
+  let billsPct = 0;
+  let transfersPct = 0;
+  let balancePct = 100;
+
+  if (totalPool > 0) {
+    billsPct = Math.round((billsSpent / totalPool) * 100);
+    transfersPct = Math.round((transfersSpent / totalPool) * 100);
+    balancePct = Math.max(0, 100 - billsPct - transfersPct);
+  }
+
+  const insightText = getFintechPulseInsight({
+    billsSpent,
+    transfersSpent,
+    currentBal,
+    totalPool,
+    billsPct,
+    transfersPct,
+    balancePct
+  });
+
+  return {
+    billsSpent,
+    transfersSpent,
+    balance: currentBal,
+    totalPool,
+    billsPct,
+    transfersPct,
+    balancePct,
+    insightText
+  };
+}
+
+/**
+ * Returns a contextual, proactive Iraqi Arabic AI financial guidance tip
+ */
+function getFintechPulseInsight(data) {
+  if (!data) return 'عاشت إيدك! مصاريفك هذا الشهر أقل بـ 15% من الشهر الفات';
+
+  if (data.billsSpent === 0 && data.transfersSpent === 0) {
+    return 'عاشت إيدك! مصاريفك هذا الشهر أقل بـ 15% من الشهر الفات، ومحافظ على كامل رصيدك 💎';
+  }
+
+  if (data.balancePct >= 75) {
+    return 'عاشت إيدك! مصاريفك هذا الشهر أقل بـ 15% من الشهر الفات، ومحافظ على نسبة أمان عالية 👏';
+  }
+
+  if (data.billsSpent > data.transfersSpent && data.billsPct >= 30) {
+    return 'أغلب مصاريفك هالفترة راحت لتسديد فواتير أساسية، التزامك بالمواعيد ممتاز ⚡';
+  }
+
+  if (data.transfersSpent >= data.billsSpent && data.transfersPct >= 30) {
+    return 'التحويلات المالية الشخصية تشكل النسبة الأكبر من مصاريفك، أمورك بالتمام 💸';
+  }
+
+  return 'عاشت إيدك! مصاريفك هذا الشهر متزنة وأقل بـ 15% من معدل الصرف المعتاد ✨';
+}
+
+function getFintechPulseActiveSegment() {
+  return activeFintechPulseSegment;
+}
+
+function setFintechPulseActiveSegment(segment) {
+  activeFintechPulseSegment = (segment === 'transfers' || segment === 'bills') ? segment : 'balance';
+  if (typeof document !== 'undefined' && document && typeof document.getElementById === 'function') {
+    renderFintechPulse();
+  }
+}
+
+/**
+ * Renders the interactive SVG micro-donut chart and updates live percentages and insight badge
+ */
+function renderFintechPulse() {
+  const data = calculateFintechPulseData();
+
+  if (typeof document === 'undefined' || !document || typeof document.getElementById !== 'function') {
+    return data;
+  }
+
+  const segBalance = document.getElementById('pulse-seg-balance');
+  const segTransfers = document.getElementById('pulse-seg-transfers');
+  const segBills = document.getElementById('pulse-seg-bills');
+
+  const centerPct = document.getElementById('pulse-center-pct');
+  const centerLabel = document.getElementById('pulse-center-label');
+
+  const pctBalance = document.getElementById('pulse-pct-balance');
+  const amountBalance = document.getElementById('pulse-amount-balance');
+  const pctTransfers = document.getElementById('pulse-pct-transfers');
+  const amountTransfers = document.getElementById('pulse-amount-transfers');
+  const pctBills = document.getElementById('pulse-pct-bills');
+  const amountBills = document.getElementById('pulse-amount-bills');
+
+  const insightEl = document.getElementById('pulse-ai-insight-text');
+
+  // SVG Donut Calculations (r=46, Circumference ≈ 289.03)
+  const C = 289.0265;
+  const lenBalance = (data.balancePct / 100) * C;
+  const lenTransfers = (data.transfersPct / 100) * C;
+  const lenBills = (data.billsPct / 100) * C;
+
+  if (segBalance) {
+    segBalance.setAttribute('stroke-dasharray', `${lenBalance.toFixed(2)} ${(C - lenBalance).toFixed(2)}`);
+    segBalance.setAttribute('stroke-dashoffset', '0');
+  }
+
+  if (segTransfers) {
+    segTransfers.setAttribute('stroke-dasharray', `${lenTransfers.toFixed(2)} ${(C - lenTransfers).toFixed(2)}`);
+    segTransfers.setAttribute('stroke-dashoffset', (-lenBalance).toFixed(2));
+  }
+
+  if (segBills) {
+    segBills.setAttribute('stroke-dasharray', `${lenBills.toFixed(2)} ${(C - lenBills).toFixed(2)}`);
+    segBills.setAttribute('stroke-dashoffset', (-(lenBalance + lenTransfers)).toFixed(2));
+  }
+
+  // Currency formatting helper
+  const isUsd = (typeof activeCurrency !== 'undefined' && activeCurrency === 'USD');
+  const formatAmt = (valIqd) => {
+    if (isUsd) {
+      const rate = (typeof iqdPerUsdRate === 'number' && iqdPerUsdRate > 0) ? iqdPerUsdRate : 1530;
+      return `$${(valIqd / rate).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}`;
+    }
+    return `${Number(valIqd || 0).toLocaleString('en-US')} د.ع`;
+  };
+
+  // Update Legend Chips
+  if (pctBalance) pctBalance.textContent = `${data.balancePct}%`;
+  if (amountBalance) amountBalance.textContent = formatAmt(data.balance);
+
+  if (pctTransfers) pctTransfers.textContent = `${data.transfersPct}%`;
+  if (amountTransfers) amountTransfers.textContent = formatAmt(data.transfersSpent);
+
+  if (pctBills) pctBills.textContent = `${data.billsPct}%`;
+  if (amountBills) amountBills.textContent = formatAmt(data.billsSpent);
+
+  // Update Center Donut according to active segment
+  if (centerPct && centerLabel) {
+    if (activeFintechPulseSegment === 'transfers') {
+      centerPct.textContent = `${data.transfersPct}%`;
+      centerLabel.textContent = 'التحويلات';
+    } else if (activeFintechPulseSegment === 'bills') {
+      centerPct.textContent = `${data.billsPct}%`;
+      centerLabel.textContent = 'الفواتير';
+    } else {
+      centerPct.textContent = `${data.balancePct}%`;
+      centerLabel.textContent = 'الرصيد المتاح';
+    }
+  }
+
+  // Update AI Proactive Insight Badge
+  if (insightEl && data.insightText) {
+    insightEl.textContent = data.insightText;
+  }
+
+  // Synchronize active chip styles & segment highlights
+  if (typeof document.querySelectorAll === 'function') {
+    const chips = document.querySelectorAll('.pulse-legend-chip');
+    chips.forEach((chip) => {
+      const seg = chip.getAttribute('data-segment');
+      if (seg === activeFintechPulseSegment) {
+        chip.classList.add('is-active');
+      } else {
+        chip.classList.remove('is-active');
+      }
+    });
+
+    const donutWrap = (typeof document.querySelector === 'function')
+      ? document.querySelector('.pulse-donut-wrapper')
+      : null;
+    if (donutWrap && donutWrap.classList) {
+      donutWrap.classList.toggle('has-highlight', activeFintechPulseSegment !== 'balance');
+    }
+  }
+
+  [
+    { el: segBalance, seg: 'balance' },
+    { el: segTransfers, seg: 'transfers' },
+    { el: segBills, seg: 'bills' }
+  ].forEach(({ el, seg }) => {
+    if (el && el.classList && typeof el.classList.toggle === 'function') {
+      el.classList.toggle('is-highlighted', seg === activeFintechPulseSegment);
+    }
+  });
+
+  return data;
+}
+
+/**
+ * Initializes interactive listeners on the Fintech Pulse donut segments and legend chips
+ */
+function initFintechPulseInteractions() {
+  if (typeof document === 'undefined' || !document || typeof document.getElementById !== 'function') return;
+
+  if (typeof document.querySelectorAll === 'function') {
+    const chips = document.querySelectorAll('.pulse-legend-chip');
+    chips.forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        const seg = chip.getAttribute('data-segment');
+        if (seg) {
+          setFintechPulseActiveSegment(seg);
+        }
+      });
+
+      chip.addEventListener('mouseenter', () => {
+        const seg = chip.getAttribute('data-segment');
+        if (seg) {
+          setFintechPulseActiveSegment(seg);
+        }
+      });
+    });
+  }
+
+  // SVG segments interactivity
+  const segMap = [
+    { id: 'pulse-seg-balance', seg: 'balance' },
+    { id: 'pulse-seg-transfers', seg: 'transfers' },
+    { id: 'pulse-seg-bills', seg: 'bills' }
+  ];
+
+  segMap.forEach(({ id, seg }) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        setFintechPulseActiveSegment(seg);
+      });
+      el.addEventListener('mouseenter', () => {
+        setFintechPulseActiveSegment(seg);
+      });
+    }
+  });
 }
 
 /* ==========================================================================
@@ -4461,7 +5794,16 @@ function openQuickTransferModal(name, phone = '', alias = '') {
   if (aliasEl) aliasEl.textContent = currentTransferContact.alias || 'مسجل بالمحفظة';
   if (initialEl) initialEl.textContent = typeof getContactInitial === 'function' ? getContactInitial(currentTransferContact.name) : currentTransferContact.name.charAt(0);
   if (avatarEl) avatarEl.style.background = typeof getContactGradient === 'function' ? getContactGradient(currentTransferContact.name) : 'linear-gradient(135deg, #059669 0%, #06b6d4 100%)';
-  if (inputEl) inputEl.value = Number(currentTransferAmount).toLocaleString('en-US');
+
+  if (inputEl) {
+    inputEl.value = (activeCurrency === 'USD')
+      ? (currentTransferAmount / iqdPerUsdRate).toFixed(2)
+      : Number(currentTransferAmount).toLocaleString('en-US');
+  }
+
+  updateCurrencyTogglePills();
+  updateQuickTransferChips();
+  updateQuickTransferInputVal();
 
   // Activate matching chip
   const chips = (typeof document.querySelectorAll === 'function')
@@ -4489,19 +5831,27 @@ function closeQuickTransferModal() {
 function submitQuickTransfer() {
   if (!currentTransferContact || !currentTransferContact.name) return;
   const inputEl = document.getElementById('quick-transfer-amount-input');
-  let amount = currentTransferAmount;
+  let amountIqd = currentTransferAmount;
   if (inputEl) {
-    const rawDigits = inputEl.value.replace(/[^\d]/g, '');
-    if (rawDigits) amount = parseInt(rawDigits, 10);
+    const rawVal = inputEl.value.replace(/[^\d.]/g, '');
+    const num = parseFloat(rawVal);
+    if (!isNaN(num) && num > 0) {
+      if (activeCurrency === 'USD') {
+        amountIqd = Math.round(num * iqdPerUsdRate);
+      } else {
+        amountIqd = Math.round(num);
+      }
+    }
   }
 
-  if (isNaN(amount) || amount <= 0) {
-    amount = 50000;
+  if (isNaN(amountIqd) || amountIqd <= 0) {
+    amountIqd = 50000;
   }
 
   closeQuickTransferModal();
 
-  const promptText = `أريد أحول ${amount.toLocaleString('en-US')} دينار إلى ${currentTransferContact.name}`;
+  // Always formulate in pristine IQD base currency for zero rounding loss in ledger
+  const promptText = `أريد أحول ${amountIqd.toLocaleString('en-US')} دينار إلى ${currentTransferContact.name}`;
   handleFormSubmit(promptText);
 }
 
@@ -4530,7 +5880,12 @@ function initQuickTransferModal() {
         const amt = parseInt(chip.getAttribute('data-amount'), 10);
         if (!isNaN(amt)) {
           currentTransferAmount = amt;
-          if (amountInput) amountInput.value = amt.toLocaleString('en-US');
+          if (amountInput) {
+            amountInput.value = (activeCurrency === 'USD')
+              ? (amt / iqdPerUsdRate).toFixed(2)
+              : amt.toLocaleString('en-US');
+          }
+          updateQuickTransferInputVal();
           const chips = wheelTrack.querySelectorAll('.amount-wheel-chip');
           chips.forEach(c => c.classList.toggle('active', c === chip));
         }
@@ -4543,7 +5898,12 @@ function initQuickTransferModal() {
     stepMinus.addEventListener('click', (e) => {
       e.preventDefault();
       currentTransferAmount = Math.max(250, currentTransferAmount - 5000);
-      if (amountInput) amountInput.value = currentTransferAmount.toLocaleString('en-US');
+      if (amountInput) {
+        amountInput.value = (activeCurrency === 'USD')
+          ? (currentTransferAmount / iqdPerUsdRate).toFixed(2)
+          : currentTransferAmount.toLocaleString('en-US');
+      }
+      updateQuickTransferInputVal();
       syncWheelChips();
     });
   }
@@ -4552,7 +5912,12 @@ function initQuickTransferModal() {
     stepPlus.addEventListener('click', (e) => {
       e.preventDefault();
       currentTransferAmount = currentTransferAmount + 5000;
-      if (amountInput) amountInput.value = currentTransferAmount.toLocaleString('en-US');
+      if (amountInput) {
+        amountInput.value = (activeCurrency === 'USD')
+          ? (currentTransferAmount / iqdPerUsdRate).toFixed(2)
+          : currentTransferAmount.toLocaleString('en-US');
+      }
+      updateQuickTransferInputVal();
       syncWheelChips();
     });
   }
@@ -4560,13 +5925,17 @@ function initQuickTransferModal() {
   // Input editing
   if (amountInput) {
     amountInput.addEventListener('input', () => {
-      const digits = amountInput.value.replace(/[^\d]/g, '');
-      if (digits) {
-        const num = parseInt(digits, 10);
-        currentTransferAmount = num;
-        amountInput.value = num.toLocaleString('en-US');
-        syncWheelChips();
+      const rawVal = amountInput.value.replace(/[^\d.]/g, '');
+      const num = parseFloat(rawVal);
+      if (!isNaN(num) && num > 0) {
+        if (activeCurrency === 'USD') {
+          currentTransferAmount = Math.round(num * iqdPerUsdRate);
+        } else {
+          currentTransferAmount = Math.round(num);
+        }
       }
+      updateQuickTransferInputVal();
+      syncWheelChips();
     });
 
     amountInput.addEventListener('keydown', (e) => {
@@ -4708,8 +6077,30 @@ function initCompanionRail() {
   renderCompanionContacts();
   renderCompanionBills();
   renderCompanionLedger();
+  renderFintechPulse();
+  initFintechPulseInteractions();
   fetchCompanionContacts();
   fetchCompanionBills();
+
+  // Auto-sync companion rail when window regains focus (e.g. user modified DB externally)
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('focus', () => {
+      fetchCompanionContacts();
+      fetchCompanionBills();
+      fetchAndRenderTransactions();
+      syncWalletHeader();
+    });
+  }
+
+  // Periodic passive sync every 15s when page is active
+  if (typeof setInterval === 'function') {
+    setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !isRequestInProgress) {
+        fetchCompanionContacts();
+        fetchCompanionBills();
+      }
+    }, 15000);
+  }
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -4771,7 +6162,41 @@ if (typeof module !== 'undefined' && module.exports) {
     getCachedCompanionBills: () => cachedCompanionBills,
     setCachedCompanionBills: (val) => { cachedCompanionBills = val; },
     getIsShowingAllCompanionBills: () => isShowingAllCompanionBills,
-    setIsShowingAllCompanionBills: (val) => { isShowingAllCompanionBills = val; }
+    setIsShowingAllCompanionBills: (val) => { isShowingAllCompanionBills = val; },
+    renderFintechActionButtons,
+    renderConfirmationCard,
+    renderFintechConfirmationCard,
+    initSlideToConfirm,
+    executeSlideCompletion,
+    startSlideDrag,
+    onSlideDragMove,
+    onSlideDragEnd,
+    handleSlideKeyboard,
+    getActiveCurrency,
+    setActiveCurrency,
+    toggleActiveCurrency,
+    convertIqdToUsd,
+    convertUsdToIqd,
+    getExchangeRateValue,
+    getExchangeRateConfig,
+    setExchangeRateValue: (rate) => { iqdPerUsdRate = rate; },
+    formatDualBalance,
+    updateCurrencyTogglePills,
+    updateQuickTransferChips,
+    updateQuickTransferInputVal,
+    initCurrencySwitch,
+    fetchExchangeRate,
+    renderTransactionsSkeleton,
+    renderCompanionContactsSkeleton,
+    renderCompanionBillsSkeleton,
+    calculateFintechPulseData,
+    getFintechPulseInsight,
+    renderFintechPulse,
+    initFintechPulseInteractions,
+    getFintechPulseActiveSegment,
+    setFintechPulseActiveSegment,
+    parseDisambiguationData,
+    renderDisambiguationCard
   };
 }
 
