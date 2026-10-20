@@ -20,6 +20,8 @@ const {
     extractContactNameFromMessage,
     detectBillPaymentIntent,
     findMatchingBill,
+    isBillInquiry,
+    isContactsListInquiry,
     isUserCancellation,
     isUserConfirmation,
     MAX_CONVERSATION_HISTORY,
@@ -2007,5 +2009,1288 @@ describe('VI Wallet Regression Suite - Task 5: Text-To-Speech (TTS) Voice Engine
         });
     });
 });
+
+describe('VI Wallet Regression Suite - Task 6: Contacts Inquiry Intent Routing & Voice Visualizer Integrity', () => {
+    let testServer;
+    let serverUrl;
+
+    before(async () => {
+        resetDatabase();
+        await new Promise((resolve) => {
+            testServer = app.listen(0, () => {
+                const port = testServer.address().port;
+                serverUrl = `http://127.0.0.1:${port}`;
+                resolve();
+            });
+        });
+    });
+
+    after(async () => {
+        if (testServer) {
+            await new Promise((resolve) => testServer.close(resolve));
+        }
+        resetDatabase();
+    });
+
+    describe('1. Contacts List Inquiry Intent Identification', () => {
+        test('Detects full complex phrase asking to view contacts to choose from', () => {
+            const query = 'اعرض لي جهات اتصالاتي حتى اني اختار من بينهم اي شخص اريد احول له';
+            assert.equal(isContactsListInquiry(query), true);
+        });
+
+        test('Detects direct inquiries for contacts list', () => {
+            assert.equal(isContactsListInquiry('اعرض لي قائمه اتصالاتي'), true);
+            assert.equal(isContactsListInquiry('اعرض لي قائمة اتصالاتي'), true);
+            assert.equal(isContactsListInquiry('قائمه اتصالي'), true);
+            assert.equal(isContactsListInquiry('قائمة اتصالي'), true);
+            assert.equal(isContactsListInquiry('عرض لي قائمه اتصال لاتي'), true);
+            assert.equal(isContactsListInquiry('جهات اتصالاتي'), true);
+            assert.equal(isContactsListInquiry('منو مسجل عندي'), true);
+            assert.equal(isContactsListInquiry('ارقام اصدقائي'), true);
+            assert.equal(isContactsListInquiry('قائمه الاسماء'), true);
+        });
+
+        test('Detects correction phrase with contacts inquiry', () => {
+            assert.equal(isContactsListInquiry('لا مو الفواتير قائمه اتصالي'), true);
+            assert.equal(isContactsListInquiry('لا اقصد جهات اتصالي'), true);
+        });
+
+        test('Does not match unrelated financial commands', () => {
+            assert.equal(isContactsListInquiry('ادفع فاتورة الكهرباء'), false);
+            assert.equal(isContactsListInquiry('حول 50 الف لسيف'), false);
+            assert.equal(isContactsListInquiry('شكد رصيدي هسة؟'), false);
+        });
+    });
+
+    describe('2. Exclusion Guards: isBillInquiry, classifyRecipient, and isUserCancellation', () => {
+        test('isBillInquiry rejects contacts inquiries and does not hijack them', () => {
+            assert.equal(isBillInquiry('اعرض لي قائمه اتصالاتي'), false);
+            assert.equal(isBillInquiry('قائمه اتصالي'), false);
+            assert.equal(isBillInquiry('لا مو الفواتير قائمه اتصالي'), false);
+            assert.equal(isBillInquiry('جهات اتصالاتي'), false);
+        });
+
+        test('classifyRecipient does not extract "اتي" from "اتصالاتي"', () => {
+            const query = 'اعرض لي جهات اتصالاتي حتى اني اختار من بينهم اي شخص اريد احول له';
+            const res = classifyRecipient(query, MOCK_CONTACTS);
+            assert.notEqual(res.name, 'اتي');
+            assert.notEqual(res.name, 'اتصالاتي');
+        });
+
+        test('isUserCancellation distinguishes clarifications from cancellations', () => {
+            assert.equal(isUserCancellation('لا مو الفواتير قائمه اتصالي'), false);
+            assert.equal(isUserCancellation('لا اقصد الكهرباء'), false);
+            assert.equal(isUserCancellation('لا اعرضلي الاسماء'), false);
+            assert.equal(isUserCancellation('لا الغي العملية'), true);
+            assert.equal(isUserCancellation('بطلت ما اريد احول'), true);
+            assert.equal(isUserCancellation('cancel'), true);
+        });
+    });
+
+    describe('3. End-to-End Chat API Dispatch for Contacts Inquiries', () => {
+        test('Returns contacts list directly for complex inquiry without false recipient error', async () => {
+            const res = await fetch(`${serverUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'اعرض لي جهات اتصالاتي حتى اني اختار من بينهم اي شخص اريد احول له',
+                    sessionId: 'sess_test_contacts_1'
+                })
+            });
+
+            assert.equal(res.status, 200);
+            const data = await res.json();
+            assert.ok(data.response.includes('هاي قائمة بجهات الاتصال'));
+            assert.ok(data.response.includes('أحمد كمال'));
+            assert.ok(data.response.includes('سيف الدين'));
+            assert.ok(!data.response.includes('ما لقيت أي شخص باسم "اتي"'));
+            assert.ok(!data.response.includes('فواتير غير مدفوعة'));
+        });
+
+        test('Returns contacts list for "اعرض لي قائمه اتصالاتي" without returning bills', async () => {
+            const res = await fetch(`${serverUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'اعرض لي قائمه اتصالاتي',
+                    sessionId: 'sess_test_contacts_2'
+                })
+            });
+
+            assert.equal(res.status, 200);
+            const data = await res.json();
+            assert.ok(data.response.includes('هاي قائمة بجهات الاتصال'));
+            assert.ok(!data.response.includes('فواتير غير مدفوعة'));
+        });
+
+        test('Returns contacts list for "لا مو الفواتير قائمه اتصالي" without cancelling', async () => {
+            const res = await fetch(`${serverUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'لا مو الفواتير قائمه اتصالي',
+                    sessionId: 'sess_test_contacts_3'
+                })
+            });
+
+            assert.equal(res.status, 200);
+            const data = await res.json();
+            assert.ok(data.response.includes('هاي قائمة بجهات الاتصال'));
+            assert.ok(!data.response.includes('ماكو أي عملية معلقة حالياً حتى ألغيها'));
+        });
+
+        test('Returns contacts list for "شوف اريدك ان تعرض لي قائمة جهاز اتصالاتي" (STT typo resilience)', async () => {
+            const res = await fetch(`${serverUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'شوف اريدك ان تعرض لي قائمة جهاز اتصالاتي',
+                    sessionId: 'sess_test_contacts_4'
+                })
+            });
+
+            assert.equal(res.status, 200);
+            const data = await res.json();
+            assert.ok(data.response.includes('هاي قائمة بجهات الاتصال'));
+            assert.ok(!data.response.includes('فواتير غير مدفوعة'));
+        });
+
+        test('Returns contacts list for "لا قائمة جهات اتصال"', async () => {
+            const res = await fetch(`${serverUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'لا قائمة جهات اتصال',
+                    sessionId: 'sess_test_contacts_5'
+                })
+            });
+
+            assert.equal(res.status, 200);
+            const data = await res.json();
+            assert.ok(data.response.includes('هاي قائمة بجهات الاتصال'));
+            assert.ok(!data.response.includes('ماكو أي عملية معلقة حالياً حتى ألغيها'));
+        });
+
+        test('Returns contacts list for "شنو الاشخاص اللي مسجلهم بقائمه اتصالي"', async () => {
+            const res = await fetch(`${serverUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: 'شنو الاشخاص اللي مسجلهم بقائمه اتصالي',
+                    sessionId: 'sess_test_contacts_6'
+                })
+            });
+
+            assert.equal(res.status, 200);
+            const data = await res.json();
+            assert.ok(data.response.includes('هاي قائمة بجهات الاتصال'));
+            assert.ok(!data.response.includes('فواتير غير مدفوعة'));
+        });
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 7: Resilient Bot Avatar & Browser Cross-Compatibility', () => {
+    test('Assets are physically present and served as valid PNGs', () => {
+        const fs = require('fs');
+        const path = require('path');
+        const emeraldPath = path.join(__dirname, '../../assets/bot-emerald.png');
+        const violetPath = path.join(__dirname, '../../assets/bot-violet.png');
+        const frontendEmerald = path.join(__dirname, '../../frontend/assets/bot-emerald.png');
+
+        assert.ok(fs.existsSync(emeraldPath), 'assets/bot-emerald.png must exist');
+        assert.ok(fs.existsSync(violetPath), 'assets/bot-violet.png must exist');
+        assert.ok(fs.existsSync(frontendEmerald), 'frontend/assets/bot-emerald.png mirror must exist');
+
+        const emeraldBuf = fs.readFileSync(emeraldPath);
+        assert.equal(emeraldBuf[0], 0x89);
+        assert.equal(emeraldBuf[1], 0x50);
+        assert.equal(emeraldBuf[2], 0x4E);
+        assert.equal(emeraldBuf[3], 0x47);
+    });
+
+    test('Frontend exports avatar helper functions with fallback support', () => {
+        const frontend = require('../../frontend/script.js');
+        assert.equal(typeof frontend.getBotAvatarSrc, 'function');
+        assert.equal(typeof frontend.getBotFallbackAvatarUri, 'function');
+        assert.equal(typeof frontend.createBotAvatarElement, 'function');
+
+        const darkUri = frontend.getBotFallbackAvatarUri('dark');
+        assert.ok(darkUri.startsWith('data:image/svg+xml;utf8,'));
+        assert.ok(darkUri.includes('%2310b981') || darkUri.includes('10b981'));
+
+        const lightUri = frontend.getBotFallbackAvatarUri('light');
+        assert.ok(lightUri.startsWith('data:image/svg+xml;utf8,'));
+        assert.ok(lightUri.includes('%239333ea') || lightUri.includes('9333ea'));
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 8: Tier-1 Interactive Fintech Contacts Grid & Carousel', () => {
+    const frontend = require('../../frontend/script.js');
+
+    test('parseContactsListData extracts structured contacts, aliases, and numbers', () => {
+        const text = `هاي قائمة بجهات الاتصال المسجلة بمحفظتك:
+
+1. أحمد كمال (صديق الجامعة) (+9647801122334)
+2. أحمد جاسم (الفيترجي / المصلح) (+9647802233445)
+3. سيف الدين (+9647804455667)
+
+💡 تكدر تختار أي شخص منهم وتكلي: "حول 50 الف لسيف".`;
+
+        const data = frontend.parseContactsListData(text);
+        assert.ok(data);
+        assert.equal(data.contacts.length, 3);
+        assert.equal(data.contacts[0].name, 'أحمد كمال');
+        assert.equal(data.contacts[0].alias, 'صديق الجامعة');
+        assert.equal(data.contacts[0].phone, '+9647801122334');
+        assert.equal(data.contacts[1].name, 'أحمد جاسم');
+        assert.equal(data.contacts[1].alias, 'الفيترجي / المصلح');
+        assert.equal(data.contacts[2].name, 'سيف الدين');
+        assert.equal(data.contacts[2].phone, '+9647804455667');
+        assert.ok(data.intro.includes('جهات الاتصال'));
+        assert.ok(data.outro.includes('حول 50 الف'));
+    });
+
+    test('renderFintechContactsCard produces rich HTML with monogram avatars and quick transfer buttons', () => {
+        const data = {
+            intro: 'جهات الاتصال المسجلة',
+            contacts: [
+                { num: '1', name: 'أحمد كمال', alias: 'صديق الجامعة', phone: '+9647801122334' },
+                { num: '2', name: 'سيف الدين', alias: '', phone: '+9647804455667' }
+            ],
+            outro: 'اختر للتحويل'
+        };
+
+        const html = frontend.renderFintechContactsCard(data);
+        assert.ok(html.includes('contacts-card'));
+        assert.ok(html.includes('fintech-contacts-carousel'));
+        assert.ok(html.includes('contact-monogram-avatar'));
+        assert.ok(html.includes('أحمد كمال'));
+        assert.ok(html.includes('صديق الجامعة'));
+        assert.ok(html.includes('+9647801122334'));
+        assert.ok(html.includes('contact-quick-transfer-btn'));
+        assert.ok(html.includes('data-contact-name="أحمد كمال"'));
+        assert.ok(html.includes('data-contact-name="سيف الدين"'));
+    });
+
+    test('formatFintechMessage seamlessly renders contacts cards for contact inquiry responses', () => {
+        const text = `هاي قائمة بجهات الاتصال المسجلة بمحفظتك:
+
+1. سيف الدين (+9647804455667)
+2. مرتضى (+9647819919952)
+
+💡 تكدر تختار أي شخص منهم`;
+
+        const formatted = frontend.formatFintechMessage(text, 'ai');
+        assert.ok(formatted.includes('contacts-card'));
+        assert.ok(formatted.includes('سيف الدين'));
+        assert.ok(formatted.includes('مرتضى'));
+    });
+
+    test('getContactInitial and getContactGradient operate accurately', () => {
+        assert.equal(frontend.getContactInitial('سيف الدين'), 'س');
+        assert.equal(frontend.getContactInitial('الوالدة'), 'و');
+        assert.equal(frontend.getContactInitial('أحمد'), 'أ');
+
+        const grad = frontend.getContactGradient('سيف');
+        assert.ok(grad.startsWith('linear-gradient('));
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 9: Organic Circular Ripple View Transition (iOS & Android 14 Style)', () => {
+    const frontend = require('../../frontend/script.js');
+    const fs = require('node:fs');
+    const path = require('node:path');
+
+    test('CSS stylesheet contains modern circular view transition rules and z-index layering', () => {
+        const cssPath = path.join(__dirname, '../../frontend/style.css');
+        const cssContent = fs.readFileSync(cssPath, 'utf8');
+
+        assert.ok(cssContent.includes('::view-transition-old(root)'));
+        assert.ok(cssContent.includes('::view-transition-new(root)'));
+        assert.ok(cssContent.includes('animation: none'));
+        assert.ok(cssContent.includes('mix-blend-mode: normal'));
+        assert.ok(cssContent.includes('z-index: 9999'));
+        assert.ok(cssContent.includes('prefers-reduced-motion'));
+        assert.ok(cssContent.includes('.theme-toggle-pill:active'));
+    });
+
+    test('applyTheme updates document theme attributes, labels, and avatar assets', () => {
+        const mockDocElement = {
+            attributes: {},
+            setAttribute(k, v) { this.attributes[k] = v; },
+            getAttribute(k) { return this.attributes[k]; }
+        };
+        const mockBody = {
+            attributes: {},
+            setAttribute(k, v) { this.attributes[k] = v; },
+            getAttribute(k) { return this.attributes[k]; }
+        };
+        const mockLabel = { textContent: '' };
+        const mockBadge = { textContent: '' };
+        const mockBtn = {
+            attributes: {},
+            setAttribute(k, v) { this.attributes[k] = v; }
+        };
+        const mockLogo = { src: '' };
+        const mockAvatars = [
+            { dataset: {}, src: '', onerror: null }
+        ];
+
+        global.document = {
+            documentElement: mockDocElement,
+            body: mockBody,
+            getElementById(id) {
+                if (id === 'theme-label-text') return mockLabel;
+                if (id === 'badge-theme-text') return mockBadge;
+                if (id === 'theme-toggle-btn') return mockBtn;
+                if (id === 'hero-logo-img') return mockLogo;
+                return null;
+            },
+            querySelectorAll(sel) {
+                if (sel === '.avatar-img') return mockAvatars;
+                return [];
+            }
+        };
+
+        // Test Light Theme
+        frontend.applyTheme('light');
+        assert.equal(mockDocElement.getAttribute('data-theme'), 'light');
+        assert.equal(mockBody.getAttribute('data-theme'), 'light');
+        assert.equal(mockLabel.textContent, 'أبيض وبنفسجي');
+        assert.equal(mockBadge.textContent, 'ثيم الأبيض والبنفسجي');
+        assert.equal(mockBtn.attributes['data-active-theme'], 'light');
+        assert.equal(mockLogo.src, 'assets/logo-violet.png');
+        assert.equal(mockAvatars[0].src, 'assets/bot-violet.png');
+
+        // Test Dark Theme
+        frontend.applyTheme('dark');
+        assert.equal(mockDocElement.getAttribute('data-theme'), 'dark');
+        assert.equal(mockBody.getAttribute('data-theme'), 'dark');
+        assert.equal(mockLabel.textContent, 'أسود وأخضر');
+        assert.equal(mockBadge.textContent, 'ثيم الزمرد الفاخر');
+        assert.equal(mockBtn.attributes['data-active-theme'], 'dark');
+        assert.equal(mockLogo.src, 'assets/logo-emerald.png');
+        assert.equal(mockAvatars[0].src, 'assets/bot-emerald.png');
+
+        delete global.document;
+    });
+
+    test('toggleThemeWithRipple falls back gracefully when View Transitions API is unsupported', () => {
+        let storageTheme = null;
+        global.localStorage = {
+            setItem(k, v) { storageTheme = v; }
+        };
+        const mockDocElement = {
+            attributes: {},
+            setAttribute(k, v) { this.attributes[k] = v; },
+            getAttribute(k) { return this.attributes[k]; }
+        };
+        global.document = {
+            documentElement: mockDocElement,
+            body: null,
+            getElementById: () => null,
+            querySelectorAll: () => []
+            // startViewTransition is intentionally omitted
+        };
+
+        const res = frontend.toggleThemeWithRipple('light', null);
+        assert.equal(res, null);
+        assert.equal(mockDocElement.getAttribute('data-theme'), 'light');
+        assert.equal(storageTheme, 'light');
+
+        delete global.document;
+        delete global.localStorage;
+    });
+
+    test('toggleThemeWithRipple executes document.startViewTransition and triggers circle clip-path animation', async () => {
+        let transitionCallbackCalled = false;
+        let animatedParams = null;
+
+        const mockDocElement = {
+            attributes: {},
+            setAttribute(k, v) { this.attributes[k] = v; },
+            getAttribute(k) { return this.attributes[k]; },
+            animate(keyframes, options) {
+                animatedParams = { keyframes, options };
+                return {};
+            }
+        };
+
+        const mockTransition = {
+            ready: Promise.resolve()
+        };
+
+        global.window = {
+            innerWidth: 1920,
+            innerHeight: 1080,
+            matchMedia: () => ({ matches: false })
+        };
+
+        global.document = {
+            documentElement: mockDocElement,
+            body: null,
+            getElementById: () => null,
+            querySelectorAll: () => [],
+            startViewTransition: (cb) => {
+                transitionCallbackCalled = true;
+                cb();
+                return mockTransition;
+            }
+        };
+
+        global.localStorage = {
+            setItem: () => {}
+        };
+
+        const mockButton = {
+            getBoundingClientRect: () => ({
+                left: 100,
+                top: 50,
+                width: 48,
+                height: 24
+            })
+        };
+
+        // Button center: x = 100 + 24 = 124, y = 50 + 12 = 62
+        const expectedRadius = Math.hypot(Math.max(124, 1920 - 124), Math.max(62, 1080 - 62));
+
+        const transition = frontend.toggleThemeWithRipple('dark', mockButton);
+        assert.ok(transition);
+        assert.equal(transitionCallbackCalled, true);
+        assert.equal(mockDocElement.getAttribute('data-theme'), 'dark');
+
+        await mockTransition.ready;
+
+        assert.ok(animatedParams);
+        assert.equal(animatedParams.options.duration, 420);
+        assert.equal(animatedParams.options.easing, 'cubic-bezier(0.4, 0, 0.2, 1)');
+        assert.equal(animatedParams.options.pseudoElement, '::view-transition-new(root)');
+        assert.equal(animatedParams.keyframes.clipPath[0], 'circle(0px at 124px 62px)');
+        assert.equal(animatedParams.keyframes.clipPath[1], `circle(${expectedRadius}px at 124px 62px)`);
+
+        delete global.window;
+        delete global.document;
+        delete global.localStorage;
+    });
+
+    test('toggleThemeWithRipple respects prefers-reduced-motion: reduce by switching instantly', () => {
+        let viewTransitionCalled = false;
+        const mockDocElement = {
+            attributes: {},
+            setAttribute(k, v) { this.attributes[k] = v; },
+            getAttribute(k) { return this.attributes[k]; }
+        };
+
+        global.window = {
+            innerWidth: 1920,
+            innerHeight: 1080,
+            matchMedia: (query) => ({
+                matches: query.includes('prefers-reduced-motion')
+            })
+        };
+
+        global.document = {
+            documentElement: mockDocElement,
+            body: null,
+            getElementById: () => null,
+            querySelectorAll: () => [],
+            startViewTransition: (cb) => {
+                viewTransitionCalled = true;
+                cb();
+                return { ready: Promise.resolve() };
+            }
+        };
+
+        global.localStorage = { setItem: () => {} };
+
+        const res = frontend.toggleThemeWithRipple('light', null);
+        assert.equal(res, null);
+        assert.equal(viewTransitionCalled, false);
+        assert.equal(mockDocElement.getAttribute('data-theme'), 'light');
+
+        delete global.window;
+        delete global.document;
+        delete global.localStorage;
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 10: Luxury Tactile Audio Chime & Digital Micro-Confetti Celebration', () => {
+    const frontend = require('../../frontend/script.js');
+    const fs = require('node:fs');
+    const path = require('node:path');
+
+    test('CSS stylesheet contains .crest-confetti-canvas with proper positioning and layering', () => {
+        const cssPath = path.join(__dirname, '../../frontend/style.css');
+        const cssContent = fs.readFileSync(cssPath, 'utf8');
+
+        assert.ok(cssContent.includes('.crest-confetti-canvas'));
+        assert.ok(cssContent.includes('pointer-events: none'));
+        assert.ok(cssContent.includes('z-index: 10'));
+    });
+
+    test('playApplePaySuccessChime strictly respects mute state (isTtsEnabled = false)', () => {
+        frontend.setTtsEnabled(false);
+        const played = frontend.playApplePaySuccessChime();
+        assert.equal(played, false, 'Chime must return false and not synthesize audio when muted');
+        frontend.setTtsEnabled(true);
+    });
+
+    test('playApplePaySuccessChime synthesizes 880Hz to 1320Hz chime via AudioContext when unmuted', () => {
+        frontend.setTtsEnabled(true);
+
+        const createdOscillators = [];
+        const createdGains = [];
+
+        class MockGainNode {
+            constructor() {
+                this.gain = {
+                    setValueAtTime: () => {},
+                    linearRampToValueAtTime: () => {},
+                    exponentialRampToValueAtTime: () => {}
+                };
+            }
+            connect(dest) {}
+        }
+
+        class MockOscillatorNode {
+            constructor() {
+                this.type = 'sine';
+                this.frequencies = [];
+                this.frequency = {
+                    setValueAtTime: (val, time) => {
+                        this.frequencies.push({ val, time, method: 'set' });
+                    },
+                    exponentialRampToValueAtTime: (val, time) => {
+                        this.frequencies.push({ val, time, method: 'ramp' });
+                    }
+                };
+            }
+            connect(dest) {}
+            start(t) {}
+            stop(t) {}
+        }
+
+        class MockAudioContext {
+            constructor() {
+                this.state = 'running';
+                this.currentTime = 1.0;
+                this.destination = {};
+            }
+            createGain() {
+                const g = new MockGainNode();
+                createdGains.push(g);
+                return g;
+            }
+            createOscillator() {
+                const osc = new MockOscillatorNode();
+                createdOscillators.push(osc);
+                return osc;
+            }
+            resume() { return Promise.resolve(); }
+        }
+
+        global.window = {
+            AudioContext: MockAudioContext
+        };
+
+        const played = frontend.playApplePaySuccessChime();
+        assert.equal(played, true, 'Chime must synthesize and return true when AudioContext is present and unmuted');
+        assert.equal(createdOscillators.length, 2, 'Must create fundamental oscillator and harmonic oscillator');
+
+        // Verify primary fundamental: 880Hz gliding smoothly to 1320Hz
+        const osc1 = createdOscillators[0];
+        assert.equal(osc1.type, 'sine');
+        assert.equal(osc1.frequencies[0].val, 880);
+        assert.equal(osc1.frequencies[1].val, 1320);
+
+        // Verify secondary metallic harmonic: 1760Hz gliding to 2640Hz
+        const osc2 = createdOscillators[1];
+        assert.equal(osc2.type, 'triangle');
+        assert.equal(osc2.frequencies[0].val, 1760);
+        assert.equal(osc2.frequencies[1].val, 2640);
+
+        delete global.window;
+    });
+
+    test('launchMicroConfetti creates canvas with 36 metallic particles and auto-cleans up after 1.2s', () => {
+        let appendedChild = null;
+        let removedChild = false;
+
+        const mockCrest = {
+            appendChild: (child) => { appendedChild = child; },
+            getBoundingClientRect: () => ({ left: 50, top: 50, width: 72, height: 72 })
+        };
+
+        const mockCtx = {
+            clearRect: () => {},
+            save: () => {},
+            restore: () => {},
+            translate: () => {},
+            rotate: () => {},
+            beginPath: () => {},
+            arc: () => {},
+            fill: () => {},
+            fillRect: () => {}
+        };
+
+        global.window = {
+            matchMedia: () => ({ matches: false })
+        };
+
+        global.document = {
+            createElement: (tag) => {
+                if (tag === 'canvas') {
+                    return {
+                        classList: { add: () => {} },
+                        style: {},
+                        setAttribute: () => {},
+                        getContext: (type) => (type === '2d' ? mockCtx : null),
+                        remove: () => { removedChild = true; },
+                        parentNode: mockCrest
+                    };
+                }
+                return {};
+            }
+        };
+
+        const canvas = frontend.launchMicroConfetti(mockCrest);
+        assert.ok(canvas);
+        assert.equal(appendedChild, canvas);
+
+        delete global.window;
+        delete global.document;
+    });
+
+    test('launchMicroConfetti skips confetti generation when prefers-reduced-motion is true', () => {
+        let childAppended = false;
+        const mockCrest = {
+            appendChild: () => { childAppended = true; }
+        };
+
+        global.window = {
+            matchMedia: (q) => ({ matches: q.includes('prefers-reduced-motion') })
+        };
+        global.document = {
+            createElement: () => ({})
+        };
+
+        const canvas = frontend.launchMicroConfetti(mockCrest);
+        assert.equal(canvas, null);
+        assert.equal(childAppended, false);
+
+        delete global.window;
+        delete global.document;
+    });
+
+    test('triggerReceiptCelebration executes both chime and micro-confetti in harmony', () => {
+        frontend.setTtsEnabled(true);
+        const mockCrest = {
+            appendChild: () => {},
+            getBoundingClientRect: () => ({ left: 0, top: 0, width: 72, height: 72 })
+        };
+
+        global.window = {
+            matchMedia: () => ({ matches: false }),
+            AudioContext: class {
+                constructor() {
+                    this.state = 'running';
+                    this.currentTime = 0;
+                    this.destination = {};
+                }
+                createGain() {
+                    return {
+                        gain: { setValueAtTime: () => {}, linearRampToValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} },
+                        connect: () => {}
+                    };
+                }
+                createOscillator() {
+                    return {
+                        frequency: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} },
+                        connect: () => {},
+                        start: () => {},
+                        stop: () => {}
+                    };
+                }
+            }
+        };
+
+        global.document = {
+            createElement: () => ({
+                classList: { add: () => {} },
+                style: {},
+                setAttribute: () => {},
+                getContext: () => ({ clearRect: () => {}, save: () => {}, restore: () => {} }),
+                remove: () => {}
+            })
+        };
+
+        const res = frontend.triggerReceiptCelebration(mockCrest);
+        assert.equal(res.chime, true);
+        assert.ok(res.confetti);
+
+        delete global.window;
+        delete global.document;
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 11: Ambient Audio-Reactive Chromatic Aura (Google Gemini & Siri Style)', () => {
+    const frontend = require('../../frontend/script.js');
+    const fs = require('node:fs');
+    const path = require('node:path');
+
+    test('CSS stylesheet contains .audio-reactive-active rules with hardware-accelerated transitions', () => {
+        const cssPath = path.join(__dirname, '../../frontend/style.css');
+        const cssContent = fs.readFileSync(cssPath, 'utf8');
+
+        assert.ok(cssContent.includes('.voice-recording-dock.audio-reactive-active'));
+        assert.ok(cssContent.includes('.input-form.audio-reactive-active'));
+        assert.ok(cssContent.includes('will-change: box-shadow, border-color'));
+        assert.ok(cssContent.includes('transition: border-color'));
+    });
+
+    test('updateAudioReactiveChromaticAura modulates Emerald and Cyan/Teal aura in Dark Mode', () => {
+        const mockDock = {
+            id: 'voice-recording-dock',
+            style: { display: 'flex', boxShadow: '', borderColor: '' },
+            classList: {
+                classes: new Set(),
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+
+        global.document = {
+            getElementById: (id) => (id === 'voice-recording-dock' ? mockDock : null)
+        };
+
+        const res = frontend.updateAudioReactiveChromaticAura(0.65, true);
+        assert.ok(res);
+        assert.equal(res.isDark, true);
+        assert.equal(mockDock.classList.contains('audio-reactive-active'), true);
+
+        // Dark mode color verification: Emerald Green (16, 185, 129 / 5, 150, 105) and Cyan/Teal (6, 182, 212)
+        assert.ok(mockDock.style.boxShadow.includes('16, 185, 129'));
+        assert.ok(mockDock.style.boxShadow.includes('6, 182, 212'));
+        assert.ok(mockDock.style.boxShadow.includes('5, 150, 105'));
+        assert.ok(mockDock.style.borderColor.includes('16, 185, 129'));
+
+        delete global.document;
+    });
+
+    test('updateAudioReactiveChromaticAura modulates Royal Violet and Electric Indigo aura in Light Mode', () => {
+        const mockDock = {
+            id: 'voice-recording-dock',
+            style: { display: 'flex', boxShadow: '', borderColor: '' },
+            classList: {
+                classes: new Set(),
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+
+        global.document = {
+            getElementById: (id) => (id === 'voice-recording-dock' ? mockDock : null)
+        };
+
+        const res = frontend.updateAudioReactiveChromaticAura(0.70, false);
+        assert.ok(res);
+        assert.equal(res.isDark, false);
+        assert.equal(mockDock.classList.contains('audio-reactive-active'), true);
+
+        // Light mode color verification: Royal Violet (124, 58, 237 / 139, 92, 246) and Electric Indigo (99, 102, 241)
+        assert.ok(mockDock.style.boxShadow.includes('124, 58, 237'));
+        assert.ok(mockDock.style.boxShadow.includes('99, 102, 241'));
+        assert.ok(mockDock.style.boxShadow.includes('139, 92, 246'));
+        assert.ok(mockDock.style.borderColor.includes('124, 58, 237'));
+
+        delete global.document;
+    });
+
+    test('resetAudioReactiveChromaticAura cleanly removes aura class and clears inline box-shadow and border-color', () => {
+        const mockDock = {
+            id: 'voice-recording-dock',
+            style: { display: 'flex', boxShadow: '0 0 20px red', borderColor: 'green' },
+            classList: {
+                classes: new Set(['audio-reactive-active']),
+                remove(c) { this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+        const mockForm = {
+            id: 'chat-form',
+            style: { boxShadow: '0 0 10px blue', borderColor: 'purple' },
+            classList: {
+                classes: new Set(['audio-reactive-active']),
+                remove(c) { this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'voice-recording-dock') return mockDock;
+                if (id === 'chat-form') return mockForm;
+                return null;
+            }
+        };
+
+        const success = frontend.resetAudioReactiveChromaticAura();
+        assert.equal(success, true);
+        assert.equal(mockDock.style.boxShadow, '');
+        assert.equal(mockDock.style.borderColor, '');
+        assert.equal(mockDock.classList.contains('audio-reactive-active'), false);
+        assert.equal(mockForm.style.boxShadow, '');
+        assert.equal(mockForm.style.borderColor, '');
+        assert.equal(mockForm.classList.contains('audio-reactive-active'), false);
+
+        delete global.document;
+    });
+
+    test('updateAudioReactiveChromaticAura scales intensity dynamically between minimum pulse and speech peak', () => {
+        const mockDock = {
+            id: 'voice-recording-dock',
+            style: { display: 'flex', boxShadow: '', borderColor: '' },
+            classList: { add: () => {} }
+        };
+
+        global.document = {
+            getElementById: () => mockDock
+        };
+
+        const quiet = frontend.updateAudioReactiveChromaticAura(0.02, true);
+        const loud = frontend.updateAudioReactiveChromaticAura(0.95, true);
+
+        // Quiet energy clamps at baseline ambient pulse (0.06)
+        assert.equal(quiet.energy, 0.06);
+        // Loud energy scales up to 0.95
+        assert.equal(loud.energy, 0.95);
+
+        delete global.document;
+    });
+});
+
+describe('VI Wallet Regression Suite - Task 12: Desktop Workstation Layout & Collapsible Companion Rail', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const frontend = require('../../frontend/script.js');
+
+    test('HTML & CSS stylesheets contain companion rail markup, widescreen layout, and mobile safeguard', () => {
+        const html = fs.readFileSync(path.join(__dirname, '../../frontend/index.html'), 'utf-8');
+        const css = fs.readFileSync(path.join(__dirname, '../../frontend/style.css'), 'utf-8');
+
+        // Verify HTML markup elements
+        assert.ok(html.includes('id="companion-rail-toggle"'), 'Header must contain companion rail toggle button');
+        assert.ok(html.includes('id="companion-rail"'), 'App layout must contain #companion-rail');
+        assert.ok(html.includes('id="companion-balance-card"'), 'Rail must contain live balance card');
+        assert.ok(html.includes('id="companion-contacts-list"'), 'Rail must contain pinned contacts container');
+        assert.ok(html.includes('id="companion-bills-list"'), 'Rail must contain bills container');
+        assert.ok(html.includes('id="companion-open-drawer-btn"'), 'Rail must contain full drawer trigger');
+        assert.ok(html.includes('id="quick-transfer-modal"'), 'Must contain quick transfer modal');
+
+        // Verify responsive CSS layout rules
+        assert.ok(css.includes('@media (min-width: 1100px)'), 'CSS must specify widescreen >= 1100px breakpoint');
+        assert.ok(css.includes('.companion-rail'), 'CSS must style .companion-rail');
+        assert.ok(css.includes('.companion-rail.is-collapsed'), 'CSS must style .companion-rail.is-collapsed state');
+        assert.ok(css.includes('@media (max-width: 1099px)'), 'CSS must contain mobile safeguard');
+        assert.ok(css.includes('display: none !important'), 'Mobile safeguard must hide companion rail completely');
+    });
+
+    test('isCompanionRailCollapsed and setCompanionRailCollapsed persist state in localStorage and update classes', () => {
+        let store = {};
+        global.localStorage = {
+            getItem: (k) => store[k] || null,
+            setItem: (k, v) => { store[k] = String(v); }
+        };
+
+        const mockAppLayout = {
+            classList: {
+                classes: new Set(),
+                toggle(c, force) {
+                    if (force) this.classes.add(c);
+                    else this.classes.delete(c);
+                },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+
+        const mockRail = {
+            classList: {
+                classes: new Set(),
+                toggle(c, force) {
+                    if (force) this.classes.add(c);
+                    else this.classes.delete(c);
+                },
+                contains(c) { return this.classes.has(c); }
+            },
+            attrs: {},
+            setAttribute(k, v) { this.attrs[k] = v; }
+        };
+
+        const mockBtn = {
+            classList: {
+                classes: new Set(),
+                toggle(c, force) {
+                    if (force) this.classes.add(c);
+                    else this.classes.delete(c);
+                },
+                contains(c) { return this.classes.has(c); }
+            },
+            attrs: {},
+            setAttribute(k, v) { this.attrs[k] = v; }
+        };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'app-layout') return mockAppLayout;
+                if (id === 'companion-rail') return mockRail;
+                if (id === 'companion-rail-toggle') return mockBtn;
+                return null;
+            }
+        };
+
+        // Initially not collapsed (false)
+        assert.equal(frontend.isCompanionRailCollapsed(), false);
+
+        // Collapse rail
+        frontend.setCompanionRailCollapsed(true);
+        assert.equal(frontend.isCompanionRailCollapsed(), true);
+        assert.equal(store[frontend.COMPANION_RAIL_STORAGE_KEY], 'true');
+        assert.equal(mockAppLayout.classList.contains('companion-collapsed'), true);
+        assert.equal(mockRail.classList.contains('is-collapsed'), true);
+        assert.equal(mockRail.attrs['aria-hidden'], 'true');
+        assert.equal(mockBtn.attrs['aria-expanded'], 'false');
+
+        // Toggle back to expanded
+        const newState = frontend.toggleCompanionRail();
+        assert.equal(newState, false);
+        assert.equal(frontend.isCompanionRailCollapsed(), false);
+        assert.equal(mockAppLayout.classList.contains('companion-collapsed'), false);
+        assert.equal(mockRail.classList.contains('is-collapsed'), false);
+        assert.equal(mockRail.attrs['aria-hidden'], 'false');
+        assert.equal(mockBtn.attrs['aria-expanded'], 'true');
+
+        delete global.localStorage;
+        delete global.document;
+    });
+
+    test('handleQuickContactTransfer populates user input with transfer intent and focuses input', () => {
+        let focused = false;
+        const mockInput = {
+            value: '',
+            style: { height: '' },
+            scrollHeight: 36,
+            selectionStart: 0,
+            selectionEnd: 0,
+            focus() { focused = true; }
+        };
+
+        global.document = {
+            getElementById: (id) => (id === 'user-input' ? mockInput : null)
+        };
+
+        frontend.handleQuickContactTransfer('أحمد كمال');
+        assert.equal(mockInput.value, 'أريد أحول لـ أحمد كمال ');
+        assert.equal(focused, true);
+
+        delete global.document;
+    });
+
+    test('renderCompanionContacts renders avatar monograms, names, aliases, and 1-click transfer shortcuts', () => {
+        const mockList = { innerHTML: '' };
+        const mockCount = { textContent: '' };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'companion-contacts-list') return mockList;
+                if (id === 'companion-contacts-count') return mockCount;
+                return null;
+            }
+        };
+
+        frontend.setCachedCompanionContacts([
+            { name: 'أحمد كمال', alias: 'صديق الجامعة', phone: '+9647801122334' },
+            { name: 'أم مصطفى', alias: 'الوالدة', phone: '+9647803344556' }
+        ]);
+
+        frontend.renderCompanionContacts();
+
+        assert.equal(mockCount.textContent, '2 جهات');
+        assert.ok(mockList.innerHTML.includes('companion-contact-item'));
+        assert.ok(mockList.innerHTML.includes('أحمد كمال'));
+        assert.ok(mockList.innerHTML.includes('صديق الجامعة'));
+        assert.ok(mockList.innerHTML.includes('أم مصطفى'));
+        assert.ok(mockList.innerHTML.includes('companion-quick-transfer-btn'));
+        assert.ok(mockList.innerHTML.includes('data-contact-name="أحمد كمال"'));
+
+        delete global.document;
+    });
+
+    test('renderCompanionLedger and renderWalletBalance synchronize live balance and mini-ledger entries', () => {
+        const mockLedgerList = { innerHTML: '' };
+        const mockBalanceDisplay = { textContent: '' };
+        const mockCompanionBalance = { textContent: '' };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'companion-ledger-list') return mockLedgerList;
+                if (id === 'wallet-balance-display') return mockBalanceDisplay;
+                if (id === 'companion-rail-balance') return mockCompanionBalance;
+                return null;
+            }
+        };
+
+        // Test mini-ledger rendering
+        frontend.renderCompanionLedger();
+        assert.ok(mockLedgerList.innerHTML.length > 0);
+
+        delete global.document;
+    });
+
+    test('Backend /api/contacts endpoint returns contacts list with HTTP 200', async () => {
+        const res = await fetch('http://localhost:3000/api/contacts');
+        assert.equal(res.status, 200);
+        const data = await res.json();
+        assert.ok(Array.isArray(data.contacts));
+        assert.ok(data.contacts.length > 0);
+        const contact = data.contacts[0];
+        assert.ok(contact.name);
+        assert.ok(contact.phone);
+    });
+
+    test('renderCompanionContacts handles "المزيد" expand/collapse toggle properly', () => {
+        const mockList = { innerHTML: '' };
+        const mockCount = { textContent: '' };
+        const mockMoreLabel = { textContent: '' };
+        const mockMoreBtn = {
+            style: { display: '' },
+            classList: {
+                classes: new Set(),
+                toggle(c, force) {
+                    if (force) this.classes.add(c);
+                    else this.classes.delete(c);
+                },
+                contains(c) { return this.classes.has(c); }
+            },
+            attrs: {},
+            setAttribute(k, v) { this.attrs[k] = v; },
+            querySelector: (sel) => (sel === '.more-label' ? mockMoreLabel : null)
+        };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'companion-contacts-list') return mockList;
+                if (id === 'companion-contacts-count') return mockCount;
+                if (id === 'companion-contacts-more-btn') return mockMoreBtn;
+                return null;
+            }
+        };
+
+        const testContacts = [
+            { name: 'أحمد 1', alias: 'صديق 1' },
+            { name: 'أحمد 2', alias: 'صديق 2' },
+            { name: 'أحمد 3', alias: 'صديق 3' },
+            { name: 'أحمد 4', alias: 'صديق 4' },
+            { name: 'أحمد 5', alias: 'صديق 5' },
+            { name: 'أحمد 6', alias: 'صديق 6' }
+        ];
+
+        frontend.setCachedCompanionContacts(testContacts);
+
+        // When collapsed (isShowingAll = false), only show 4 contacts and button says "المزيد"
+        frontend.setIsShowingAllCompanionContacts(false);
+        frontend.renderCompanionContacts();
+
+        assert.equal(mockMoreBtn.style.display, 'flex');
+        assert.equal(mockMoreLabel.textContent, 'المزيد');
+        assert.equal(mockMoreBtn.classList.contains('is-expanded'), false);
+        assert.equal(mockList.innerHTML.includes('أحمد 4'), true);
+        assert.equal(mockList.innerHTML.includes('أحمد 5'), false);
+
+        // When expanded (isShowingAll = true), show all 6 contacts and button says "عرض أقل"
+        frontend.setIsShowingAllCompanionContacts(true);
+        frontend.renderCompanionContacts();
+
+        assert.equal(mockMoreLabel.textContent, 'عرض أقل');
+        assert.equal(mockMoreBtn.classList.contains('is-expanded'), true);
+        assert.equal(mockList.innerHTML.includes('أحمد 5'), true);
+        assert.equal(mockList.innerHTML.includes('أحمد 6'), true);
+
+        delete global.document;
+    });
+
+    test('Fintech Flow widget renders clean minimalist typography without circle icon wrappers', () => {
+        const html = frontend.formatFintechMessage(
+            'يرجى تأكيد التحويل المالي:\nالمستلم: أحمد كمال (صديق الجامعة)\nرقم الهاتف: +9647801122334\nالمبلغ: 5,000 د.ع\nالرصيد بعد العملية: 2,995,000 د.ع\n\nيرجى مراجعة التفاصيل، ثم الاختيار أدناه أو الرد صوتاً أو كتابة بـ "تأكيد" أو "إلغاء":'
+        );
+
+        assert.ok(html.includes('fintech-transfer-flow'), 'Must contain flow container');
+        assert.ok(html.includes('محفظتك'), 'Must contain sender name');
+        assert.ok(html.includes('أحمد كمال'), 'Must contain recipient name');
+        assert.ok(!html.includes('flow-icon-wrap'), 'Must NOT contain circle icon wrappers (minimalist style)');
+    });
+
+    test('Backend /api/bills endpoint returns bills list with HTTP 200', async () => {
+        const res = await fetch('http://localhost:3000/api/bills');
+        assert.equal(res.status, 200);
+        const data = await res.json();
+        assert.ok(Array.isArray(data.bills));
+        assert.ok(data.bills.length > 0);
+        const bill = data.bills[0];
+        assert.ok(bill.biller);
+        assert.ok(bill.amount);
+    });
+
+    test('renderCompanionBills renders bills with 1-click pay buttons and accounts', () => {
+        const mockList = { innerHTML: '' };
+        const mockCount = { textContent: '' };
+        const mockMoreBtn = { style: { display: '' }, classList: { toggle: () => {} }, setAttribute: () => {} };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'companion-bills-list') return mockList;
+                if (id === 'companion-bills-count') return mockCount;
+                if (id === 'companion-bills-more-btn') return mockMoreBtn;
+                return null;
+            }
+        };
+
+        frontend.setCachedCompanionBills([
+            { id: 'b1', biller: 'فاتورة الهاتف', account_number: '07801234567', amount: 25000, status: 'unpaid' },
+            { id: 'b2', biller: 'فاتورة الإنترنت', account_number: 'NET-123', amount: 40000, status: 'unpaid' }
+        ]);
+
+        frontend.renderCompanionBills();
+
+        assert.equal(mockCount.textContent, '2 فواتير');
+        assert.ok(mockList.innerHTML.includes('companion-bill-item'));
+        assert.ok(mockList.innerHTML.includes('فاتورة الهاتف'));
+        assert.ok(mockList.innerHTML.includes('07801234567'));
+        assert.ok(mockList.innerHTML.includes('25,000 د.ع'));
+        assert.ok(mockList.innerHTML.includes('companion-quick-pay-btn'));
+        assert.ok(mockList.innerHTML.includes('تسديد'));
+
+        delete global.document;
+    });
+
+    test('renderCompanionBills handles "المزيد" expand/collapse toggle with <= 3 safeguard', () => {
+        const mockList = { innerHTML: '' };
+        const mockCount = { textContent: '' };
+        const mockMoreLabel = { textContent: '' };
+        const mockMoreBtn = {
+            style: { display: '' },
+            classList: {
+                classes: new Set(),
+                toggle(c, force) {
+                    if (force) this.classes.add(c);
+                    else this.classes.delete(c);
+                },
+                contains(c) { return this.classes.has(c); }
+            },
+            attrs: {},
+            setAttribute(k, v) { this.attrs[k] = v; },
+            querySelector: (sel) => (sel === '.more-label' ? mockMoreLabel : null)
+        };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'companion-bills-list') return mockList;
+                if (id === 'companion-bills-count') return mockCount;
+                if (id === 'companion-bills-more-btn') return mockMoreBtn;
+                return null;
+            }
+        };
+
+        // When 3 or fewer bills: button must be completely hidden
+        frontend.setCachedCompanionBills([
+            { id: 'b1', biller: 'فاتورة 1', amount: 10000, status: 'unpaid' },
+            { id: 'b2', biller: 'فاتورة 2', amount: 20000, status: 'unpaid' },
+            { id: 'b3', biller: 'فاتورة 3', amount: 30000, status: 'unpaid' }
+        ]);
+        frontend.renderCompanionBills();
+        assert.equal(mockMoreBtn.style.display, 'none');
+
+        // When > 3 bills (e.g. 5 bills):
+        frontend.setCachedCompanionBills([
+            { id: 'b1', biller: 'فاتورة 1', amount: 10000, status: 'unpaid' },
+            { id: 'b2', biller: 'فاتورة 2', amount: 20000, status: 'unpaid' },
+            { id: 'b3', biller: 'فاتورة 3', amount: 30000, status: 'unpaid' },
+            { id: 'b4', biller: 'فاتورة 4', amount: 40000, status: 'unpaid' },
+            { id: 'b5', biller: 'فاتورة 5', amount: 50000, status: 'unpaid' }
+        ]);
+
+        // Collapsed state: shows 3 bills, button says "المزيد"
+        frontend.setIsShowingAllCompanionBills(false);
+        frontend.renderCompanionBills();
+        assert.equal(mockMoreBtn.style.display, 'flex');
+        assert.equal(mockMoreLabel.textContent, 'المزيد');
+        assert.equal(mockList.innerHTML.includes('فاتورة 3'), true);
+        assert.equal(mockList.innerHTML.includes('فاتورة 4'), false);
+
+        // Expanded state: shows all 5 bills, button says "عرض أقل"
+        frontend.setIsShowingAllCompanionBills(true);
+        frontend.renderCompanionBills();
+        assert.equal(mockMoreLabel.textContent, 'عرض أقل');
+        assert.equal(mockList.innerHTML.includes('فاتورة 4'), true);
+        assert.equal(mockList.innerHTML.includes('فاتورة 5'), true);
+
+        delete global.document;
+    });
+
+    test('openQuickTransferModal populates contact and reveals modal', () => {
+        const mockModal = {
+            classList: {
+                classes: new Set(['hidden']),
+                remove(c) { this.classes.delete(c); },
+                add(c) { this.classes.add(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+        const mockBackdrop = {
+            classList: {
+                classes: new Set(['hidden']),
+                remove(c) { this.classes.delete(c); },
+                add(c) { this.classes.add(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+        const mockName = { textContent: '' };
+        const mockAlias = { textContent: '' };
+        const mockInitial = { textContent: '' };
+        const mockAvatar = { style: { background: '' } };
+        const mockInput = { value: '' };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'quick-transfer-modal') return mockModal;
+                if (id === 'quick-transfer-backdrop') return mockBackdrop;
+                if (id === 'quick-transfer-name') return mockName;
+                if (id === 'quick-transfer-alias') return mockAlias;
+                if (id === 'quick-transfer-avatar-initial') return mockInitial;
+                if (id === 'quick-transfer-avatar') return mockAvatar;
+                if (id === 'quick-transfer-amount-input') return mockInput;
+                return null;
+            },
+            querySelectorAll: () => []
+        };
+
+        frontend.openQuickTransferModal('أحمد كمال', '+9647801122334', 'صديق الجامعة');
+
+        assert.equal(mockName.textContent, 'أحمد كمال');
+        assert.equal(mockAlias.textContent, 'صديق الجامعة');
+        assert.equal(mockInitial.textContent, 'أ');
+        assert.equal(mockInput.value, '50,000');
+        assert.equal(mockModal.classList.contains('hidden'), false);
+        assert.equal(mockBackdrop.classList.contains('hidden'), false);
+
+        frontend.closeQuickTransferModal();
+        assert.equal(mockModal.classList.contains('hidden'), true);
+        assert.equal(mockBackdrop.classList.contains('hidden'), true);
+
+        delete global.document;
+    });
+});
+
 
 

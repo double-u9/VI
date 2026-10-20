@@ -4,8 +4,8 @@
   "description": "Autonomous AI Financial Agent for Bill Pay and Money Transfers in Iraqi Arabic",
   "main": "backend/server.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "node backend/server.js",
+    "start": "node --watch backend/server.js",
+    "dev": "node --watch backend/server.js",
     "reset-db": "node backend/reset_db.js",
     "test": "node --test backend/tests/*.test.js"
   },

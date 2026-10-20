@@ -947,15 +947,22 @@ function isContactCreationIntent(text) {
     const directPhrases = [
         'ضيفه عندك', 'ضيفة عندك', 'احفظه عندك', 'احفظة عندك', 'سجله عندك', 'سجلة عندك',
         'ضيف هذا الرقم', 'احفظ هذا الرقم', 'سجل هذا الرقم', 'خزن هذا الرقم',
-        'ضيفه', 'احفظه', 'سجله', 'خزنه',
         'اي ضيفه عندك', 'اي ضيفه', 'اي احفظه', 'اي سجله', 'إي ضيفه عندك', 'إي ضيفه', 'إي احفظه', 'إي سجله',
         'ضيف جهة اتصال', 'احفظ جهة اتصال', 'اضافة جهة اتصال'
     ];
 
     if (directPhrases.some(p => clean.includes(p))) return true;
 
+    // Standalone single-word action commands with strict word boundaries (so "مسجلهم" or "المسجلين" is not mistaken for "سجله")
+    const singleWordActions = ['ضيفه', 'ضيفة', 'احفظه', 'احفظة', 'سجله', 'سجلة', 'خزنه', 'خزنة'];
+    const hasStandaloneAction = singleWordActions.some(w => {
+        const regex = new RegExp(`(^|[\\s،,])(${w})([\\s،,]|$)`, 'i');
+        return regex.test(clean);
+    });
+    if (hasStandaloneAction) return true;
+
     const hasAddVerb = clean.includes('ضيف') || clean.includes('اضف') || clean.includes('احفظ') ||
-                       clean.includes('سجل') || clean.includes('خزن') || clean.includes('اضافة') || clean.includes('حفظ');
+                       (/(^|[\s،,])سجل([\s،,]|$)/.test(clean)) || clean.includes('خزن') || clean.includes('اضافة') || clean.includes('حفظ');
 
     const hasContactContext = clean.includes('عندك') || clean.includes('بمحفظتك') || clean.includes('بجهات') ||
                              clean.includes('جهات الاتصال') || clean.includes('بالاسماء') || clean.includes('بالاصدقاء') ||
@@ -982,11 +989,53 @@ function extractContactNameFromMessage(text) {
     return null;
 }
 
+function isContactsListInquiry(text) {
+    if (!text || typeof text !== 'string') return false;
+    const clean = normalizeArabic(text);
+
+    // If it's a contact creation/addition, it is NOT an inquiry to show the list!
+    if (isContactCreationIntent(text) || clean.includes('ضيف') || clean.includes('اضف') || clean.includes('احفظ') || clean.includes('اضافة') || clean.includes('حفظ')) {
+        return false;
+    }
+
+    // Direct phrases (including speech-to-text slips like جهاز instead of جهات)
+    const phrases = [
+        'جهات اتصالي', 'جهات اتصالاتي', 'جهات الاتصال', 'جهات اتصال',
+        'جهاز اتصالي', 'جهاز اتصالاتي', 'جهاز الاتصال', 'جهاز اتصال',
+        'قائمه اتصالي', 'قائمة اتصالي', 'قائمه اتصالاتي', 'قائمة اتصالاتي', 'قائمه الاتصال', 'قائمة الاتصال', 'قائمه اتصال', 'قائمة اتصال',
+        'قائمه جهات اتصال', 'قائمة جهات اتصال', 'قائمه جهات اتصالي', 'قائمة جهات اتصالي', 'قائمه جهات اتصالاتي', 'قائمة جهات اتصالاتي',
+        'قائمه جهاز اتصال', 'قائمة جهاز اتصال', 'قائمه جهاز اتصالي', 'قائمة جهاز اتصالي', 'قائمه جهاز اتصالاتي', 'قائمة جهاز اتصالاتي',
+        'قائمه الاسماء', 'قائمة الاسماء', 'قائمه اصدقائي', 'قائمة اصدقائي', 'قائمه المعارف', 'قائمة المعارف',
+        'منو مسجل عندي', 'منو مسجل بمحفظتي', 'منو مسجل', 'منو عندي',
+        'الاشخاص المسجلين', 'الاشخاص اللي مسجلهم', 'الاشخاص المسجله', 'الاشخاص اللي مسجلين',
+        'الاسماء المسجله', 'الاسماء اللي مسجلها', 'الارقام المسجله', 'الارقام اللي مسجلها',
+        'كل الاسماء', 'ارقام اصدقائي', 'كل جهات الاتصال', 'كل جهات اتصالي'
+    ];
+    if (phrases.some(p => clean.includes(p))) {
+        return true;
+    }
+
+    // "اعرض / شوفني / طلعلي / اريد اشوف / شنو / انطيني" + (جهات / جهاز / قائمه / اسماء / اشخاص / اصدقاء / اتصال)
+    const hasInquiryLead = clean.includes('اعرض') || clean.includes('عرض') || clean.includes('شوفني') || clean.includes('طلعلي') || clean.includes('اريد اشوف') || clean.includes('شنو') || clean.includes('شو') || clean.includes('انطيني') || clean.includes('طيني') || clean.includes('اريدك');
+    const hasContactConcept = clean.includes('اتصال') || clean.includes('اتصالاتي') || clean.includes('اتصالي') || clean.includes('اسماء') || clean.includes('اشخاص') || clean.includes('اصدقاء') || clean.includes('معارف');
+    if (hasInquiryLead && hasContactConcept) {
+        return true;
+    }
+
+    // "قائمه" + ("اتصال" or "اتصالي" or "اتصالاتي" or "اصدقاء" or "اسماء" or "اشخاص" or "معارف" or "جهاز")
+    if (clean.includes('قائم') && (clean.includes('اتصال') || clean.includes('اصدقاء') || clean.includes('اسماء') || clean.includes('اشخاص') || clean.includes('معارف') || clean.includes('جهاز'))) {
+        return true;
+    }
+
+    return false;
+}
+
 function handleContactInquiry(userMessage, contacts) {
     if (!userMessage || !Array.isArray(contacts)) return null;
     const clean = normalizeArabic(userMessage);
 
     const hasInquiryKeywords = 
+        isContactsListInquiry(userMessage) ||
         clean.includes('قائم') || clean.includes('اقام') || clean.includes('جهات الاتصال') ||
         clean.includes('اصدقاء') || clean.includes('عندك رقم') || clean.includes('ما عندك رقم') ||
         clean.includes('مسجل عندك') || clean.includes('موجود عندك') || clean.includes('منو مسجل') ||
@@ -997,6 +1046,7 @@ function handleContactInquiry(userMessage, contacts) {
 
     // Check if inquiring about all contacts (e.g. "منو مسجل عندي", "قائمة اتصالاتي", "جهات الاتصال")
     const isGeneralList = 
+        isContactsListInquiry(userMessage) ||
         clean.includes('منو مسجل') || clean.includes('كل جهات') || clean.includes('كل الاسماء') ||
         clean.includes('ارقام اصدقائي') || clean.includes('كل اصدقائي') ||
         (clean.includes('منو عندي') && (clean.includes('قائم') || clean.includes('اقام') || clean.includes('اتصال'))) ||
@@ -1007,7 +1057,7 @@ function handleContactInquiry(userMessage, contacts) {
             return 'ما عندك أي جهات اتصال مسجلة بمحفظتك حالياً.';
         }
         const list = contacts.map((c, i) => `${i + 1}. ${c.alias || c.name} (${c.phone})`).join('\n');
-        return `هاي قائمة بجهات الاتصال المسجلة بمحفظتك:\n\n${list}\n\n💡 تكدر تحول لأي شخص منهم بكتابة اسمه والمبلغ (مثلاً: "حول 50 الف لسيف").`;
+        return `هاي قائمة بجهات الاتصال المسجلة بمحفظتك:\n\n${list}\n\n💡 تكدر تختار أي شخص منهم وتكلي: "حول 50 الف لسيف" أو "حول 25 الف لأحمد".`;
     }
 
     // Specific contact inquiry: e.g. "ما عندك رقم جعفر اقامه اتصالاتي", "عندك رقم سيف؟", "هل جعفر مسجل؟"
@@ -1173,8 +1223,11 @@ function classifyRecipient(text, contacts = []) {
     }
 
     // 5. Unknown Name Check (e.g. "حول لجعفر", "دز لحسن")
-    const nameMatch = clean.match(/(?:ل|الى\s+|الي\s+)([\u0621-\u064A]{3,15})/);
-    const ignoreList = ['حسابي', 'محفظتي', 'رصيدي', 'شخص', 'احد', 'واحد', 'صديق', 'فلوس', 'مبلغ', 'رقم'];
+    const nameMatch = clean.match(/(?:^|[\s،,])(?:ل|الى\s+|الي\s+)([\u0621-\u064A]{3,15})(?:[\s،,]|$)/);
+    const ignoreList = [
+        'حسابي', 'محفظتي', 'رصيدي', 'شخص', 'احد', 'واحد', 'صديق', 'فلوس', 'مبلغ', 'رقم',
+        'اتي', 'اتصال', 'اتصالي', 'اتصالاتي', 'جهات', 'قائمه', 'قائمة', 'بينهم', 'اي'
+    ];
     if (nameMatch && !ignoreList.includes(nameMatch[1])) {
         return {
             type: 'UNKNOWN_NAME',
@@ -1309,7 +1362,25 @@ const CANCELLATION_WORDS = ['لا', 'إلغاء', 'الغاء', 'بطلت', 'ه�
 
 function isUserCancellation(text) {
     if (!text) return false;
-    const clean = normalizeArabic(text);
+    const clean = normalizeArabic(text).trim();
+
+    // If the message has substantive topic words (e.g. asking for contacts, bills, balance, transfer, etc.),
+    // even if it starts with "لا", it is a correction or clarification (e.g. "لا قائمة جهات اتصال", "لا مو الفواتير", "لا اقصد الرصيد"),
+    // NOT a cancellation!
+    const topicWords = ['قائم', 'جهات', 'اتصال', 'اتصالي', 'اتصالاتي', 'جهاز', 'اسماء', 'اشخاص', 'رصيد', 'فلوس', 'فواتير', 'فاتور', 'كهرباء', 'مياه', 'ماء', 'انترنت', 'حول', 'دز', 'ارسل', 'ادفع', 'سدد'];
+    const hasTopicWord = topicWords.some(tw => clean.includes(tw));
+    if (hasTopicWord) {
+        // Only cancel if explicit cancellation keywords (like إلغاء, الغي, بطلت, هونت, ما اريد) are explicitly present
+        const explicitCancel = clean.includes('الغاء') || clean.includes('الغي') || clean.includes('إلغاء') || clean.includes('بطلت') || clean.includes('هونت') || clean.includes('ما اريد') || clean.includes('ما أريد') || clean.includes('cancel');
+        return explicitCancel;
+    }
+
+    // Clarification or correction phrases starting with "لا" (e.g. "لا مو الفواتير", "لا اقصد", "لا اعرضلي", "لا مو هيج")
+    // are NOT cancellations of a transaction!
+    if (/^لا\s+(مو|اقصد|أقصد|اعرض|أعرض|شوفني|طلع|غلط|ليس|اريد|أريد|خليني)/.test(clean) || clean.includes('لا مو')) {
+        return false;
+    }
+
     return CANCELLATION_WORDS.some(w => {
         const nw = normalizeArabic(w);
         const regex = new RegExp(`(^|[\\s،,])(${nw})([\\s،,]|$)`, 'i');
@@ -1415,8 +1486,19 @@ function isTransactionsInquiry(text) {
 function isBillInquiry(text) {
     if (!text) return false;
     const clean = normalizeArabic(text);
-    const hasBill = clean.includes('فاتوره') || clean.includes('فواتير') || clean.includes('قوائم') || clean.includes('قائمه');
-    if (!hasBill) return false;
+
+    // If it's a contacts inquiry, transactions inquiry, or balance inquiry, it is NOT a bill inquiry!
+    if (isContactsListInquiry(text) || isTransactionsInquiry(text) || isBalanceInquiry(text)) return false;
+
+    // Contact/Transaction words exclude bill inquiry
+    if (clean.includes('اتصال') || clean.includes('اتصالاتي') || clean.includes('اتصالي') || clean.includes('اصدقاء') || clean.includes('اسماء') || clean.includes('اشخاص') || clean.includes('جهاز') || clean.includes('سجل')) return false;
+
+    // Require explicit bill keywords or utility context when mentioning 'قائمه'
+    const hasBillKeyword = clean.includes('فاتوره') || clean.includes('فواتير');
+    const hasUtilityContext = clean.includes('كهرباء') || clean.includes('مياه') || clean.includes('ماء') || clean.includes('ماي') || clean.includes('انترنت') || clean.includes('نت') || clean.includes('فايبر') || clean.includes('غير مدفوع') || clean.includes('مطلوب');
+    const hasBillList = (clean.includes('قوائم') || clean.includes('قائمه')) && hasUtilityContext;
+
+    if (!hasBillKeyword && !hasBillList) return false;
 
     // Remove bill inquiry descriptors before testing for payment action verbs
     const stripped = clean
@@ -1874,6 +1956,23 @@ app.post('/api/chat', async (req, res) => {
             return res.json({ response: reply, openTransactionsDrawer: true });
         }
 
+        // 0c. Direct Contacts List Inquiry (from disk - Always 100% accurate)
+        if (isContactsListInquiry(userMessage)) {
+            // Supersede any active contact disambiguation
+            if (session.pendingDisambiguation) {
+                session.pendingDisambiguation = null;
+            }
+            const contacts = db.contacts || [];
+            let reply = '';
+            if (contacts.length === 0) {
+                reply = 'ما عندك أي جهات اتصال مسجلة بمحفظتك حالياً.';
+            } else {
+                const list = contacts.map((c, i) => `${i + 1}. ${c.alias || c.name} (${c.phone})`).join('\n');
+                reply = `هاي قائمة بجهات الاتصال المسجلة بمحفظتك:\n\n${list}\n\n💡 تكدر تختار أي شخص منهم وتكلي: "حول 50 الف لسيف" أو "حول 25 الف لأحمد".`;
+            }
+            recordSessionTurn(session, userMessage, reply);
+            return res.json({ response: reply });
+        }
 
         // 1. Check for cancellation at any point
         if (isUserCancellation(userMessage)) {
@@ -2430,7 +2529,13 @@ Confirm success warmly, and attach the action tag at the very end:
   "account_number": "<Account number>"
 }
 <<<END_DB_ACTION>>>
-- If the user says "لا" or "إلغاء": Confirm cancellation without any action tag.`;
+- If the user says "لا" or "إلغاء": Confirm cancellation without any action tag.
+
+7. CONTACTS LIST INQUIRY & REGISTERED PEOPLE:
+- If the user asks to see, view, or list their contacts, friends, or registered people/numbers in any way (e.g. "اعرض لي جهات اتصالاتي", "قائمة اتصالي", "شنو الاشخاص اللي مسجلهم", "منو مسجل عندي", "شوفني الاسماء", "قائمة جهاز اتصالاتي"):
+  List all registered contacts directly from the "contacts" array in CURRENT DATABASE CONTEXT above, in a clear, friendly numbered list with their names, aliases, and phone numbers.
+  Politely inform the user that they can easily transfer to any of them by stating their name and the amount (e.g. "حول 50 الف لسيف").
+  CRITICAL: NEVER return unpaid bills when the user asked about contacts or registered people!`;
 
         appendToConversationHistory(session, "user", userMessage);
 
@@ -2497,6 +2602,28 @@ app.get('/api/transactions', (req, res) => {
             userName: db.user.name || 'محمد',
             totalSpent,
             count: trxs.length
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/contacts', (req, res) => {
+    try {
+        const db = readDatabase();
+        res.json({
+            contacts: db.contacts || []
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/bills', (req, res) => {
+    try {
+        const db = readDatabase();
+        res.json({
+            bills: db.bills || []
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -2783,6 +2910,8 @@ module.exports = {
     extractContactNameFromMessage,
     detectBillPaymentIntent,
     findMatchingBill,
+    isBillInquiry,
+    isContactsListInquiry,
     isUserCancellation,
     isUserConfirmation,
     isStandaloneNumberedChoice,

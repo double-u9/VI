@@ -10,7 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Reem+Kufi:wght@400..700&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=50.0">
+  <link rel="stylesheet" href="style.css?v=57.0">
 </head>
 
 <body>
@@ -91,7 +91,7 @@
         </div>
 
         <!-- زر شات جديد (New Chat Button) - بجانب LM Studio مع الأيقونتين المتطابقتين تماماً مع الصور الأصلية -->
-        <button id="new-chat-btn" class="new-chat-btn" type="button" aria-label="بدء محادثة جديدة" title="محادثة جديدة">
+        <button id="new-chat-btn" class="new-chat-btn" type="button" aria-label="بدء محادثة جديدة">
           <!-- أيكونة النقط (Dotted Icon): 21 نقطة هندسية مطابقة 100% وزائد عريض بارز للوضوح -->
           <svg class="new-chat-icon icon-dotted" viewBox="50 50 924 924" fill="currentColor" stroke="currentColor" aria-hidden="true">
             <circle cx="904" cy="510" r="34"></circle>
@@ -131,9 +131,20 @@
 
       <div class="header-actions">
 
-        <!-- 1. زر السجل (History Drawer Toggle) - First on the left -->
+        <!-- 0. زر تبديل الشريط الجانبي في شاشات سطح المكتب (Companion Rail Toggle) -->
+        <button id="companion-rail-toggle" class="companion-rail-toggle-btn" type="button"
+          aria-label="تبديل الشريط الجانبي للمحفظة" aria-expanded="true">
+          <svg class="companion-toggle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+            <polyline points="14 9 17 12 14 15" class="companion-toggle-arrow"></polyline>
+          </svg>
+        </button>
+
+        <!-- 1. زر السجل القديم (مخفي من الهيدر ومتاح بأسفل الشريط الجانبي) -->
         <button id="transactions-toggle-btn" class="transactions-toggle-btn" type="button"
-          aria-label="عرض سجل المعاملات الأخيرة">
+          aria-label="عرض سجل المعاملات الأخيرة" style="display: none;">
           <svg class="transactions-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3.5" y="2.5" width="17" height="19" rx="4.5" ry="4.5"></rect>
@@ -175,7 +186,7 @@
           <!-- Glassy Capsule Pill merging Toggle & Settings (Image 1 Concept) -->
           <div class="tts-pill-capsule" id="tts-pill-capsule">
             <button id="tts-toggle-btn" class="tts-toggle-btn active" type="button"
-              aria-label="تشغيل أو كتم النطق الصوتي التلقائي" title="النطق الصوتي التلقائي (مفعل)">
+              aria-label="تشغيل أو كتم النطق الصوتي التلقائي">
               <svg class="tts-icon tts-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -192,7 +203,7 @@
             <span class="tts-pill-divider" aria-hidden="true"></span>
 
             <button id="tts-settings-btn" class="tts-settings-btn" type="button"
-              aria-label="تخصيص سرعة القراءة وصوت المتحدث" title="تخصيص سرعة القراءة وصوت المتحدث">
+              aria-label="تخصيص سرعة القراءة وصوت المتحدث">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="4" y1="21" x2="4" y2="14"></line>
                 <line x1="4" y1="10" x2="4" y2="3"></line>
@@ -272,25 +283,19 @@
         </div>
 
 
-        <!-- 4. رصيد الحساب البنكي (Wallet Pill مع زر حجب/إظهار الرصيد) -->
-        <div class="wallet-pill" id="wallet-pill">
+        <!-- 4. رصيد الحساب البنكي (مخفي من الهيدر لمنع التكرار ونقله لبطاقة الشريط الجانبي) -->
+        <div class="wallet-pill" id="wallet-pill" style="display: none;">
           <span class="wallet-balance" id="wallet-balance-display">*** IQD</span>
-          <button type="button" id="wallet-eye-btn" class="wallet-eye-btn is-hidden" aria-label="إظهار الرصيد" title="إظهار/حجب الرصيد">
-            <svg class="eye-icon eye-off" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-              <line x1="1" y1="1" x2="23" y2="23"></line>
-            </svg>
-            <svg class="eye-icon eye-on" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-          </button>
         </div>
       </div>
     </header>
 
-    <!-- Main Chat Window -->
-    <main class="chat-main" id="chat-window">
+    <!-- App Workspace Body (Dual-Column Workstation on Desktop >= 1100px, Single Column on Mobile) -->
+    <div class="app-workspace-body" id="app-workspace-body">
+      <!-- Main Chat Pane -->
+      <div class="chat-workspace-pane" id="chat-workspace-pane">
+        <!-- Main Chat Window -->
+        <main class="chat-main" id="chat-window">
       <div class="messages-container" id="messages-container">
         <!-- Messages will be dynamically rendered here -->
       </div>
@@ -428,9 +433,130 @@
 
       </footer>
     </div>
+  </div>
 
-    <!-- Recent Transactions Slide-Out Drawer (Opens from Left to Right) -->
-    <div class="transactions-backdrop" id="transactions-backdrop" aria-hidden="true"></div>
+  <!-- Collapsible Companion Rail for Desktop Workstation (>= 1100px) -->
+  <aside class="companion-rail" id="companion-rail" aria-label="الشريط الجانبي للمحفظة والنشاط" dir="rtl">
+    <!-- Rail Header -->
+    <div class="companion-rail-header">
+      <div class="companion-title-group">
+        <div class="companion-badge-live" aria-hidden="true">
+          <span class="live-dot"></span>
+          <span>المساعد السريع</span>
+        </div>
+        <h2 class="companion-rail-title">المحفظة السريعة</h2>
+      </div>
+      <button type="button" id="companion-rail-close-btn" class="companion-close-btn" aria-label="طي الشريط الجانبي">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="companion-rail-body">
+      <!-- 1. Live Balance Indicator Card -->
+      <div class="companion-balance-card" id="companion-balance-card">
+        <div class="companion-balance-top">
+          <div class="companion-balance-label">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="3"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+            <span>الرصيد المتاح حالياً</span>
+          </div>
+          <button type="button" id="wallet-eye-btn" class="companion-balance-eye-btn is-hidden" aria-label="إظهار الرصيد">
+            <svg class="eye-icon eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+            <svg class="eye-icon eye-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <div class="companion-balance-amount" id="companion-rail-balance">
+          *** IQD
+        </div>
+        <div class="companion-balance-footer">
+          <span class="companion-account-holder">المحفظة: محمد • VI Pay</span>
+        </div>
+      </div>
+
+      <!-- 2. Quick-Access Pinned Contacts -->
+      <div class="companion-section companion-contacts-section">
+        <div class="companion-section-header">
+          <div class="companion-section-title-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span class="companion-section-title">جهات الاتصال السريعة</span>
+          </div>
+          <span class="companion-section-badge" id="companion-contacts-count">4 جهات</span>
+        </div>
+
+        <div class="companion-contacts-list" id="companion-contacts-list" role="list">
+          <!-- Populated dynamically via JavaScript with fallback initial contacts -->
+        </div>
+        <button type="button" id="companion-contacts-more-btn" class="companion-contacts-more-btn" aria-expanded="false" aria-label="عرض المزيد من جهات الاتصال">
+          <span class="more-label">المزيد</span>
+          <svg class="more-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 3. Bills Section (الفواتير المستحقة مع زر تسديد مباشر) -->
+      <div class="companion-section companion-bills-section">
+        <div class="companion-section-header">
+          <div class="companion-section-title-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            <span class="companion-section-title">الفواتير</span>
+          </div>
+          <span class="companion-section-badge" id="companion-bills-count">4 فواتير</span>
+        </div>
+
+        <div class="companion-bills-list" id="companion-bills-list" role="list">
+          <!-- Populated dynamically via JavaScript with bills and direct 'تسديد' triggers -->
+        </div>
+
+        <button type="button" id="companion-bills-more-btn" class="companion-contacts-more-btn companion-bills-more-btn" aria-expanded="false" aria-label="عرض المزيد من الفواتير">
+          <span class="more-label">المزيد</span>
+          <svg class="more-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. Quick Action Drawer Trigger (Footer) -->
+    <div class="companion-rail-footer">
+      <button type="button" id="companion-open-drawer-btn" class="companion-drawer-trigger-btn" aria-label="عرض سجل المعاملات الكامل">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3.5" y="2.5" width="17" height="19" rx="4.5" ry="4.5"></rect>
+          <line x1="7.5" y1="8" x2="16.5" y2="8"></line>
+          <line x1="7.5" y1="12" x2="16.5" y2="12"></line>
+          <line x1="7.5" y1="16" x2="16.5" y2="16"></line>
+        </svg>
+        <span>عرض السجل المالي الكامل</span>
+        <svg class="trigger-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Recent Transactions Slide-Out Drawer (Opens from Left to Right) -->
+  <div class="transactions-backdrop" id="transactions-backdrop" aria-hidden="true"></div>
 
     <aside class="transactions-drawer" id="transactions-drawer" dir="rtl" role="dialog" aria-modal="true"
       aria-label="سجل المعاملات الأخيرة">
@@ -507,9 +633,89 @@
       </div>
     </aside>
 
+    </div>
+  </div>
+  
+  <!-- Quick Transfer Modal / Wheel Popover -->
+  <div class="quick-transfer-backdrop hidden" id="quick-transfer-backdrop" aria-hidden="true"></div>
+  <div class="quick-transfer-modal hidden" id="quick-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="quick-transfer-title" dir="rtl">
+    <div class="quick-transfer-header">
+      <div class="quick-transfer-title-wrap">
+        <div class="quick-transfer-badge-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="7" y1="17" x2="17" y2="7"></line>
+            <polyline points="7 7 17 7 17 17"></polyline>
+          </svg>
+        </div>
+        <h3 class="quick-transfer-title" id="quick-transfer-title">تحويل سريع للمال</h3>
+      </div>
+      <button type="button" id="quick-transfer-close-btn" class="quick-transfer-close-btn" aria-label="إغلاق نافذة التحويل">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Contact summary badge -->
+    <div class="quick-transfer-target-card">
+      <div class="quick-transfer-avatar" id="quick-transfer-avatar" aria-hidden="true">
+        <span id="quick-transfer-avatar-initial">أ</span>
+      </div>
+      <div class="quick-transfer-target-info">
+        <div class="quick-transfer-name-row">
+          <span class="quick-transfer-name" id="quick-transfer-name">أحمد كمال</span>
+          <span class="quick-transfer-provider">VI Pay</span>
+        </div>
+        <span class="quick-transfer-alias" id="quick-transfer-alias">صديق الجامعة</span>
+      </div>
+    </div>
+
+    <!-- Amount Selector / Wheel section -->
+    <div class="quick-transfer-amount-section">
+      <div class="quick-transfer-section-label">
+        <span>حدد المبلغ المطلوب إرساله</span>
+        <span class="quick-transfer-currency-tag">دينار عراقي (IQD)</span>
+      </div>
+
+      <!-- Quick Amount Wheels / Chips -->
+      <div class="quick-transfer-wheel-wrap">
+        <div class="quick-transfer-wheel-track" id="quick-transfer-wheel-track" role="radiogroup" aria-label="خيارات المبالغ السريعة">
+          <button type="button" class="amount-wheel-chip" data-amount="5000">5,000</button>
+          <button type="button" class="amount-wheel-chip" data-amount="10000">10,000</button>
+          <button type="button" class="amount-wheel-chip" data-amount="25000">25,000</button>
+          <button type="button" class="amount-wheel-chip active" data-amount="50000">50,000</button>
+          <button type="button" class="amount-wheel-chip" data-amount="100000">100,000</button>
+          <button type="button" class="amount-wheel-chip" data-amount="250000">250,000</button>
+          <button type="button" class="amount-wheel-chip" data-amount="500000">500,000</button>
+        </div>
+      </div>
+
+      <!-- Custom amount input with stepper -->
+      <div class="quick-transfer-input-box">
+        <button type="button" class="amount-step-btn" id="amount-step-minus" aria-label="إنقاص 5 آلاف">-5K</button>
+        <div class="amount-input-inner">
+          <input type="text" id="quick-transfer-amount-input" class="quick-transfer-amount-input" value="50,000" inputmode="numeric" placeholder="أدخل المبلغ..." aria-label="المبلغ بالدينار العراقي">
+          <span class="amount-unit">د.ع</span>
+        </div>
+        <button type="button" class="amount-step-btn" id="amount-step-plus" aria-label="زيادة 5 آلاف">+5K</button>
+      </div>
+    </div>
+
+    <!-- CTA Actions -->
+    <div class="quick-transfer-actions">
+      <button type="button" id="quick-transfer-submit-btn" class="quick-transfer-submit-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+        <span>إرسال للذكاء الاصطناعي فاي ⚡</span>
+      </button>
+      <button type="button" id="quick-transfer-cancel-btn" class="quick-transfer-cancel-btn">إلغاء</button>
+    </div>
   </div>
 
-  <script src="script.js?v=36.0"></script>
+  <script src="script.js?v=58.0"></script>
 </body>
 
 </html>
