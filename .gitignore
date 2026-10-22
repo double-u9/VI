@@ -34,4 +34,13 @@ test_*.html
 analyze_*.html
 calibrate_*.html
 .session_cache.json
+.session_cache.json.tmp
 backend/.session_cache.json
+backend/.session_cache.json.tmp
+
+# Embedded SQLite database & WAL files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+backend/*.db*

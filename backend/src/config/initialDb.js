@@ -1,0 +1,94 @@
+const INITIAL_DB = {
+  "user": {
+    "id": "usr_1001",
+    "name": "محمد",
+    "phone": "+9647801234567",
+    "balance": 3000000,
+    "currency": "IQD",
+    "wallet_provider": "VI"
+  },
+  "contacts": [
+    {
+      "id": "cnt_2001",
+      "name": "أحمد",
+      "alias": "أحمد كمال (صديق الجامعة)",
+      "phone": "+9647801122334",
+      "wallet_provider": "VI"
+    },
+    {
+      "id": "cnt_2002",
+      "name": "أحمد",
+      "alias": "أحمد جاسم (الفيترجي / المصلح)",
+      "phone": "+9647802233445",
+      "wallet_provider": "VI"
+    },
+    {
+      "id": "cnt_2003",
+      "name": "أم مصطفى",
+      "alias": "الوالدة",
+      "phone": "+9647803344556",
+      "wallet_provider": "VI"
+    },
+    {
+      "id": "cnt_2004",
+      "name": "سيف",
+      "alias": "سيف الدين",
+      "phone": "+9647804455667",
+      "wallet_provider": "VI"
+    },
+    {
+      "id": "cnt_2005",
+      "name": "حسين",
+      "alias": "حسين",
+      "phone": "+9647807778899",
+      "wallet_provider": "VI"
+    },
+    {
+      "id": "cnt_2006",
+      "name": "علاوي",
+      "alias": "علاوي",
+      "phone": "+9647709998877",
+      "wallet_provider": "VI"
+    },
+    {
+      "id": "cnt_2007",
+      "name": "مرتضى",
+      "alias": "مرتضى",
+      "phone": "+9647819919952",
+      "wallet_provider": "VI"
+    }
+  ],
+  "bills": [
+    {
+      "id": "bill_phone_01",
+      "biller": "فاتورة خط الهاتف المحمول",
+      "account_number": "07801234567",
+      "amount": 25000,
+      "status": "unpaid"
+    },
+    {
+      "id": "bill_net_01",
+      "biller": "فاتورة شبكة الإنترنت المنزلي (Fiber/4G)",
+      "account_number": "NET-884920",
+      "amount": 40000,
+      "status": "unpaid"
+    },
+    {
+      "id": "bill_elec_01",
+      "biller": "كهرباء الكرخ",
+      "account_number": "9812450012",
+      "amount": 50000,
+      "status": "unpaid"
+    },
+    {
+      "id": "bill_water_01",
+      "biller": "مياه البصرة",
+      "account_number": "1234567899",
+      "amount": 35000,
+      "status": "unpaid"
+    }
+  ],
+  "recent_transactions": []
+};
+
+module.exports = { INITIAL_DB };

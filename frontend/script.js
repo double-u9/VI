@@ -898,10 +898,12 @@ function applyTheme(theme) {
 }
 
 /**
- * Triggers a Tier-1 organic circular ripple transition using the modern CSS View Transitions API
- * (iOS & Android 14 Material You style)
+ * Triggers a state-of-the-art circular ripple transition using the native CSS View Transitions API
+ * (document.startViewTransition). Calculates exact button viewport coordinates and expands a circular
+ * CSS clip-path animation on ::view-transition-new(root) from circle(0px at x y) to circle(maxRadius at x y)
+ * over 380ms with cubic-bezier(0.16, 1, 0.3, 1), providing a seamless fluid wave with automatic instant fallback.
  * @param {string} targetTheme - 'dark' | 'light'
- * @param {HTMLElement|null} triggerBtn - Element to emanate the circular ripple from
+ * @param {HTMLElement|null} [triggerBtn] - Element to emanate the circular ripple from
  * @returns {ViewTransition|null}
  */
 function toggleThemeWithRipple(targetTheme, triggerBtn) {
@@ -924,12 +926,13 @@ function toggleThemeWithRipple(targetTheme, triggerBtn) {
     return null;
   }
 
-  // 1. Calculate center coordinates (x, y) via getBoundingClientRect()
+  // 1. Calculate exact button viewport coordinates (x, y) via getBoundingClientRect()
   let x = typeof window !== 'undefined' ? window.innerWidth / 2 : 0;
   let y = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
 
-  if (triggerBtn && typeof triggerBtn.getBoundingClientRect === 'function') {
-    const rect = triggerBtn.getBoundingClientRect();
+  const btn = triggerBtn || (typeof document !== 'undefined' ? document.getElementById('theme-toggle-btn') : null);
+  if (btn && typeof btn.getBoundingClientRect === 'function') {
+    const rect = btn.getBoundingClientRect();
     x = rect.left + rect.width / 2;
     y = rect.top + rect.height / 2;
   }
@@ -937,10 +940,17 @@ function toggleThemeWithRipple(targetTheme, triggerBtn) {
   // 2. Calculate maximum radius to screen corners
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 1080;
-  const endRadius = Math.hypot(
+  const maxRadius = Math.hypot(
     Math.max(x, viewportWidth - x),
     Math.max(y, viewportHeight - y)
   );
+
+  // Set CSS custom properties on documentElement for CSS keyframe animation synchronization
+  if (typeof document !== 'undefined' && document.documentElement && document.documentElement.style) {
+    document.documentElement.style.setProperty('--ripple-x', `${x}px`);
+    document.documentElement.style.setProperty('--ripple-y', `${y}px`);
+    document.documentElement.style.setProperty('--ripple-r', `${maxRadius}px`);
+  }
 
   // 3. Morphing Transition Mechanics via document.startViewTransition()
   const transition = document.startViewTransition(() => {
@@ -952,7 +962,7 @@ function toggleThemeWithRipple(targetTheme, triggerBtn) {
       try {
         const clipPath = [
           `circle(0px at ${x}px ${y}px)`,
-          `circle(${endRadius}px at ${x}px ${y}px)`
+          `circle(${maxRadius}px at ${x}px ${y}px)`
         ];
 
         document.documentElement.animate(
@@ -960,8 +970,8 @@ function toggleThemeWithRipple(targetTheme, triggerBtn) {
             clipPath: clipPath
           },
           {
-            duration: 420,
-            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            duration: 380,
+            easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
             pseudoElement: '::view-transition-new(root)'
           }
         );
@@ -1242,6 +1252,74 @@ function updateQuickTransferChips() {
 }
 
 /**
+ * Instantaneous ceiling guard: compares requested transfer amount against current available wallet balance.
+ * If exceeded, smoothly tints the input border in soft amber, displays the Iraqi guidance alert
+ * ('المبلغ المطلوب أكبر من رصيدك المتاح'), and gracefully disables #quick-transfer-submit-btn.
+ * @param {number} [amountIqd] - Requested transfer amount in IQD
+ * @param {number} [balance] - Available user wallet balance in IQD
+ * @returns {{ isExceeded: boolean, amountIqd: number, balance: number }}
+ */
+function validateQuickTransferCeiling(amountIqd = currentTransferAmount, balance = currentWalletBalance) {
+  const currentBal = (typeof balance === 'number' && balance >= 0)
+    ? balance
+    : (typeof currentWalletBalance === 'number' ? currentWalletBalance : 3000000);
+
+  let amt = Number(amountIqd);
+  if (isNaN(amt) || amt <= 0) {
+    if (typeof document !== 'undefined') {
+      const inputEl = document.getElementById('quick-transfer-amount-input');
+      if (inputEl) {
+        const rawDigits = inputEl.value.replace(/[^\d.]/g, '');
+        const parsed = parseFloat(rawDigits) || 0;
+        amt = activeCurrency === 'USD' ? Math.round(parsed * iqdPerUsdRate) : Math.round(parsed);
+      }
+    }
+  }
+
+  const isExceeded = (currentBal > 0) && (amt > currentBal);
+
+  if (typeof document !== 'undefined') {
+    const inputEl = document.getElementById('quick-transfer-amount-input');
+    const alertEl = document.getElementById('quick-transfer-ceiling-alert');
+    const alertMsgEl = document.getElementById('quick-transfer-ceiling-msg');
+    const submitBtn = document.getElementById('quick-transfer-submit-btn');
+
+    if (inputEl && inputEl.classList) {
+      inputEl.classList.toggle('is-ceiling-exceeded', isExceeded);
+      if (typeof inputEl.setAttribute === 'function') {
+        inputEl.setAttribute('aria-invalid', isExceeded ? 'true' : 'false');
+      }
+    }
+
+    if (alertEl && alertEl.classList) {
+      alertEl.classList.toggle('hidden', !isExceeded);
+    }
+
+    if (alertMsgEl && isExceeded) {
+      alertMsgEl.textContent = 'المبلغ المطلوب أكبر من رصيدك المتاح';
+    }
+
+    if (submitBtn) {
+      if (isExceeded) {
+        submitBtn.disabled = true;
+        if (submitBtn.classList) submitBtn.classList.add('is-disabled');
+        if (typeof submitBtn.setAttribute === 'function') submitBtn.setAttribute('aria-disabled', 'true');
+      } else {
+        submitBtn.disabled = false;
+        if (submitBtn.classList) submitBtn.classList.remove('is-disabled');
+        if (typeof submitBtn.removeAttribute === 'function') submitBtn.removeAttribute('aria-disabled');
+      }
+    }
+  }
+
+  return {
+    isExceeded,
+    amountIqd: amt,
+    balance: currentBal
+  };
+}
+
+/**
  * Updates quick transfer modal custom input unit and secondary equivalent valuation
  */
 function updateQuickTransferInputVal() {
@@ -1255,16 +1333,23 @@ function updateQuickTransferInputVal() {
   }
   const rawDigits = inputEl.value.replace(/[^\d.]/g, '');
   const num = parseFloat(rawDigits) || 0;
+  const currentIqd = (activeCurrency === 'USD')
+    ? Math.round(num * iqdPerUsdRate)
+    : Math.round(num);
+
   if (activeCurrency === 'USD') {
-    const iqdEquivalent = Math.round(num * iqdPerUsdRate);
     if (eqValSpan) {
-      eqValSpan.textContent = `${iqdEquivalent.toLocaleString('en-US')} د.ع`;
+      eqValSpan.textContent = `${currentIqd.toLocaleString('en-US')} د.ع`;
     }
   } else {
     const usdEquivalent = (num / iqdPerUsdRate).toFixed(2);
     if (eqValSpan) {
       eqValSpan.textContent = `$${Number(usdEquivalent).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
+  }
+
+  if (typeof validateQuickTransferCeiling === 'function') {
+    validateQuickTransferCeiling(currentIqd);
   }
 }
 
@@ -1306,6 +1391,9 @@ function setActiveCurrency(curr, animate = true) {
 function toggleActiveCurrency() {
   const next = activeCurrency === 'IQD' ? 'USD' : 'IQD';
   setActiveCurrency(next, true);
+  if (typeof playClickSound === 'function') {
+    playClickSound();
+  }
   return next;
 }
 
@@ -1324,6 +1412,7 @@ async function fetchExchangeRate() {
       renderWalletBalance(false);
       updateQuickTransferChips();
       updateQuickTransferInputVal();
+      updateFxTickerTelemetry();
     }
   } catch (_) {
     // Graceful fallback to default 1530
@@ -1373,6 +1462,283 @@ function initCurrencySwitch() {
 }
 
 /**
+ * Dual-Currency FX Telemetry Ticker & Live Micro-Calculator Popover
+ * Real-time bidirectional recalculation between USD and IQD with zero rounding artifacts
+ */
+
+/**
+ * Updates the header ticker pill live text and popover rate badge
+ */
+function updateFxTickerTelemetry() {
+  if (typeof document === 'undefined') return;
+  const tickerText = document.getElementById('header-fx-ticker-text');
+  const rateBadge = document.getElementById('fx-calc-rate-badge');
+
+  const rate = (typeof iqdPerUsdRate === 'number' && iqdPerUsdRate > 0) ? iqdPerUsdRate : 1530;
+  const iqdFor100 = Math.round(100 * rate);
+
+  if (tickerText) {
+    tickerText.textContent = `100$ = ${iqdFor100.toLocaleString('en-US')} د.ع ⇄`;
+  }
+  if (rateBadge) {
+    rateBadge.textContent = `1$ = ${rate.toLocaleString('en-US')} د.ع`;
+  }
+}
+
+/**
+ * Recalculates IQD from USD with zero rounding artifacts
+ * @param {string|number} usdInputVal
+ * @returns {{usd: string, iqd: string, usdNum: number, iqdNum: number}}
+ */
+function syncFxCalculatorUsdToIqd(usdInputVal) {
+  const rate = (typeof iqdPerUsdRate === 'number' && iqdPerUsdRate > 0) ? iqdPerUsdRate : 1530;
+  if (usdInputVal === '' || usdInputVal === null || usdInputVal === undefined) {
+    return { usd: '', iqd: '', usdNum: 0, iqdNum: 0 };
+  }
+  const cleanStr = String(usdInputVal).replace(/[^0-9.]/g, '');
+  if (!cleanStr) {
+    return { usd: '', iqd: '', usdNum: 0, iqdNum: 0 };
+  }
+  const usdNum = parseFloat(cleanStr);
+  if (isNaN(usdNum) || usdNum <= 0) {
+    return { usd: cleanStr, iqd: '', usdNum: 0, iqdNum: 0 };
+  }
+
+  const iqdNum = Math.round(usdNum * rate);
+  return {
+    usd: cleanStr,
+    iqd: iqdNum.toLocaleString('en-US'),
+    usdNum,
+    iqdNum
+  };
+}
+
+/**
+ * Recalculates USD from IQD with clean rounding (up to 2 decimal places, no trailing .00)
+ * @param {string|number} iqdInputVal
+ * @returns {{usd: string, iqd: string, usdNum: number, iqdNum: number}}
+ */
+function syncFxCalculatorIqdToUsd(iqdInputVal) {
+  const rate = (typeof iqdPerUsdRate === 'number' && iqdPerUsdRate > 0) ? iqdPerUsdRate : 1530;
+  if (iqdInputVal === '' || iqdInputVal === null || iqdInputVal === undefined) {
+    return { usd: '', iqd: '', usdNum: 0, iqdNum: 0 };
+  }
+  const cleanStr = String(iqdInputVal).replace(/[^0-9]/g, '');
+  if (!cleanStr) {
+    return { usd: '', iqd: '', usdNum: 0, iqdNum: 0 };
+  }
+  const iqdNum = parseInt(cleanStr, 10);
+  if (isNaN(iqdNum) || iqdNum <= 0) {
+    return { usd: '', iqd: cleanStr, usdNum: 0, iqdNum: 0 };
+  }
+
+  const usdRaw = iqdNum / rate;
+  let formattedUsd = '';
+  if (usdRaw % 1 === 0) {
+    formattedUsd = usdRaw.toFixed(0);
+  } else if (Number.isInteger(Math.round(usdRaw * 100) / 10)) {
+    formattedUsd = usdRaw.toFixed(1);
+  } else {
+    formattedUsd = usdRaw.toFixed(2);
+  }
+
+  return {
+    usd: formattedUsd,
+    iqd: iqdNum.toLocaleString('en-US'),
+    usdNum: parseFloat(formattedUsd),
+    iqdNum
+  };
+}
+
+/**
+ * Toggles the FX micro-calculator popover
+ * @param {boolean|null} forceOpen - Explicit open/close state or toggle if null
+ */
+function toggleFxCalculatorPopover(forceOpen = null) {
+  if (typeof document === 'undefined') return;
+  const popover = document.getElementById('fx-calculator-popover');
+  const btn = document.getElementById('header-fx-ticker-btn');
+  if (!popover || !btn) return;
+
+  const isCurrentlyOpen = !popover.classList.contains('hidden');
+  const willOpen = (forceOpen !== null) ? Boolean(forceOpen) : !isCurrentlyOpen;
+
+  if (willOpen) {
+    // Close other popovers to avoid collisions
+    const ttsPopover = document.getElementById('tts-settings-popover');
+    if (ttsPopover) ttsPopover.classList.add('hidden');
+    const ttsBtn = document.getElementById('tts-settings-btn');
+    if (ttsBtn) ttsBtn.setAttribute('aria-expanded', 'false');
+
+    popover.classList.remove('hidden');
+    btn.setAttribute('aria-expanded', 'true');
+    updateFxTickerTelemetry();
+  } else {
+    popover.classList.add('hidden');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+}
+
+/**
+ * Handles quick preset amount selection ($50, $100, $500)
+ * @param {number} usdAmount
+ */
+function handleFxPresetClick(usdAmount) {
+  if (typeof playClickSound === 'function') {
+    playClickSound();
+  }
+  if (typeof document === 'undefined') return;
+  const usdInput = document.getElementById('fx-calc-usd-input');
+  const iqdInput = document.getElementById('fx-calc-iqd-input');
+  const presetsContainer = document.getElementById('fx-preset-chips');
+
+  const sync = syncFxCalculatorUsdToIqd(usdAmount);
+  if (usdInput) usdInput.value = sync.usd;
+  if (iqdInput) iqdInput.value = sync.iqd;
+
+  if (presetsContainer) {
+    const chips = presetsContainer.querySelectorAll('.fx-preset-chip');
+    chips.forEach(chip => {
+      const chipUsd = parseFloat(chip.getAttribute('data-usd'));
+      chip.classList.toggle('active', chipUsd === usdAmount);
+    });
+  }
+}
+
+/**
+ * Handles instant transfer CTA from the FX calculator popover
+ * Pre-populates the Quick Transfer modal with the active converted amount
+ */
+function handleFxTransferAction() {
+  if (typeof document === 'undefined') return;
+  const iqdInput = document.getElementById('fx-calc-iqd-input');
+  const usdInput = document.getElementById('fx-calc-usd-input');
+
+  let targetIqd = 153000;
+  if (iqdInput && iqdInput.value) {
+    const rawDigits = iqdInput.value.replace(/[^0-9]/g, '');
+    const parsed = parseInt(rawDigits, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      targetIqd = parsed;
+    }
+  } else if (usdInput && usdInput.value) {
+    const sync = syncFxCalculatorUsdToIqd(usdInput.value);
+    if (sync.iqdNum > 0) {
+      targetIqd = sync.iqdNum;
+    }
+  }
+
+  // Dismiss FX Popover
+  toggleFxCalculatorPopover(false);
+
+  // Pre-populate and launch Quick Transfer Modal
+  if (typeof openQuickTransferModal === 'function') {
+    openQuickTransferModal('أحمد كمال', '07701234567', 'حساب التوفير الرئيسي', targetIqd);
+  }
+}
+
+/**
+ * Initializes the FX Ticker & Micro-Calculator popover interactions
+ */
+function initFxCalculator() {
+  if (typeof document === 'undefined') return;
+
+  const tickerBtn = document.getElementById('header-fx-ticker-btn');
+  const closeBtn = document.getElementById('fx-calc-close-btn');
+  const usdInput = document.getElementById('fx-calc-usd-input');
+  const iqdInput = document.getElementById('fx-calc-iqd-input');
+  const presetsContainer = document.getElementById('fx-preset-chips');
+  const transferBtn = document.getElementById('fx-calc-transfer-btn');
+  const popover = document.getElementById('fx-calculator-popover');
+
+  updateFxTickerTelemetry();
+
+  if (tickerBtn) {
+    tickerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFxCalculatorPopover();
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleFxCalculatorPopover(false);
+    });
+  }
+
+  if (usdInput) {
+    usdInput.addEventListener('input', () => {
+      const sync = syncFxCalculatorUsdToIqd(usdInput.value);
+      if (iqdInput) {
+        iqdInput.value = sync.iqd;
+      }
+      if (presetsContainer) {
+        const chips = presetsContainer.querySelectorAll('.fx-preset-chip');
+        chips.forEach(chip => {
+          const chipUsd = parseFloat(chip.getAttribute('data-usd'));
+          chip.classList.toggle('active', chipUsd === sync.usdNum);
+        });
+      }
+    });
+  }
+
+  if (iqdInput) {
+    iqdInput.addEventListener('input', () => {
+      const sync = syncFxCalculatorIqdToUsd(iqdInput.value);
+      if (usdInput) {
+        usdInput.value = sync.usd;
+      }
+      if (presetsContainer) {
+        const chips = presetsContainer.querySelectorAll('.fx-preset-chip');
+        chips.forEach(chip => {
+          const chipUsd = parseFloat(chip.getAttribute('data-usd'));
+          chip.classList.toggle('active', chipUsd === sync.usdNum);
+        });
+      }
+    });
+  }
+
+  if (presetsContainer) {
+    presetsContainer.addEventListener('click', (e) => {
+      const chip = e.target && e.target.closest ? e.target.closest('.fx-preset-chip') : null;
+      if (!chip) return;
+      const usdVal = parseFloat(chip.getAttribute('data-usd'));
+      if (!isNaN(usdVal) && usdVal > 0) {
+        handleFxPresetClick(usdVal);
+      }
+    });
+  }
+
+  if (transferBtn) {
+    transferBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleFxTransferAction();
+    });
+  }
+
+  // Click-outside dismissal
+  document.addEventListener('click', (e) => {
+    if (!popover || popover.classList.contains('hidden')) return;
+    const fxGroup = document.getElementById('header-fx-group');
+    if (fxGroup && !fxGroup.contains(e.target)) {
+      toggleFxCalculatorPopover(false);
+    }
+  });
+
+  // Escape key listener
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && popover && !popover.classList.contains('hidden')) {
+      toggleFxCalculatorPopover(false);
+      if (tickerBtn && typeof tickerBtn.focus === 'function') {
+        tickerBtn.focus();
+      }
+    }
+  });
+}
+
+/**
  * Initializes the Header Balance Privacy Eye Toggle
  */
 function initWalletEyeToggle() {
@@ -1404,6 +1770,7 @@ async function syncWalletHeader() {
     if (db && db.exchange_rate && typeof db.exchange_rate.iqd_per_usd === 'number') {
       iqdPerUsdRate = db.exchange_rate.iqd_per_usd;
       exchangeRateConfig = db.exchange_rate;
+      updateFxTickerTelemetry();
     }
     renderWalletBalance();
     updateQuickTransferChips();
@@ -1614,6 +1981,9 @@ async function fetchAndRenderTransactions(showSpinner = false) {
       renderTransactionsList();
       if (typeof renderCompanionLedger === 'function') {
         renderCompanionLedger();
+      }
+      if (typeof renderCompanionContacts === 'function') {
+        renderCompanionContacts();
       }
       if (typeof renderFintechPulse === 'function') {
         renderFintechPulse();
@@ -2196,6 +2566,234 @@ function finishActiveStream() {
   }
 }
 
+let ttsAudioContext = null;
+let ttsVisualizerRafId = null;
+let activeTtsSourceNode = null;
+let activeTtsAnalyserNode = null;
+let activeSpeakingAvatarEl = null;
+
+/**
+ * Lazily retrieves or instantiates the singleton AudioContext for TTS playback
+ * @returns {AudioContext|null}
+ */
+function getTtsAudioContext() {
+  if (typeof window === 'undefined') return null;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+
+  if (!ttsAudioContext || ttsAudioContext.state === 'closed') {
+    try {
+      ttsAudioContext = new AudioCtx();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  if (ttsAudioContext.state === 'suspended') {
+    ttsAudioContext.resume().catch(() => {});
+  }
+
+  return ttsAudioContext;
+}
+
+/**
+ * Computes normalized RMS amplitude (0.0 to 1.0) from time-domain byte audio data
+ * @param {Uint8Array} dataArray - Byte data from AnalyserNode (0-255 centered at 128)
+ * @returns {number} Normalized amplitude value between 0.0 and 1.0
+ */
+function computeAudioRmsIntensity(dataArray) {
+  if (!dataArray || dataArray.length === 0) return 0;
+  let sumSquares = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    const norm = (dataArray[i] - 128) / 128;
+    sumSquares += norm * norm;
+  }
+  const rms = Math.sqrt(sumSquares / dataArray.length);
+  return Math.min(1.0, Math.max(0.0, rms * 3.2));
+}
+
+/**
+ * Resets speech intensity CSS custom property and removes speaking states
+ */
+function resetSpeechIntensity() {
+  if (typeof document !== 'undefined' && document.documentElement) {
+    if (document.documentElement.style && typeof document.documentElement.style.setProperty === 'function') {
+      document.documentElement.style.setProperty('--speech-intensity', '0');
+    }
+    if (document.documentElement.classList && typeof document.documentElement.classList.remove === 'function') {
+      document.documentElement.classList.remove('is-speaking-tts');
+    }
+  }
+
+  if (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function') {
+    const speakingElements = document.querySelectorAll('.is-speaking-avatar');
+    if (speakingElements && typeof speakingElements.forEach === 'function') {
+      speakingElements.forEach(el => {
+        if (el && el.style && typeof el.style.removeProperty === 'function') {
+          el.style.removeProperty('--speech-intensity');
+        }
+        if (el && el.classList && typeof el.classList.remove === 'function') {
+          el.classList.remove('is-speaking-avatar');
+        }
+      });
+    }
+  }
+
+  activeSpeakingAvatarEl = null;
+}
+
+/**
+ * Disconnects audio nodes, cancels visualizer animation loop and resets styles
+ */
+function stopTtsAudioVisualizer() {
+  if (ttsVisualizerRafId) {
+    if (typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(ttsVisualizerRafId);
+    }
+    ttsVisualizerRafId = null;
+  }
+
+  if (activeTtsSourceNode) {
+    try {
+      activeTtsSourceNode.disconnect();
+    } catch (e) {}
+    activeTtsSourceNode = null;
+  }
+
+  if (activeTtsAnalyserNode) {
+    try {
+      activeTtsAnalyserNode.disconnect();
+    } catch (e) {}
+    activeTtsAnalyserNode = null;
+  }
+
+  resetSpeechIntensity();
+}
+
+/**
+ * Plays TTS audio with real-time biometric ambient glow & waveform synchronization
+ * Connects HTMLAudioElement to Web Audio API AnalyserNode (fftSize: 64)
+ * @param {HTMLAudioElement|string} audioOrUrl - Audio element or URL to play
+ * @param {Function} [onEnd] - Callback when audio ends
+ * @param {Function} [onError] - Callback on error
+ * @param {HTMLElement|null} [btnElement] - Optional trigger button to locate target avatar
+ * @returns {Promise<HTMLAudioElement>}
+ */
+async function playTtsAudio(audioOrUrl, onEnd = null, onError = null, btnElement = null) {
+  stopTtsAudioVisualizer();
+
+  const audio = (typeof audioOrUrl === 'string') ? new Audio(audioOrUrl) : audioOrUrl;
+  currentTtsAudio = audio;
+
+  if (typeof currentTtsSpeed === 'number') {
+    audio.playbackRate = currentTtsSpeed;
+  }
+  if (audio.preservesPitch !== undefined) {
+    audio.preservesPitch = true;
+  }
+
+  // Locate the active bot message avatar associated with this speech
+  if (typeof document !== 'undefined') {
+    if (btnElement && typeof btnElement.closest === 'function') {
+      const msg = btnElement.closest('.message.ai-message');
+      if (msg && typeof msg.querySelector === 'function') {
+        activeSpeakingAvatarEl = msg.querySelector('.msg-avatar');
+        if (activeSpeakingAvatarEl && activeSpeakingAvatarEl.classList && typeof activeSpeakingAvatarEl.classList.add === 'function') {
+          activeSpeakingAvatarEl.classList.add('is-speaking-avatar');
+        }
+      }
+    }
+
+    if (!activeSpeakingAvatarEl && typeof document.querySelectorAll === 'function') {
+      const allAvatars = document.querySelectorAll('.message.ai-message .msg-avatar');
+      if (allAvatars && allAvatars.length > 0) {
+        activeSpeakingAvatarEl = allAvatars[allAvatars.length - 1];
+        if (activeSpeakingAvatarEl && activeSpeakingAvatarEl.classList && typeof activeSpeakingAvatarEl.classList.add === 'function') {
+          activeSpeakingAvatarEl.classList.add('is-speaking-avatar');
+        }
+      }
+    }
+  }
+
+  // Connect HTMLAudioElement source to Web Audio API AnalyserNode (fftSize: 64)
+  const audioCtx = getTtsAudioContext();
+  let analyser = null;
+
+  if (audioCtx) {
+    try {
+      const source = audioCtx.createMediaElementSource(audio);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+
+      source.connect(analyser);
+      analyser.connect(audioCtx.destination);
+
+      activeTtsSourceNode = source;
+      activeTtsAnalyserNode = analyser;
+    } catch (err) {
+      console.warn('[WebAudio] AnalyserNode connection:', err);
+    }
+  }
+
+  // Active requestAnimationFrame loop: compute normalized RMS speech amplitude (0.0 to 1.0)
+  if (analyser && typeof requestAnimationFrame === 'function') {
+    const bufferLength = analyser.fftSize;
+    const timeDomainData = new Uint8Array(bufferLength);
+
+    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList && typeof document.documentElement.classList.add === 'function') {
+      document.documentElement.classList.add('is-speaking-tts');
+    }
+
+    function renderSpeechGlow() {
+      if (!currentTtsAudio || currentTtsAudio.paused || currentTtsAudio.ended) {
+        stopTtsAudioVisualizer();
+        return;
+      }
+
+      analyser.getByteTimeDomainData(timeDomainData);
+      const intensity = computeAudioRmsIntensity(timeDomainData);
+      const formattedIntensity = intensity.toFixed(3);
+
+      if (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && typeof document.documentElement.style.setProperty === 'function') {
+        document.documentElement.style.setProperty('--speech-intensity', formattedIntensity);
+      }
+
+      if (activeSpeakingAvatarEl && activeSpeakingAvatarEl.style && typeof activeSpeakingAvatarEl.style.setProperty === 'function') {
+        activeSpeakingAvatarEl.style.setProperty('--speech-intensity', formattedIntensity);
+      }
+
+      ttsVisualizerRafId = requestAnimationFrame(renderSpeechGlow);
+    }
+
+    ttsVisualizerRafId = requestAnimationFrame(renderSpeechGlow);
+  }
+
+  audio.onended = () => {
+    stopTtsAudioVisualizer();
+    if (typeof onEnd === 'function') onEnd();
+  };
+
+  audio.onerror = (e) => {
+    stopTtsAudioVisualizer();
+    if (typeof onError === 'function') onError(e);
+  };
+
+  audio.onpause = () => {
+    if (audio.ended || audio.currentTime === 0) {
+      stopTtsAudioVisualizer();
+    }
+  };
+
+  try {
+    await audio.play();
+  } catch (err) {
+    stopTtsAudioVisualizer();
+    if (typeof onError === 'function') onError(err);
+  }
+
+  return audio;
+}
+
 /**
  * Stops any active speech synthesis or audio playback immediately
  * and aborts any pending in-flight /api/tts network requests
@@ -2230,6 +2828,9 @@ function stopSpeaking() {
   if (toggleBtn) {
     toggleBtn.classList.remove('is-speaking');
   }
+
+  // Teardown Web Audio visualizer nodes and reset speech intensity property
+  stopTtsAudioVisualizer();
 }
 
 /**
@@ -2305,26 +2906,17 @@ async function speakText(text, btnElement = null, prefetchPromise = null) {
 
       if (audioUrl) {
         const audio = new Audio(audioUrl);
-        currentTtsAudio = audio;
-
-        // Apply user-configured speed with pitch preservation
-        audio.playbackRate = currentTtsSpeed;
-        if (audio.preservesPitch !== undefined) audio.preservesPitch = true;
-
-        audio.onended = () => {
+        await playTtsAudio(audio, () => {
           URL.revokeObjectURL(audioUrl);
           if (currentTtsAudio === audio) {
             stopSpeaking();
           }
-        };
-        audio.onerror = () => {
+        }, () => {
           URL.revokeObjectURL(audioUrl);
           if (thisSessionId === activeTtsSessionId) {
             fallbackBrowserSpeak(clean, btnElement, null, thisSessionId);
           }
-        };
-
-        await audio.play();
+        }, btnElement);
         return;
       }
     } catch (err) {
@@ -2666,14 +3258,59 @@ function initFintechActionButtons() {
  * Tier-1 Apple Pay Style "Slide to Confirm" (اسحب لتأكيد التحويل) Interactive Slider
  * Features:
  * - Touch (touchstart, touchmove, touchend, touchcancel) & Mouse (mousedown, mousemove, mouseup) / Pointer gesture tracking
- * - Smooth gesture tracking in RTL layout
- * - Tactile spring-back physics return (cubic-bezier(0.175, 0.885, 0.32, 1.275)) if released prior to 85% completion threshold
- * - Dynamic metallic shimmer sweep along track
- * - Past 85% threshold: morphs thumb icon into verified checkmark, triggers haptic vibration via navigator.vibrate([15, 30, 20]),
- *   plays Apple Pay success chime, launches micro-confetti, and dispatches confirmation payload to chat API
+ * - Smooth gesture tracking in RTL layout with touch-action: none
+ * - Tactile spring-back physics return (cubic-bezier(0.175, 0.885, 0.32, 1.275)) if released prior to 88% completion threshold
+ * - Dynamic metallic shimmer sweep along track and real-time text opacity fading
+ * - Past 88% threshold: snaps thumb to successful green locked state, triggers haptic vibration via navigator.vibrate([15, 30, 20]),
+ *   plays ViHaptics/Apple Pay success chime, launches micro-confetti, and dispatches confirmation payload to chat API
+ * - Gated high-value financial transfers (>100,000 IQD) with luxury security verification badge
  * - Full keyboard accessibility (tabindex="0", role="slider", Enter/Space triggers)
  * ==========================================================================
  */
+
+const SLIDE_COMPLETION_THRESHOLD = 0.88;
+
+/**
+ * Extracts numeric value from Arabic / English formatted currency strings
+ * e.g., '150,000 د.ع' -> 150000, '١٥٠,٠٠٠' -> 150000, '1.5 مليون' -> 1500000
+ * @param {string} amountStr
+ * @returns {number}
+ */
+function parseAmountValue(amountStr) {
+  if (!amountStr || typeof amountStr !== 'string') return 0;
+  // Convert Eastern Arabic numerals (٠-٩) to Western (0-9)
+  const arabicNumerals = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+  let normalized = amountStr;
+  arabicNumerals.forEach((d, i) => {
+    normalized = normalized.split(d).join(i.toString());
+  });
+
+  if (/مليون|ملايين/i.test(normalized)) {
+    const m = normalized.match(/([0-9]+(?:\.[0-9]+)?)/);
+    if (m) return Math.round(parseFloat(m[1]) * 1000000);
+    return 1000000;
+  }
+
+  // Clean up commas, currency symbols, whitespace
+  const clean = normalized.replace(/[^0-9.]/g, '');
+  const val = parseFloat(clean);
+  return isNaN(val) ? 0 : val;
+}
+
+/**
+ * Determines if a transaction data object or amount string constitutes a high-value transfer (>100,000 IQD)
+ * @param {object|string} dataOrAmount
+ * @returns {boolean}
+ */
+function isHighValueTransfer(dataOrAmount) {
+  if (!dataOrAmount) return false;
+  if (typeof dataOrAmount === 'object') {
+    if (dataOrAmount.isHighValue === true) return true;
+    const amtStr = dataOrAmount.amount || '';
+    return parseAmountValue(amtStr) > 100000;
+  }
+  return parseAmountValue(dataOrAmount) > 100000;
+}
 
 let activeSlider = null;
 
@@ -2703,7 +3340,12 @@ function startSlideDrag(e) {
   const thumb = track.querySelector ? track.querySelector('.slide-to-confirm-thumb') : null;
   const progressFill = track.querySelector ? track.querySelector('.slide-progress-fill') : null;
   const trackText = track.querySelector ? track.querySelector('.slide-track-text') : null;
+  const shimmerText = track.querySelector ? track.querySelector('.slide-shimmer-text') : null;
   if (!thumb) return;
+
+  // Enforce touch-action: none inline on active elements
+  if (track.style) track.style.touchAction = 'none';
+  if (thumb.style) thumb.style.touchAction = 'none';
 
   const actionsBar = (typeof track.closest === 'function') ? track.closest('.fintech-actions-bar') : null;
   if (actionsBar && actionsBar.classList && typeof actionsBar.classList.add === 'function') {
@@ -2727,6 +3369,7 @@ function startSlideDrag(e) {
     thumb,
     progressFill,
     trackText,
+    shimmerText,
     card: (typeof track.closest === 'function') ? track.closest('.fintech-card') : null,
     startX: clientX,
     maxTravel,
@@ -2739,9 +3382,10 @@ function startSlideDrag(e) {
     isTouch: !!(e.touches || e.changedTouches)
   };
 
-  thumb.style.transition = 'none';
-  if (progressFill) progressFill.style.transition = 'none';
-  if (trackText) trackText.style.transition = 'none';
+  if (thumb && thumb.style) thumb.style.transition = 'none';
+  if (progressFill && progressFill.style) progressFill.style.transition = 'none';
+  if (trackText && trackText.style) trackText.style.transition = 'none';
+  if (shimmerText && shimmerText.style) shimmerText.style.transition = 'none';
   track.classList.add('is-dragging');
 
   if (e.pointerId != null && typeof track.setPointerCapture === 'function') {
@@ -2752,8 +3396,8 @@ function startSlideDrag(e) {
 function onSlideDragMove(e) {
   if (!activeSlider || !activeSlider.isDragging || activeSlider.completed) return;
 
-  if (e.cancelable && activeSlider.isTouch) {
-    e.preventDefault();
+  if (e.cancelable) {
+    try { e.preventDefault(); } catch (_) {}
   }
 
   // Dynamically update maxTravel if track width expanded when cancel button collapsed
@@ -2770,25 +3414,31 @@ function onSlideDragMove(e) {
   const progress = activeSlider.maxTravel > 0 ? (clampedDelta / activeSlider.maxTravel) : 0;
 
   const sign = activeSlider.isRtl ? '-' : '';
-  activeSlider.thumb.style.transform = `translateX(${sign}${clampedDelta}px)`;
+  if (activeSlider.thumb && activeSlider.thumb.style) {
+    activeSlider.thumb.style.transform = `translateX(${sign}${clampedDelta}px)`;
+  }
 
-  if (activeSlider.progressFill) {
+  if (activeSlider.progressFill && activeSlider.progressFill.style) {
     activeSlider.progressFill.style.width = `${clampedDelta + (activeSlider.thumbWidth / 2)}px`;
   }
-  if (activeSlider.trackText) {
-    activeSlider.trackText.style.opacity = Math.max(0, 1 - (progress * 1.5)).toFixed(3);
+  const textOpacity = Math.max(0, 1 - (progress * 1.45)).toFixed(3);
+  if (activeSlider.trackText && activeSlider.trackText.style) {
+    activeSlider.trackText.style.opacity = textOpacity;
+  }
+  if (activeSlider.shimmerText && activeSlider.shimmerText.style) {
+    activeSlider.shimmerText.style.opacity = textOpacity;
   }
 
   activeSlider.track.setAttribute('aria-valuenow', Math.round(progress * 100));
 
-  // Dynamic tactile haptic tick when reaching 85% threshold during drag
-  if (progress >= 0.85 && !activeSlider.hasHapticTick) {
+  // Dynamic tactile haptic tick when reaching 88% threshold during drag
+  if (progress >= SLIDE_COMPLETION_THRESHOLD && !activeSlider.hasHapticTick) {
     activeSlider.hasHapticTick = true;
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       try { navigator.vibrate(10); } catch (_) {}
     }
     activeSlider.thumb.classList.add('ready-to-snap');
-  } else if (progress < 0.85 && activeSlider.hasHapticTick) {
+  } else if (progress < SLIDE_COMPLETION_THRESHOLD && activeSlider.hasHapticTick) {
     activeSlider.hasHapticTick = false;
     activeSlider.thumb.classList.remove('ready-to-snap');
   }
@@ -2810,13 +3460,13 @@ function onSlideDragEnd(e) {
     try { activeSlider.track.releasePointerCapture(activeSlider.pointerId); } catch (_) {}
   }
 
-  if (progress >= 0.85) {
-    // 85% completion threshold achieved -> Trigger Apple Pay confirmed execution!
+  if (progress >= SLIDE_COMPLETION_THRESHOLD) {
+    // 88% completion threshold achieved -> Snap into successful green locked state!
     executeSlideCompletion(activeSlider);
     activeSlider = null;
   } else {
-    // Released prior to reaching 85% completion threshold:
-    // Restore cancel button and tactile spring-back physics return: cubic-bezier(0.175, 0.885, 0.32, 1.275)
+    // Released prior to reaching 88% completion threshold:
+    // Restore cancel button and tactile spring-back physics return: cubic-bezier(0.175, 0.885, 0.32, 1.275) without layout jump
     const actionsBar = (activeSlider && activeSlider.track && typeof activeSlider.track.closest === 'function')
       ? activeSlider.track.closest('.fintech-actions-bar')
       : null;
@@ -2827,19 +3477,26 @@ function onSlideDragEnd(e) {
     const thumb = activeSlider.thumb;
     const progressFill = activeSlider.progressFill;
     const trackText = activeSlider.trackText;
+    const shimmerText = activeSlider.shimmerText || (activeSlider.track ? activeSlider.track.querySelector('.slide-shimmer-text') : null);
     const track = activeSlider.track;
 
     thumb.classList.remove('ready-to-snap');
-    thumb.style.transition = 'transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-    thumb.style.transform = 'translateX(0px)';
+    if (thumb && thumb.style) {
+      thumb.style.transition = 'transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+      thumb.style.transform = 'translateX(0px)';
+    }
 
-    if (progressFill) {
+    if (progressFill && progressFill.style) {
       progressFill.style.transition = 'width 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
       progressFill.style.width = '0px';
     }
-    if (trackText) {
+    if (trackText && trackText.style) {
       trackText.style.transition = 'opacity 0.35s ease';
       trackText.style.opacity = '1';
+    }
+    if (shimmerText && shimmerText.style) {
+      shimmerText.style.transition = 'opacity 0.35s ease';
+      shimmerText.style.opacity = '1';
     }
 
     track.setAttribute('aria-valuenow', '0');
@@ -2863,25 +3520,27 @@ function executeSlideCompletion(slider) {
   }
 
   track.classList.remove('is-dragging');
-  track.classList.add('is-confirmed', 'slide-completed');
+  track.classList.add('is-confirmed', 'slide-completed', 'btn-locked');
   track.setAttribute('aria-disabled', 'true');
   track.setAttribute('aria-valuenow', '100');
   track.removeAttribute('tabindex');
 
-  // 1. Snap thumb to 100% completion (docked on far LEFT)
+  // 1. Snap thumb to 100% completion (docked on far LEFT in RTL)
   const currentTrackWidth = track.clientWidth || 0;
   if (currentTrackWidth > 0) {
     slider.maxTravel = Math.max(0, currentTrackWidth - slider.thumbWidth - 8);
   }
   const sign = slider.isRtl ? '-' : '';
-  thumb.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
-  thumb.style.transform = `translateX(${sign}${slider.maxTravel}px)`;
+  if (thumb && thumb.style) {
+    thumb.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+    thumb.style.transform = `translateX(${sign}${slider.maxTravel}px)`;
+  }
   thumb.classList.remove('ready-to-snap');
   thumb.classList.add('is-success');
 
   // Ensure thumb is docked permanently on the left
   setTimeout(() => {
-    if (thumb && track.classList.contains('is-confirmed')) {
+    if (thumb && thumb.style && track.classList.contains('is-confirmed')) {
       thumb.style.right = 'auto';
       thumb.style.left = '4px';
       thumb.style.transform = 'none';
@@ -2889,7 +3548,7 @@ function executeSlideCompletion(slider) {
   }, 220);
 
   // 2. Expand progress fill to 100%
-  if (fill) {
+  if (fill && fill.style) {
     fill.style.transition = 'width 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
     fill.style.width = '100%';
   }
@@ -2899,7 +3558,7 @@ function executeSlideCompletion(slider) {
   if (shimmerText) {
     shimmerText.textContent = 'تم التأكيد بنجاح';
   }
-  if (text) {
+  if (text && text.style) {
     text.style.transition = 'opacity 0.25s ease';
     text.style.opacity = '1';
   }
@@ -2911,9 +3570,14 @@ function executeSlideCompletion(slider) {
     } catch (_) {}
   }
 
-  // 5. Execute existing playApplePaySuccessChime audio cue
+  // 5. Execute tactile success chime (ViHaptics Ascending Major Chord + Apple Pay Chime)
+  if (typeof ViHaptics !== 'undefined' && typeof ViHaptics.playSuccessChime === 'function') {
+    try { ViHaptics.playSuccessChime(); } catch (_) {}
+  } else if (typeof playSuccessChime === 'function') {
+    try { playSuccessChime(); } catch (_) {}
+  }
   if (typeof playApplePaySuccessChime === 'function') {
-    playApplePaySuccessChime();
+    try { playApplePaySuccessChime(); } catch (_) {}
   }
 
   // 6. Micro-confetti burst from the thumb
@@ -2933,13 +3597,18 @@ function executeSlideCompletion(slider) {
     }
   }
 
-  // 8. Dispatch confirmation payload to chat API
-  handleFormSubmit('نعم متأكد', {
-    silentUserBubble: true,
-    sourceCard: card,
-    actionType: 'confirm',
-    triggerBtn: track
-  });
+  // 8. Dispatch confirmation mutation payload to chat API
+  const submitFn = (typeof module !== 'undefined' && module.exports && typeof module.exports.handleFormSubmit === 'function')
+    ? module.exports.handleFormSubmit
+    : (typeof handleFormSubmit === 'function' ? handleFormSubmit : null);
+  if (typeof submitFn === 'function') {
+    submitFn('نعم متأكد', {
+      silentUserBubble: true,
+      sourceCard: card,
+      actionType: 'confirm',
+      triggerBtn: track
+    });
+  }
 }
 
 function handleSlideKeyboard(e) {
@@ -3060,6 +3729,7 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
 
     // Initialize Dual-Currency Toggle & Converter Widget (IQD ⇄ USD)
     initCurrencySwitch();
+    initFxCalculator();
     fetchExchangeRate();
 
     // Initialize Header Balance Privacy Eye Toggle & Sync
@@ -3095,6 +3765,12 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
     // Initialize Tier-1 Apple Pay "Slide to Confirm" Interactive Slider
     initSlideToConfirm();
 
+    // Initialize Actionable Message Chips Delegation
+    initBotActionChips();
+
+    // Initialize Procedural Web Audio API Haptic Sound Synthesizer (ViHaptics)
+    initHaptics();
+
     // Handle Form Submission
     if (chatForm) {
       chatForm.addEventListener('submit', (e) => {
@@ -3128,6 +3804,9 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
         if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
         const promptText = button.getAttribute('data-prompt');
         if (promptText) {
+          if (typeof playClickSound === 'function') {
+            playClickSound();
+          }
           handleFormSubmit(promptText);
         }
       });
@@ -3377,7 +4056,12 @@ async function handleFormSubmit(customMessage = null, options = {}) {
     messageText = userInput.value.trim();
   }
 
-  if (!messageText) return;
+  if (!messageText) {
+    if (typeof playErrorThud === 'function') {
+      playErrorThud();
+    }
+    return;
+  }
   if (typeof document === 'undefined') return;
 
   // Immediately stop any active voice speech and finish any active stream when user submits!
@@ -3434,25 +4118,113 @@ async function handleFormSubmit(customMessage = null, options = {}) {
   showTypingIndicator(true);
 
   try {
-    const startTime = Date.now();
+    const isRealBrowser = (typeof window !== 'undefined' && typeof window.location !== 'undefined' && typeof window.location.href === 'string' && typeof document !== 'undefined');
 
-    // 7. Send POST request to Local Backend API
-    const result = await sendMessageToBackend(messageText);
-    const replyText = typeof result === 'object' ? result.text : result;
+    let streamBubbleEl = null;
+    let streamContentWrapper = null;
+    let streamTextSpan = null;
+    let streamCursor = null;
+    let streamFooterEl = null;
+    let streamMessageEl = null;
+    let streamFeedbackActions = null;
+    let accumulatedStreamText = '';
 
-    // Natural deliberative thinking duration:
-    // Snappy and responsive ~450ms (0ms in headless test mode)
-    const isHeadless = typeof window === 'undefined' || typeof document === 'undefined';
-    const minThinkingMs = isHeadless ? 0 : 450;
-    const elapsed = Date.now() - startTime;
-    if (elapsed < minThinkingMs) {
-      await new Promise(resolve => setTimeout(resolve, minThinkingMs - elapsed));
+    function ensureStreamingBubble() {
+      if (streamBubbleEl || !isRealBrowser || !messagesContainer) return;
+      showTypingIndicator(false);
+
+      streamMessageEl = document.createElement('div');
+      streamMessageEl.classList.add('message', 'ai-message', 'animate-fade-in');
+
+      streamContentWrapper = document.createElement('div');
+      streamContentWrapper.classList.add('msg-content-wrapper');
+
+      streamBubbleEl = document.createElement('div');
+      streamBubbleEl.classList.add('msg-bubble', 'is-streaming');
+      streamBubbleEl.innerHTML = '<span class="streaming-text"></span><span class="streaming-cursor"></span>';
+      streamTextSpan = streamBubbleEl.querySelector('.streaming-text');
+      streamCursor = streamBubbleEl.querySelector('.streaming-cursor');
+
+      streamFooterEl = document.createElement('div');
+      streamFooterEl.classList.add('msg-footer');
+      streamFooterEl.style.opacity = '0';
+      streamFooterEl.style.transition = 'opacity 0.25s ease';
+
+      const timestampEl = document.createElement('span');
+      timestampEl.classList.add('msg-timestamp');
+      timestampEl.textContent = getCurrentFormattedTime();
+      streamFooterEl.appendChild(timestampEl);
+
+      streamContentWrapper.appendChild(streamBubbleEl);
+      streamContentWrapper.appendChild(streamFooterEl);
+
+      const avatarEl = createBotAvatarElement();
+      streamMessageEl.appendChild(avatarEl);
+      streamMessageEl.appendChild(streamContentWrapper);
+
+      messagesContainer.appendChild(streamMessageEl);
+      scrollToBottom();
     }
 
-    // Hide typing indicator right before showing AI response
+    // 7. Send POST request to Local Backend API (with real-time streaming handlers)
+    const result = await sendMessageToBackend(messageText, {
+      onToken: (token) => {
+        ensureStreamingBubble();
+        if (streamTextSpan) {
+          accumulatedStreamText += token;
+          streamTextSpan.innerHTML = escapeHtml(accumulatedStreamText).replace(/\n/g, '<br>');
+          scrollToBottom();
+        }
+      },
+      onAction: (actionData) => {
+        console.log('[SSE Action Received]:', actionData);
+      }
+    });
+
+    const replyText = typeof result === 'object' ? result.text : result;
     showTypingIndicator(false);
 
-    // 8. Permanently resolve the confirmation card and update button states!
+    // 8. Finalize AI message display
+    if (streamBubbleEl && streamMessageEl) {
+      if (streamCursor) {
+        streamCursor.remove();
+      }
+      streamBubbleEl.classList.remove('is-streaming');
+      streamBubbleEl.innerHTML = formatFintechMessage(replyText, 'ai');
+
+      const msgId = 'msg_' + Date.now();
+      streamFeedbackActions = createFeedbackActions(messageText, replyText, msgId);
+      streamFooterEl.appendChild(streamFeedbackActions);
+      streamFooterEl.style.opacity = '1';
+
+      // Dynamic contextual action chips (Feature: Actionable Message Chips)
+      if (typeof appendActionChipsToMessage === 'function') {
+        const targetWrapper = streamContentWrapper || (streamMessageEl && streamMessageEl.querySelector ? streamMessageEl.querySelector('.msg-content-wrapper') : null);
+        const chips = getContextualActionChips(messageText, replyText);
+        appendActionChipsToMessage(targetWrapper, chips);
+      }
+
+      scrollToBottom();
+
+      const crest = (typeof streamBubbleEl.querySelector === 'function') ? streamBubbleEl.querySelector('.receipt-hero-crest') : null;
+      if (crest) {
+        triggerReceiptCelebration(crest);
+      }
+
+      if (isTtsEnabled) {
+        const speakBtn = (streamFeedbackActions && typeof streamFeedbackActions.querySelector === 'function')
+          ? streamFeedbackActions.querySelector('.message-speak-btn')
+          : null;
+        speakText(replyText, speakBtn);
+      }
+    } else {
+      // Fallback or headless environment: render complete message
+      if (typeof document !== 'undefined') {
+        appendMessage(replyText, 'ai', messageText, false);
+      }
+    }
+
+    // 9. Permanently resolve the confirmation card and update button states!
     const targetCard = sourceCard || (typeof document !== 'undefined' && typeof document.querySelector === 'function' ? document.querySelector('.fintech-card.confirm-card:not(.card-resolved)') : null);
     
     const isSuccessReply = replyText.includes('تم التحويل بنجاح') || 
@@ -3548,17 +4320,14 @@ async function handleFormSubmit(customMessage = null, options = {}) {
       }
     }
 
-    // 9. Append AI Response (associated with the user query for accurate feedback logging)
+    // 10. Update live balance in header & sync transactions drawer & companion rail
     if (typeof document !== 'undefined') {
-      appendMessage(replyText, 'ai', messageText);
-
-      // 10. Update live balance in header & sync transactions drawer & companion rail
       syncWalletHeader();
       fetchAndRenderTransactions();
       if (typeof fetchCompanionContacts === 'function') fetchCompanionContacts();
       if (typeof fetchCompanionBills === 'function') fetchCompanionBills();
 
-      // 10. Auto-open transactions drawer if the server flagged it (e.g. user asked for recent transactions)
+      // 11. Auto-open transactions drawer if the server flagged it (e.g. user asked for recent transactions)
       if (typeof result === 'object' && result.openDrawer) {
         setTimeout(() => {
           openTransactionsDrawer();
@@ -3598,11 +4367,12 @@ async function handleFormSubmit(customMessage = null, options = {}) {
 }
 
 /**
- * Sends the user's message to the local backend API via fetch
+ * Sends the user's message to the local backend API via fetch with SSE token streaming support
  * @param {string} userMessage - Text entered by the user
- * @returns {Promise<{text: string, openDrawer: boolean}>} - Text generated by the AI and openDrawer flag
+ * @param {Object} [callbacks] - Optional streaming event handlers ({ onToken, onAction, onDone })
+ * @returns {Promise<{text: string, openDrawer: boolean, action?: Object}>} - Text generated by the AI and metadata
  */
-async function sendMessageToBackend(userMessage) {
+async function sendMessageToBackend(userMessage, callbacks = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT_MS);
   const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
@@ -3613,6 +4383,7 @@ async function sendMessageToBackend(userMessage) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'text/event-stream, application/json',
         'X-Request-Id': requestId,
         'X-Idempotency-Key': requestId,
         'X-Session-Id': sessionId
@@ -3622,7 +4393,8 @@ async function sendMessageToBackend(userMessage) {
         provider: getSelectedModelProvider(),
         sessionId: sessionId,
         timestamp: new Date().toISOString(),
-        idempotency_key: requestId
+        idempotency_key: requestId,
+        stream: true
       }),
       signal: controller.signal
     });
@@ -3635,9 +4407,90 @@ async function sendMessageToBackend(userMessage) {
       throw new Error(errorMsg);
     }
 
-    const data = await response.json();
+    const contentType = (response.headers && typeof response.headers.get === 'function')
+      ? (response.headers.get('content-type') || '')
+      : '';
 
-    // Support common response payload formats: { response: "..." } or { reply: "..." } or { message: "..." }
+    // 1. Consume Server-Sent Events (SSE) via ReadableStream with sliding-window events
+    if (contentType.includes('text/event-stream') && response.body && typeof response.body.getReader === 'function') {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let accumulatedText = '';
+      let openDrawer = false;
+      let finalAction = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          if (!part.trim()) continue;
+          let eventName = 'message';
+          let dataStr = '';
+
+          const lines = part.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              eventName = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              dataStr += line.slice(5).trim();
+            }
+          }
+
+          if (dataStr) {
+            let parsedData = null;
+            try {
+              parsedData = JSON.parse(dataStr);
+            } catch (_) {
+              parsedData = { text: dataStr };
+            }
+
+            if (eventName === 'token') {
+              const token = (parsedData && typeof parsedData.token === 'string')
+                ? parsedData.token
+                : (parsedData?.text || '');
+              if (token) {
+                accumulatedText += token;
+                if (typeof callbacks.onToken === 'function') {
+                  callbacks.onToken(token);
+                }
+              }
+            } else if (eventName === 'action') {
+              finalAction = parsedData;
+              if (typeof callbacks.onAction === 'function') {
+                callbacks.onAction(parsedData);
+              }
+            } else if (eventName === 'done') {
+              if (parsedData?.fullResponse) {
+                accumulatedText = parsedData.fullResponse;
+              }
+              if (parsedData?.openTransactionsDrawer) {
+                openDrawer = true;
+              }
+              if (typeof callbacks.onDone === 'function') {
+                callbacks.onDone(parsedData);
+              }
+            } else if (eventName === 'error') {
+              throw new Error(parsedData?.error || 'حدث خطأ أثناء استلام الرد من النموذج');
+            }
+          }
+        }
+      }
+
+      return {
+        text: accumulatedText.trim(),
+        openDrawer: openDrawer,
+        action: finalAction
+      };
+    }
+
+    // 2. Backward-compatible fallback: Standard JSON response
+    const data = await response.json();
     const reply = data.response || data.reply || data.message || data.text;
     if (!reply) {
       throw new Error('لم يتم استلام نص في استجابة الخادم.');
@@ -3934,6 +4787,10 @@ function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
   if (sender !== 'ai' || !stream || !isRealBrowser) {
     bubbleEl.innerHTML = formatFintechMessage(text, sender);
     if (footerEl) footerEl.style.opacity = '1';
+    if (sender === 'ai' && typeof appendActionChipsToMessage === 'function') {
+      const chips = getContextualActionChips(relatedUserQuery, text);
+      appendActionChipsToMessage(contentWrapper, chips);
+    }
     const crest = (typeof bubbleEl.querySelector === 'function') ? bubbleEl.querySelector('.receipt-hero-crest') : null;
     if (crest) {
       triggerReceiptCelebration(crest);
@@ -3975,6 +4832,12 @@ function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
   streamTextMessage(bubbleEl, text, () => {
     bubbleEl.innerHTML = formatFintechMessage(text, 'ai');
     footerEl.style.opacity = '1';
+
+    if (typeof appendActionChipsToMessage === 'function') {
+      const chips = getContextualActionChips(relatedUserQuery, text);
+      appendActionChipsToMessage(contentWrapper, chips);
+    }
+
     scrollToBottom();
 
     const crest = (typeof bubbleEl.querySelector === 'function') ? bubbleEl.querySelector('.receipt-hero-crest') : null;
@@ -3991,6 +4854,279 @@ function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
   });
 
   return messageEl;
+}
+
+/* ==========================================================================
+   Section 8b: Dynamic Contextual Actionable Message Chips
+   ========================================================================== */
+
+/**
+ * Normalizes Arabic text for flexible financial intent keyword matching
+ * @param {string} text - Raw input text
+ * @returns {string} Normalized text
+ */
+function normalizeArabicKeywords(text) {
+  if (typeof text !== 'string') return '';
+  return text
+    .toLowerCase()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/[\u064B-\u065F]/g, '') // remove Arabic diacritics / tashkeel
+    .replace(/[^\w\s\u0600-\u06FF]/g, ' ') // replace punctuation with spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Derives dynamic contextual action chips based on detected financial intents or keywords
+ * @param {string} userQuery - The user prompt or inquiry
+ * @param {string} botReply - The assistant's textual response
+ * @returns {Array<{label: string, action: string, prompt?: string}>}
+ */
+function getContextualActionChips(userQuery = '', botReply = '') {
+  const replyStr = typeof botReply === 'string' ? botReply : '';
+  const queryStr = typeof userQuery === 'string' ? userQuery : '';
+
+  // 1. Guard against rendering duplicate or intrusive chips if confirmation or disambiguation cards exist
+  if (
+    replyStr.includes('confirm-card') ||
+    replyStr.includes('<CONFIRMATION_REQUIRED>') ||
+    replyStr.includes('fintech-confirm-card') ||
+    replyStr.includes('disambiguation-card') ||
+    replyStr.includes('<DISAMBIGUATION_REQUIRED>') ||
+    replyStr.includes('error-bubble') ||
+    replyStr.includes('⚠️ تنبيه')
+  ) {
+    return [];
+  }
+
+  const queryNorm = normalizeArabicKeywords(queryStr);
+  const replyNorm = normalizeArabicKeywords(replyStr);
+  const combined = (queryNorm + ' ' + replyNorm).trim();
+
+  if (!combined && !replyStr) return [];
+
+  // 2. Completed Transaction / Receipt Intent (Mutations succeeded)
+  const isCompletedTx =
+    replyNorm.includes('تم التحويل بنجاح') ||
+    replyNorm.includes('تم تسديد') ||
+    replyNorm.includes('دفعت الفاتورة') ||
+    replyNorm.includes('ايصال العملية') ||
+    replyNorm.includes('وصل العملية') ||
+    replyNorm.includes('نجحت العملية') ||
+    replyStr.includes('receipt-hero-crest');
+
+  if (isCompletedTx) {
+    return [
+      { label: '📊 كم رصيدي هسة؟', action: 'prompt:كم رصيدي هسة؟' },
+      { label: '📜 كشف الحساب', action: 'prompt:اعرضلي سجل الحركات الأخيرة' },
+      { label: '💸 تحويل آخر', action: 'modal:quick-transfer' }
+    ];
+  }
+
+  // 3. Bill Inquiries Intent
+  const isBillQuery =
+    queryNorm.includes('فاتوره') ||
+    queryNorm.includes('فواتير') ||
+    queryNorm.includes('كهرباء') ||
+    queryNorm.includes('انترنت') ||
+    queryNorm.includes('مولده') ||
+    queryNorm.includes('تسديد') ||
+    queryNorm.includes('سداد') ||
+    replyNorm.includes('فواتير مستحقه') ||
+    replyNorm.includes('فاتوره الكهرباء') ||
+    replyNorm.includes('فاتوره الانترنت') ||
+    replyNorm.includes('تسديد الفاتوره');
+
+  if (isBillQuery) {
+    return [
+      { label: '💳 سداد الآن', action: 'prompt:أريد أدفع الفواتير المستحقة' },
+      { label: '⚡ تسديد الإنترنت', action: 'prompt:أريد أدفع فاتورة شبكة الإنترنت' },
+      { label: '💡 تسديد الكهرباء', action: 'prompt:أريد أدفع فاتورة كهرباء الكرخ' },
+      { label: '📊 كم رصيدي؟', action: 'prompt:كم رصيدي هسة؟' }
+    ];
+  }
+
+  // 4. Balance Inquiries Intent
+  const isBalanceQuery =
+    queryNorm.includes('رصيد') ||
+    queryNorm.includes('فلوسي') ||
+    queryNorm.includes('بالمحفظه') ||
+    queryNorm.includes('محفظتي') ||
+    queryNorm.includes('حسابي') ||
+    replyNorm.includes('رصيدك الحالي') ||
+    replyNorm.includes('رصيدك هو') ||
+    replyNorm.includes('مجموع رصيدك') ||
+    replyNorm.includes('رصيد المحفظه');
+
+  if (isBalanceQuery) {
+    return [
+      { label: '💸 تحويل سريع', action: 'modal:quick-transfer' },
+      { label: '⚡ تسديد الفواتير', action: 'prompt:شكو عندي فواتير مكسورة؟' },
+      { label: '📜 كشف الحساب', action: 'prompt:اعرضلي سجل الحركات الأخيرة' }
+    ];
+  }
+
+  // 5. Transactions / Mini-Ledger Inquiries
+  const isLedgerQuery =
+    queryNorm.includes('حركات') ||
+    queryNorm.includes('سجل') ||
+    queryNorm.includes('كشف') ||
+    queryNorm.includes('وين راحت فلوسي') ||
+    queryNorm.includes('مصاريف') ||
+    replyNorm.includes('سجل الحركات') ||
+    replyNorm.includes('الحركات الاخيره') ||
+    replyNorm.includes('كشف حسابك');
+
+  if (isLedgerQuery) {
+    return [
+      { label: '💸 تحويل سريع', action: 'modal:quick-transfer' },
+      { label: '📊 فحص الرصيد', action: 'prompt:كم رصيدي هسة؟' },
+      { label: '⚡ فحص الفواتير', action: 'prompt:شكو فواتير مطلوبة؟' }
+    ];
+  }
+
+  // 6. Contacts / Beneficiaries Inquiries
+  const isContactsQuery =
+    queryNorm.includes('جهات الاتصال') ||
+    queryNorm.includes('المستلمين') ||
+    queryNorm.includes('دفتر') ||
+    queryNorm.includes('جماعتي') ||
+    replyNorm.includes('جهات الاتصال') ||
+    replyNorm.includes('قائمه المستلمين');
+
+  if (isContactsQuery) {
+    return [
+      { label: '💸 تحويل سريع', action: 'modal:quick-transfer' },
+      { label: '💸 تحويل لأحمد', action: 'prompt:أريد أحول 50 ألف لأحمد كمال' },
+      { label: '💸 تحويل لسيف', action: 'prompt:أريد أحول 25 ألف لسيف مصطفى' }
+    ];
+  }
+
+  // 7. General Financial Assistant Shortcut Chips (Fallback for greetings or general queries)
+  return [
+    { label: '📊 فحص الرصيد', action: 'prompt:كم رصيدي هسة؟' },
+    { label: '💸 تحويل سريع', action: 'modal:quick-transfer' },
+    { label: '⚡ تسديد الفواتير', action: 'prompt:شكو عندي فواتير مكسورة؟' }
+  ];
+}
+
+/**
+ * Appends contextual action chips container beneath the bot message bubble
+ * @param {HTMLElement} contentWrapper - The .msg-content-wrapper element
+ * @param {Array<{label: string, action: string}>} chips - Array of action chip descriptors
+ * @returns {HTMLElement|null} The created chips container or null
+ */
+function appendActionChipsToMessage(contentWrapper, chips) {
+  if (!contentWrapper || !Array.isArray(chips) || chips.length === 0) return null;
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+
+  // Prevent duplicate action chip containers on the same message
+  if (typeof contentWrapper.querySelector === 'function' && contentWrapper.querySelector('.bot-action-chips-container')) {
+    return null;
+  }
+
+  const container = document.createElement('div');
+  container.className = 'bot-action-chips-container';
+  container.setAttribute('role', 'group');
+  container.setAttribute('aria-label', 'إجراءات مالية سريعة');
+
+  chips.forEach((chip) => {
+    if (!chip || !chip.label) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bot-action-chip';
+    btn.setAttribute('data-chip-action', chip.action || '');
+    if (chip.prompt) {
+      btn.setAttribute('data-chip-prompt', chip.prompt);
+    }
+    btn.setAttribute('aria-label', chip.label);
+    btn.textContent = chip.label;
+    container.appendChild(btn);
+  });
+
+  const footerEl = (typeof contentWrapper.querySelector === 'function') ? contentWrapper.querySelector('.msg-footer') : null;
+  if (footerEl && footerEl.parentNode === contentWrapper && typeof contentWrapper.insertBefore === 'function') {
+    contentWrapper.insertBefore(container, footerEl);
+  } else if (typeof contentWrapper.appendChild === 'function') {
+    contentWrapper.appendChild(container);
+  }
+
+  return container;
+}
+
+/**
+ * Dispatches action corresponding to a clicked action chip
+ * @param {string} action - Action descriptor (e.g., 'modal:quick-transfer', 'prompt:...')
+ * @param {HTMLElement} [chipElement] - The button element that was clicked
+ */
+function handleBotActionChipClick(action, chipElement) {
+  if (!action) return;
+
+  if (typeof playClickSound === 'function') {
+    playClickSound();
+  }
+
+  // 1. Modal trigger
+  if (action === 'modal:quick-transfer' || action.startsWith('modal:quick-transfer')) {
+    if (typeof openQuickTransferModal === 'function') {
+      openQuickTransferModal();
+    }
+    return;
+  }
+
+  // 2. Direct instant bill settlement trigger
+  if (action.startsWith('settle:bill:')) {
+    const billName = action.replace(/^settle:bill:/, '').trim();
+    if (typeof handleQuickBillPayment === 'function') {
+      handleQuickBillPayment(billName);
+    } else if (typeof handleFormSubmit === 'function') {
+      handleFormSubmit(`أريد أسدد ${billName}`);
+    }
+    return;
+  }
+
+  // 3. Auto-dispatch chat prompt trigger
+  if (action.startsWith('prompt:')) {
+    const promptText = action.replace(/^prompt:/, '').trim();
+    if (promptText && typeof handleFormSubmit === 'function') {
+      handleFormSubmit(promptText);
+    }
+    return;
+  }
+
+  // Fallback: If action itself is formatted prompt string
+  if (typeof handleFormSubmit === 'function') {
+    handleFormSubmit(action);
+  }
+}
+
+/**
+ * Initializes event delegation on .messages-container for actionable message chips
+ */
+function initBotActionChips() {
+  if (typeof document === 'undefined') return;
+  const container = document.querySelector('.messages-container');
+  if (!container || container._hasBotActionChipsListener) return;
+  container._hasBotActionChipsListener = true;
+
+  container.addEventListener('click', (event) => {
+    const chip = event.target.closest('.bot-action-chip');
+    if (!chip) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Trigger micro-elevation active pulse
+    chip.classList.add('is-active-pulse');
+    setTimeout(() => {
+      chip.classList.remove('is-active-pulse');
+    }, 280);
+
+    const action = chip.getAttribute('data-chip-action') || '';
+    handleBotActionChipClick(action, chip);
+  });
 }
 
 /**
@@ -4332,22 +5468,30 @@ function renderFintechFlowWidget(details) {
 
 /**
  * Renders Interactive Glass Action Bar with Tier-1 Apple Pay "Slide to Confirm" (اسحب لتأكيد التحويل) Slider & Cancel Button
+ * @param {object} [data] - Transaction details (optional)
  * @returns {string} HTML string
  */
-function renderFintechActionButtons() {
+function renderFintechActionButtons(data) {
+  const isHighValue = isHighValueTransfer(data);
+  const highValueAttr = isHighValue ? ' data-high-value="true"' : '';
+  const highValueClass = isHighValue ? ' high-value-track' : '';
+  const isBillPayment = data && (data.isBill || data.bill_id || data.type === 'BILL_PAYMENT' || data.isBulk);
+  const slideActionLabel = isBillPayment ? 'اسحب لتأكيد سداد الفواتير' : 'اسحب لتأكيد التحويل';
+
   return `
     <div class="fintech-actions-bar" role="group" aria-label="خيارات التأكيد السريع">
-      <div class="slide-to-confirm-track fintech-btn-confirm" 
+      <div class="slide-to-confirm-track fintech-btn-confirm${highValueClass}" 
            role="slider" 
            tabindex="0" 
-           aria-label="اسحب لتأكيد التحويل" 
+           aria-label="${slideActionLabel}" 
            aria-valuemin="0" 
            aria-valuemax="100" 
            aria-valuenow="0" 
-           data-action="confirm">
+           data-action="confirm"
+           data-threshold="0.88"${highValueAttr}>
         <div class="slide-progress-fill"></div>
         <div class="slide-track-text">
-          <span class="slide-shimmer-text">اسحب لتأكيد التحويل</span>
+          <span class="slide-shimmer-text">${slideActionLabel}</span>
           <span class="slide-track-arrow" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
               <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -4396,14 +5540,30 @@ function renderConfirmationCard(data) {
  * @returns {string} HTML string
  */
 function renderFintechConfirmationCard(data) {
+  const isHighValue = isHighValueTransfer(data);
   const flowWidget = renderFintechFlowWidget(data);
-  const actionsWidget = renderFintechActionButtons();
+  const actionsWidget = renderFintechActionButtons(data);
 
   return `
-    <div class="fintech-card confirm-card" role="region" aria-label="مراجعة وتأكيد المعاملة المالية">
-      ${data.introMessage ? `
+    <div class="fintech-card confirm-card${isHighValue ? ' high-value-card' : ''}" role="region" aria-label="مراجعة وتأكيد المعاملة المالية"${isHighValue ? ' data-high-value="true"' : ''}>
+      ${data && data.introMessage ? `
       <div class="fintech-ai-intro">
         <span class="ai-intro-text">${escapeHtml(data.introMessage)}</span>
+      </div>
+      ` : ''}
+
+      ${isHighValue ? `
+      <div class="high-value-security-badge" role="status" aria-label="تحويل مالي عالي القيمة">
+        <span class="security-badge-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="M9 12l2 2 4-4"></path>
+          </svg>
+        </span>
+        <div class="security-badge-content">
+          <span class="security-badge-title">تحويل عالي القيمة (&gt;100,000 د.ع)</span>
+          <span class="security-badge-desc">مطلوب تأكيد أمني: اسحب المقبض بنسبة 88% لإتمام التحويل بأمان</span>
+        </div>
       </div>
       ` : ''}
 
@@ -4411,20 +5571,20 @@ function renderFintechConfirmationCard(data) {
 
       <div class="fintech-spec-grid">
         <div class="spec-row">
-          <span class="spec-label">${data.isBill ? 'الجهة المستفيدة' : 'المستلم'}</span>
-          <span class="spec-value recipient-val">${escapeHtml(data.recipient)} ${data.subDetail ? `<span class="spec-sub">(${escapeHtml(data.subDetail)})</span>` : ''}</span>
+          <span class="spec-label">${data && data.isBill ? 'الجهة المستفيدة' : 'المستلم'}</span>
+          <span class="spec-value recipient-val">${escapeHtml((data && data.recipient) || '')} ${(data && data.subDetail) ? `<span class="spec-sub">(${escapeHtml(data.subDetail)})</span>` : ''}</span>
         </div>
-        ${data.phoneOrAccount ? `
+        ${(data && data.phoneOrAccount) ? `
         <div class="spec-row">
           <span class="spec-label">${data.isBill ? 'رقم الحساب' : 'رقم الهاتف'}</span>
           <span class="spec-value phone-val" dir="ltr">${escapeHtml(data.phoneOrAccount)}</span>
         </div>
         ` : ''}
-        <div class="spec-row highlight-amount-row">
+        <div class="spec-row highlight-amount-row${isHighValue ? ' high-value-amount' : ''}">
           <span class="spec-label">المبلغ المطلوب</span>
-          <span class="spec-value spec-amount-val">${escapeHtml(data.amount)}</span>
+          <span class="spec-value spec-amount-val">${escapeHtml((data && data.amount) || '')}</span>
         </div>
-        ${data.balanceAfter ? `
+        ${(data && data.balanceAfter) ? `
         <div class="spec-row">
           <span class="spec-label">الرصيد بعد العملية</span>
           <span class="spec-value spec-balance-val">${escapeHtml(data.balanceAfter)}</span>
@@ -4433,7 +5593,7 @@ function renderFintechConfirmationCard(data) {
       </div>
 
       <div class="fintech-prompt-bar">
-        <span>يرجى مراجعة التفاصيل، ثم الاختيار أدناه أو الرد (صوتياً أو كتابياً) بـ "تأكيد" أو "إلغاء":</span>
+        <span>${isHighValue ? 'يرجى مراجعة التفاصيل بدقة، واسحب المقبض أدناه لتأكيد التحويل عالي القيمة:' : 'يرجى مراجعة التفاصيل، ثم الاختيار أدناه أو الرد (صوتياً أو كتابياً) بـ "تأكيد" أو "إلغاء":'}</span>
       </div>
 
       ${actionsWidget}
@@ -5101,8 +6261,151 @@ let cachedCompanionContacts = [
   { name: 'أحمد كمال', alias: 'صديق الجامعة', phone: '+9647801122334' },
   { name: 'أم مصطفى', alias: 'الوالدة', phone: '+9647803344556' },
   { name: 'سيف الدين', alias: 'زميل العمل', phone: '+9647804455667' },
-  { name: 'علاوي', alias: 'أخي', phone: '+9647709998877' }
+  { name: 'علاوي', alias: 'أخي', phone: '+9647709998877' },
+  { name: 'مرتضى', alias: 'صديق العمل', phone: '+9647819919952' }
 ];
+
+/**
+ * Detects Iraqi fintech network provider from phone prefix or wallet metadata.
+ * Prefixes:
+ * - 078 / +96478 -> Zain Cash (زين كاش) - Emerald badge & dot
+ * - 077 / +96477 -> AsiaPay (آسيا باي) - Violet badge & dot
+ * - 075 / +96475 -> FastPay (فاست باي) - Cyan badge & dot
+ * - Qi Card / كي كارد -> Qi Card - Amber/gold badge & dot
+ * - Default -> VI Gold (فاي غولد) - Gold badge & dot
+ * @param {Object|string} contactOrPhone
+ * @returns {{ id: string, name: string, arabicName: string, color: string, badgeClass: string, dotClass: string }}
+ */
+function getIraqiFintechNetwork(contactOrPhone) {
+  return {
+    id: 'vi',
+    name: 'VI Pay',
+    arabicName: 'فاي باي',
+    color: '#8b5cf6',
+    badgeClass: 'network-badge-vi',
+    dotClass: 'status-dot-violet'
+  };
+}
+
+/**
+ * Formats a date relative to a reference date with authentic Iraqi colloquial phrasing.
+ * E.g.: 'آخر تحويل: اليوم', 'آخر تحويل: البارحة', 'قبل 4 أيام', 'جهة جديدة'.
+ * @param {string|number|Date} dateInput
+ * @param {Date} [referenceDate=new Date()]
+ * @returns {string}
+ */
+function formatRelativeIraqiTimestamp(dateInput, referenceDate = new Date()) {
+  if (!dateInput) return '';
+
+  const ref = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+  let d;
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+    const parts = dateInput.trim().split('-');
+    d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  } else {
+    d = new Date(dateInput);
+  }
+
+  if (isNaN(d.getTime())) return '';
+
+  const refDay = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime();
+  const dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((refDay - dDay) / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) {
+    return 'آخر تحويل: اليوم';
+  }
+  if (diffDays === 1) {
+    return 'آخر تحويل: البارحة';
+  }
+  if (diffDays === 2) {
+    return 'قبل يومين';
+  }
+  if (diffDays >= 3 && diffDays <= 10) {
+    return `قبل ${diffDays} أيام`;
+  }
+  if (diffDays > 10 && diffDays < 30) {
+    return `قبل ${diffDays} يوماً`;
+  }
+  if (diffDays >= 30 && diffDays < 60) {
+    return 'قبل شهر';
+  }
+  if (diffDays >= 60 && diffDays < 365) {
+    return `قبل ${Math.floor(diffDays / 30)} أشهر`;
+  }
+  return 'قبل أكثر من سنة';
+}
+
+/**
+ * Cross-references a contact with cached transactions to find the most recent transfer activity.
+ * @param {Object} contact
+ * @param {Array} [transactions]
+ * @param {Date} [referenceDate=new Date()]
+ * @returns {{ text: string, isNew: boolean, date?: string }}
+ */
+function getContactActivityTimestamp(contact, transactions = (typeof cachedTransactions !== 'undefined' ? cachedTransactions : []), referenceDate = new Date()) {
+  if (!contact) return { text: 'جهة جديدة', isNew: true };
+
+  const txList = Array.isArray(transactions) ? transactions : [];
+  const rawContactPhone = contact.phone || '';
+  const normContactPhone = String(rawContactPhone).replace(/\D/g, '').replace(/^(00964|964|0)/, '');
+  const normContactName = (contact.name || '').trim().toLowerCase();
+
+  const matchingTxs = txList.filter(trx => {
+    if (!trx) return false;
+    const isTransfer = (trx.type === 'TRANSFER' || trx.recipient || trx.phone);
+    if (!isTransfer) return false;
+
+    const rawTrxPhone = trx.phone || '';
+    const normTrxPhone = String(rawTrxPhone).replace(/\D/g, '').replace(/^(00964|964|0)/, '');
+    const normRecipient = (trx.recipient || '').trim().toLowerCase();
+
+    // Check phone match
+    if (normContactPhone && normTrxPhone) {
+      if (normContactPhone === normTrxPhone || normContactPhone.endsWith(normTrxPhone) || normTrxPhone.endsWith(normContactPhone)) {
+        return true;
+      }
+    }
+
+    // Check name match
+    if (normContactName && normRecipient) {
+      if (normContactName === normRecipient || normContactName.includes(normRecipient) || normRecipient.includes(normContactName)) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  if (matchingTxs.length > 0) {
+    // Sort descending by date
+    matchingTxs.sort((a, b) => {
+      const timeA = new Date(a.date).getTime() || 0;
+      const timeB = new Date(b.date).getTime() || 0;
+      return timeB - timeA;
+    });
+
+    const latest = matchingTxs[0];
+    const text = formatRelativeIraqiTimestamp(latest.date, referenceDate);
+    return {
+      text,
+      isNew: false,
+      date: latest.date
+    };
+  }
+
+  // Fallback to explicit contact lastTransferDate if provided
+  if (contact.lastTransferDate || contact.last_transfer) {
+    const text = formatRelativeIraqiTimestamp(contact.lastTransferDate || contact.last_transfer, referenceDate);
+    return {
+      text,
+      isNew: false,
+      date: contact.lastTransferDate || contact.last_transfer
+    };
+  }
+
+  return { text: '', isNew: true };
+}
 
 function isCompanionRailCollapsed() {
   try {
@@ -5248,16 +6551,34 @@ function renderCompanionContacts() {
     const phone = escapeHtml(c.phone || '');
     const initial = typeof getContactInitial === 'function' ? getContactInitial(c.name) : (c.name ? c.name[0] : 'ف');
     const gradient = typeof getContactGradient === 'function' ? getContactGradient(c.name) : 'linear-gradient(135deg, #059669, #06b6d4)';
+    const network = typeof getIraqiFintechNetwork === 'function'
+      ? getIraqiFintechNetwork(c)
+      : { arabicName: 'فاي غولد', badgeClass: 'network-badge-vi', dotClass: 'status-dot-gold' };
+    const activity = typeof getContactActivityTimestamp === 'function'
+      ? getContactActivityTimestamp(c, cachedTransactions)
+      : { text: 'جهة جديدة', isNew: true };
 
     html += `
       <div class="companion-contact-item" data-contact-name="${name}">
         <div class="companion-contact-lead">
           <div class="companion-contact-avatar" style="background: ${gradient}" aria-hidden="true">
             <span>${initial}</span>
+            <span class="contact-status-dot ${network.dotClass}"></span>
           </div>
           <div class="companion-contact-info">
-            <span class="companion-contact-name">${name}</span>
+            <div class="companion-contact-name-row">
+              <span class="companion-contact-name">${name}</span>
+              <span class="contact-network-badge ${network.badgeClass}">${network.arabicName}</span>
+            </div>
             <span class="companion-contact-alias">${alias}</span>
+            ${activity && !activity.isNew && activity.text ? `
+            <span class="companion-contact-timestamp">
+              <svg class="timestamp-clock-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span>${activity.text}</span>
+            </span>` : ''}
           </div>
         </div>
         <button type="button" class="companion-quick-transfer-btn" data-contact-name="${name}" data-contact-phone="${phone}" data-contact-alias="${alias}" aria-label="تحويل سريع إلى ${name}">
@@ -5283,6 +6604,7 @@ let cachedCompanionBills = [
   { id: 'bill_elec_01', biller: 'كهرباء الكرخ', account_number: '9812450012', amount: 50000, status: 'unpaid' },
   { id: 'bill_water_01', biller: 'مياه البصرة', account_number: '1234567899', amount: 35000, status: 'unpaid' }
 ];
+let cachedBills = cachedCompanionBills;
 
 let isShowingAllCompanionBills = false;
 
@@ -5426,7 +6748,9 @@ async function fetchCompanionBills(showSkeleton = false) {
     const data = await res.json();
     if (data && Array.isArray(data.bills) && data.bills.length > 0) {
       cachedCompanionBills = data.bills;
+      cachedBills = data.bills;
       renderCompanionBills();
+      renderFintechPulse();
     }
   } catch (err) {
     // Non-blocking fallback
@@ -5502,9 +6826,44 @@ async function fetchCompanionContacts(showSkeleton = false) {
    Section 31.5: Fintech Pulse (نبض المحفظة) Visual Analytics & Micro-Donut
    ========================================================================== */
 let activeFintechPulseSegment = 'balance'; // 'balance' | 'transfers' | 'bills'
+let activeFintechPulsePerspective = 'expenses'; // 'expenses' | 'obligations'
+
+function getFintechPulsePerspective() {
+  return activeFintechPulsePerspective;
+}
+
+function setFintechPulsePerspective(perspective) {
+  if (typeof playClickSound === 'function') {
+    playClickSound();
+  }
+  activeFintechPulsePerspective = (perspective === 'obligations') ? 'obligations' : 'expenses';
+  if (typeof document !== 'undefined' && document && typeof document.getElementById === 'function') {
+    const expensesBtn = document.getElementById('pulse-mode-expenses-btn');
+    const obligationsBtn = document.getElementById('pulse-mode-obligations-btn');
+    const card = document.getElementById('companion-pulse-card');
+    const actions = document.getElementById('pulse-obligations-actions');
+
+    const isOblig = (activeFintechPulsePerspective === 'obligations');
+    if (expensesBtn) {
+      expensesBtn.classList.toggle('is-active', !isOblig);
+      expensesBtn.setAttribute('aria-selected', !isOblig ? 'true' : 'false');
+    }
+    if (obligationsBtn) {
+      obligationsBtn.classList.toggle('is-active', isOblig);
+      obligationsBtn.setAttribute('aria-selected', isOblig ? 'true' : 'false');
+    }
+    if (card) {
+      card.classList.toggle('is-obligations-mode', isOblig);
+    }
+    if (actions) {
+      actions.classList.toggle('hidden', !isOblig);
+    }
+    renderFintechPulse();
+  }
+}
 
 /**
- * Calculates distribution statistics and percentages for the Fintech Pulse widget.
+ * Calculates distribution statistics and percentages for the Fintech Pulse widget (Expenses mode).
  * Segments:
  * 1. Bills Payment (دفع الفواتير)
  * 2. Transfers (التحويلات الشخصية)
@@ -5526,7 +6885,7 @@ function calculateFintechPulseData(transactions = cachedTransactions, balance = 
     }
   }
 
-  const currentBal = Math.max(0, Number(balance !== undefined && balance !== null ? balance : 3000000));
+  const currentBal = Math.max(0, Number(balance !== undefined && balance !== null ? balance : (typeof currentWalletBalance === 'number' ? currentWalletBalance : 3000000)));
   const totalPool = billsSpent + transfersSpent + currentBal;
 
   let billsPct = 0;
@@ -5547,9 +6906,10 @@ function calculateFintechPulseData(transactions = cachedTransactions, balance = 
     billsPct,
     transfersPct,
     balancePct
-  });
+  }, 'expenses');
 
   return {
+    perspective: 'expenses',
     billsSpent,
     transfersSpent,
     balance: currentBal,
@@ -5562,13 +6922,81 @@ function calculateFintechPulseData(transactions = cachedTransactions, balance = 
 }
 
 /**
+ * Calculates obligations statistics from unpaid bills against current wallet balance
+ * @param {Array} bills - List of bills to analyze (defaults to cachedBills / cachedCompanionBills)
+ * @param {number} balance - User wallet balance
+ * @returns {object} Obligations data model
+ */
+function calculateFintechPulseObligationsData(bills = (typeof cachedBills !== 'undefined' ? cachedBills : cachedCompanionBills), balance = currentWalletBalance) {
+  const list = Array.isArray(bills) ? bills : (Array.isArray(cachedCompanionBills) ? cachedCompanionBills : []);
+  const unpaidBills = list.filter(b => b && (b.status === 'unpaid' || !b.status));
+  const totalObligations = unpaidBills.reduce((acc, b) => acc + Math.max(0, Number(b.amount || 0)), 0);
+  const currentBal = Math.max(0, Number(balance !== undefined && balance !== null ? balance : (typeof currentWalletBalance === 'number' ? currentWalletBalance : 3000000)));
+
+  let obligationsPct = 0;
+  let freeBalancePct = 100;
+
+  if (currentBal > 0) {
+    obligationsPct = Math.min(100, Math.round((totalObligations / currentBal) * 100));
+    freeBalancePct = Math.max(0, 100 - obligationsPct);
+  } else if (totalObligations > 0) {
+    obligationsPct = 100;
+    freeBalancePct = 0;
+  }
+
+  const freeBalance = Math.max(0, currentBal - totalObligations);
+
+  const insightText = getFintechPulseInsight({
+    totalObligations,
+    obligationsPct,
+    freeBalance,
+    freeBalancePct,
+    currentBal,
+    unpaidCount: unpaidBills.length,
+    isObligations: true
+  }, 'obligations');
+
+  return {
+    perspective: 'obligations',
+    totalObligations,
+    freeBalance,
+    balance: currentBal,
+    totalBase: currentBal,
+    unpaidCount: unpaidBills.length,
+    obligationsPct,
+    freeBalancePct,
+    unpaidBills,
+    insightText
+  };
+}
+
+/**
  * Returns a contextual, proactive Iraqi Arabic AI financial guidance tip
  */
-function getFintechPulseInsight(data) {
+function getFintechPulseInsight(data, perspective = (activeFintechPulsePerspective || 'expenses')) {
   if (!data) return 'عاشت إيدك! مصاريفك هذا الشهر أقل بـ 15% من الشهر الفات';
 
+  // Obligations Mode Contextual Iraqi Insights
+  if (perspective === 'obligations' || data.isObligations) {
+    const totalDue = Number(data.totalObligations || 0);
+    const pct = Number(data.obligationsPct || 0);
+    const count = Number(data.unpaidCount || 0);
+
+    if (totalDue === 0) {
+      return 'عاشت إيدك! ما عندك أي فواتير مستحقة حالياً، التزاماتك مصفية كلها ومحد يطلبك فلس 🌟';
+    }
+    if (pct >= 50) {
+      return `دير بالك! الفواتير المستحقة تطلب أكثر من نص رصيدك (${totalDue.toLocaleString('en-US')} د.ع)، سددها دفعة وحدة لتجنب تراكم الغرامات ⚠️`;
+    }
+    if (pct >= 25) {
+      return `التزاماتك وفواتيرك المستحقة تشكل ${pct}% من رصيدك (${totalDue.toLocaleString('en-US')} د.ع)، الأفضل تسددها دفعة وحدة حتى تريح بالك! ⚡`;
+    }
+    return `عندك ${count > 0 ? count + ' فواتير مستحقة' : 'فواتير مستحقة'} بقيمة ${totalDue.toLocaleString('en-US')} د.ع (${pct}% من رصيدك)، سددهن هسة دفعة وحدة حتى تريح بالك! ⚡`;
+  }
+
+  // Existing Historical Expenses Insights (100% backward compatible)
   if (data.billsSpent === 0 && data.transfersSpent === 0) {
-    return 'عاشت إيدك! مصاريفك هذا الشهر أقل بـ 15% من الشهر الفات، ومحافظ على كامل رصيدك 💎';
+    return 'عاشت إيدك! رصيدك كامل ومصاريفك هذا الشهر أقل بـ 15% من الشهر الفات، ومحافظ على كامل رصيدك 💎';
   }
 
   if (data.balancePct >= 75) {
@@ -5598,10 +7026,28 @@ function setFintechPulseActiveSegment(segment) {
 }
 
 /**
+ * Executes 1-tap settlement of all pending utility obligations
+ */
+function handlePayAllBillsAction() {
+  if (typeof isRequestInProgress !== 'undefined' && isRequestInProgress) return;
+  if (typeof playClickSound === 'function') {
+    playClickSound();
+  }
+  const promptText = 'سدد كل الفواتير دفعة وحدة';
+  const submitFn = (typeof module !== 'undefined' && module.exports && typeof module.exports.handleFormSubmit === 'function')
+    ? module.exports.handleFormSubmit
+    : (typeof handleFormSubmit === 'function' ? handleFormSubmit : null);
+  if (typeof submitFn === 'function') {
+    submitFn(promptText);
+  }
+}
+
+/**
  * Renders the interactive SVG micro-donut chart and updates live percentages and insight badge
  */
 function renderFintechPulse() {
-  const data = calculateFintechPulseData();
+  const isObligations = (activeFintechPulsePerspective === 'obligations');
+  const data = isObligations ? calculateFintechPulseObligationsData() : calculateFintechPulseData();
 
   if (typeof document === 'undefined' || !document || typeof document.getElementById !== 'function') {
     return data;
@@ -5621,28 +7067,16 @@ function renderFintechPulse() {
   const pctBills = document.getElementById('pulse-pct-bills');
   const amountBills = document.getElementById('pulse-amount-bills');
 
+  const titleBalance = document.getElementById('pulse-title-balance');
+  const titleTransfers = document.getElementById('pulse-title-transfers');
+  const titleBills = document.getElementById('pulse-title-bills');
+
   const insightEl = document.getElementById('pulse-ai-insight-text');
+  const card = document.getElementById('companion-pulse-card');
+  const obligationsActions = document.getElementById('pulse-obligations-actions');
 
   // SVG Donut Calculations (r=46, Circumference ≈ 289.03)
   const C = 289.0265;
-  const lenBalance = (data.balancePct / 100) * C;
-  const lenTransfers = (data.transfersPct / 100) * C;
-  const lenBills = (data.billsPct / 100) * C;
-
-  if (segBalance) {
-    segBalance.setAttribute('stroke-dasharray', `${lenBalance.toFixed(2)} ${(C - lenBalance).toFixed(2)}`);
-    segBalance.setAttribute('stroke-dashoffset', '0');
-  }
-
-  if (segTransfers) {
-    segTransfers.setAttribute('stroke-dasharray', `${lenTransfers.toFixed(2)} ${(C - lenTransfers).toFixed(2)}`);
-    segTransfers.setAttribute('stroke-dashoffset', (-lenBalance).toFixed(2));
-  }
-
-  if (segBills) {
-    segBills.setAttribute('stroke-dasharray', `${lenBills.toFixed(2)} ${(C - lenBills).toFixed(2)}`);
-    segBills.setAttribute('stroke-dashoffset', (-(lenBalance + lenTransfers)).toFixed(2));
-  }
 
   // Currency formatting helper
   const isUsd = (typeof activeCurrency !== 'undefined' && activeCurrency === 'USD');
@@ -5654,33 +7088,134 @@ function renderFintechPulse() {
     return `${Number(valIqd || 0).toLocaleString('en-US')} د.ع`;
   };
 
-  // Update Legend Chips
-  if (pctBalance) pctBalance.textContent = `${data.balancePct}%`;
-  if (amountBalance) amountBalance.textContent = formatAmt(data.balance);
-
-  if (pctTransfers) pctTransfers.textContent = `${data.transfersPct}%`;
-  if (amountTransfers) amountTransfers.textContent = formatAmt(data.transfersSpent);
-
-  if (pctBills) pctBills.textContent = `${data.billsPct}%`;
-  if (amountBills) amountBills.textContent = formatAmt(data.billsSpent);
-
-  // Update Center Donut according to active segment
-  if (centerPct && centerLabel) {
-    if (activeFintechPulseSegment === 'transfers') {
-      centerPct.textContent = `${data.transfersPct}%`;
-      centerLabel.textContent = 'التحويلات';
-    } else if (activeFintechPulseSegment === 'bills') {
-      centerPct.textContent = `${data.billsPct}%`;
-      centerLabel.textContent = 'الفواتير';
-    } else {
-      centerPct.textContent = `${data.balancePct}%`;
-      centerLabel.textContent = 'الرصيد المتاح';
+  if (isObligations) {
+    // === OBLIGATIONS PERSPECTIVE ===
+    if (card && card.classList) {
+      if (typeof card.classList.toggle === 'function') {
+        card.classList.toggle('is-obligations-mode', true);
+      } else if (typeof card.classList.add === 'function') {
+        card.classList.add('is-obligations-mode');
+      }
     }
-  }
+    if (obligationsActions && obligationsActions.classList) {
+      const showActions = (data.totalObligations > 0);
+      if (typeof obligationsActions.classList.toggle === 'function') {
+        obligationsActions.classList.toggle('hidden', !showActions);
+      } else if (showActions && typeof obligationsActions.classList.remove === 'function') {
+        obligationsActions.classList.remove('hidden');
+      } else if (!showActions && typeof obligationsActions.classList.add === 'function') {
+        obligationsActions.classList.add('hidden');
+      }
+    }
 
-  // Update AI Proactive Insight Badge
-  if (insightEl && data.insightText) {
-    insightEl.textContent = data.insightText;
+    const lenObligations = (data.obligationsPct / 100) * C;
+    const lenFree = (data.freeBalancePct / 100) * C;
+
+    // In obligations mode, segBills represents the amber warning stroke (#f59e0b)
+    if (segBills) {
+      segBills.setAttribute('stroke', '#f59e0b');
+      segBills.setAttribute('stroke-dasharray', `${lenObligations.toFixed(2)} ${(C - lenObligations).toFixed(2)}`);
+      segBills.setAttribute('stroke-dashoffset', '0');
+    }
+
+    if (segBalance) {
+      segBalance.setAttribute('stroke-dasharray', `${lenFree.toFixed(2)} ${(C - lenFree).toFixed(2)}`);
+      segBalance.setAttribute('stroke-dashoffset', (-lenObligations).toFixed(2));
+    }
+
+    if (segTransfers) {
+      segTransfers.setAttribute('stroke-dasharray', `0 ${C.toFixed(2)}`);
+      segTransfers.setAttribute('stroke-dashoffset', '0');
+    }
+
+    // Center Donut
+    if (centerPct) centerPct.textContent = `${data.obligationsPct}%`;
+    if (centerLabel) centerLabel.textContent = 'نسبة الفواتير';
+
+    // Legend Chips
+    if (titleBalance) titleBalance.textContent = 'رصيد حر متبقي';
+    if (pctBalance) pctBalance.textContent = `${data.freeBalancePct}%`;
+    if (amountBalance) amountBalance.textContent = formatAmt(data.freeBalance);
+
+    if (titleTransfers) titleTransfers.textContent = 'غير مدفوعة';
+    if (pctTransfers) pctTransfers.textContent = `${data.unpaidCount}`;
+    if (amountTransfers) amountTransfers.textContent = `${data.unpaidCount} فواتير`;
+
+    if (titleBills) titleBills.textContent = 'فواتير مطلوبة';
+    if (pctBills) pctBills.textContent = `${data.obligationsPct}%`;
+    if (amountBills) amountBills.textContent = formatAmt(data.totalObligations);
+
+    if (insightEl && data.insightText) {
+      insightEl.textContent = data.insightText;
+    }
+  } else {
+    // === HISTORICAL EXPENSES PERSPECTIVE ===
+    if (card && card.classList) {
+      if (typeof card.classList.toggle === 'function') {
+        card.classList.toggle('is-obligations-mode', false);
+      } else if (typeof card.classList.remove === 'function') {
+        card.classList.remove('is-obligations-mode');
+      }
+    }
+    if (obligationsActions && obligationsActions.classList) {
+      if (typeof obligationsActions.classList.toggle === 'function') {
+        obligationsActions.classList.toggle('hidden', true);
+      } else if (typeof obligationsActions.classList.add === 'function') {
+        obligationsActions.classList.add('hidden');
+      }
+    }
+
+    const lenBalance = (data.balancePct / 100) * C;
+    const lenTransfers = (data.transfersPct / 100) * C;
+    const lenBills = (data.billsPct / 100) * C;
+
+    if (segBalance) {
+      segBalance.setAttribute('stroke-dasharray', `${lenBalance.toFixed(2)} ${(C - lenBalance).toFixed(2)}`);
+      segBalance.setAttribute('stroke-dashoffset', '0');
+    }
+
+    if (segTransfers) {
+      segTransfers.setAttribute('stroke-dasharray', `${lenTransfers.toFixed(2)} ${(C - lenTransfers).toFixed(2)}`);
+      segTransfers.setAttribute('stroke-dashoffset', (-lenBalance).toFixed(2));
+    }
+
+    if (segBills) {
+      segBills.setAttribute('stroke', 'url(#pulse-grad-bills)');
+      segBills.setAttribute('stroke-dasharray', `${lenBills.toFixed(2)} ${(C - lenBills).toFixed(2)}`);
+      segBills.setAttribute('stroke-dashoffset', (-(lenBalance + lenTransfers)).toFixed(2));
+    }
+
+    if (titleBalance) titleBalance.textContent = 'الرصيد المتاح';
+    if (titleTransfers) titleTransfers.textContent = 'تحويلات مالية';
+    if (titleBills) titleBills.textContent = 'دفع فواتير';
+
+    // Update Legend Chips
+    if (pctBalance) pctBalance.textContent = `${data.balancePct}%`;
+    if (amountBalance) amountBalance.textContent = formatAmt(data.balance);
+
+    if (pctTransfers) pctTransfers.textContent = `${data.transfersPct}%`;
+    if (amountTransfers) amountTransfers.textContent = formatAmt(data.transfersSpent);
+
+    if (pctBills) pctBills.textContent = `${data.billsPct}%`;
+    if (amountBills) amountBills.textContent = formatAmt(data.billsSpent);
+
+    // Update Center Donut according to active segment
+    if (centerPct && centerLabel) {
+      if (activeFintechPulseSegment === 'transfers') {
+        centerPct.textContent = `${data.transfersPct}%`;
+        centerLabel.textContent = 'التحويلات';
+      } else if (activeFintechPulseSegment === 'bills') {
+        centerPct.textContent = `${data.billsPct}%`;
+        centerLabel.textContent = 'الفواتير';
+      } else {
+        centerPct.textContent = `${data.balancePct}%`;
+        centerLabel.textContent = 'الرصيد المتاح';
+      }
+    }
+
+    if (insightEl && data.insightText) {
+      insightEl.textContent = data.insightText;
+    }
   }
 
   // Synchronize active chip styles & segment highlights
@@ -5699,7 +7234,7 @@ function renderFintechPulse() {
       ? document.querySelector('.pulse-donut-wrapper')
       : null;
     if (donutWrap && donutWrap.classList) {
-      donutWrap.classList.toggle('has-highlight', activeFintechPulseSegment !== 'balance');
+      donutWrap.classList.toggle('has-highlight', !isObligations && activeFintechPulseSegment !== 'balance');
     }
   }
 
@@ -5709,7 +7244,7 @@ function renderFintechPulse() {
     { el: segBills, seg: 'bills' }
   ].forEach(({ el, seg }) => {
     if (el && el.classList && typeof el.classList.toggle === 'function') {
-      el.classList.toggle('is-highlighted', seg === activeFintechPulseSegment);
+      el.classList.toggle('is-highlighted', !isObligations && seg === activeFintechPulseSegment);
     }
   });
 
@@ -5717,10 +7252,36 @@ function renderFintechPulse() {
 }
 
 /**
- * Initializes interactive listeners on the Fintech Pulse donut segments and legend chips
+ * Initializes interactive listeners on the Fintech Pulse donut segments, perspective tabs, and action button
  */
 function initFintechPulseInteractions() {
   if (typeof document === 'undefined' || !document || typeof document.getElementById !== 'function') return;
+
+  // Perspective Toggle Buttons (المصروف الفعلي vs الالتزامات المستحقة)
+  const expensesBtn = document.getElementById('pulse-mode-expenses-btn');
+  const obligationsBtn = document.getElementById('pulse-mode-obligations-btn');
+  const payAllBtn = document.getElementById('pulse-pay-all-btn');
+
+  if (expensesBtn) {
+    expensesBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      setFintechPulsePerspective('expenses');
+    });
+  }
+
+  if (obligationsBtn) {
+    obligationsBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      setFintechPulsePerspective('obligations');
+    });
+  }
+
+  if (payAllBtn) {
+    payAllBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      handlePayAllBillsAction();
+    });
+  }
 
   if (typeof document.querySelectorAll === 'function') {
     const chips = document.querySelectorAll('.pulse-legend-chip');
@@ -5773,27 +7334,236 @@ let currentTransferContact = {
 };
 let currentTransferAmount = 50000;
 
-function openQuickTransferModal(name, phone = '', alias = '') {
-  if (typeof document === 'undefined') return;
-  currentTransferContact = {
-    name: name || 'أحمد كمال',
-    phone: phone || '',
-    alias: alias || ''
-  };
-  currentTransferAmount = 50000;
-
-  const modal = document.getElementById('quick-transfer-modal');
-  const backdrop = document.getElementById('quick-transfer-backdrop');
+function updateQuickTransferTargetCard(contact) {
+  if (typeof document === 'undefined' || !contact) return;
   const nameEl = document.getElementById('quick-transfer-name');
   const aliasEl = document.getElementById('quick-transfer-alias');
   const initialEl = document.getElementById('quick-transfer-avatar-initial');
   const avatarEl = document.getElementById('quick-transfer-avatar');
+  const providerEl = document.getElementById('quick-transfer-provider');
+  const statusDotEl = document.getElementById('quick-transfer-status-dot');
+  const timestampEl = document.getElementById('quick-transfer-timestamp');
+
+  const network = typeof getIraqiFintechNetwork === 'function'
+    ? getIraqiFintechNetwork(contact)
+    : { arabicName: 'فاي باي', badgeClass: 'network-badge-vi', dotClass: 'status-dot-violet' };
+
+  if (nameEl) nameEl.textContent = contact.name;
+  if (aliasEl) aliasEl.textContent = contact.alias || 'مسجل بالمحفظة';
+  if (initialEl) initialEl.textContent = typeof getContactInitial === 'function' ? getContactInitial(contact.name) : (contact.name ? contact.name.charAt(0) : 'ف');
+  if (avatarEl) avatarEl.style.background = typeof getContactGradient === 'function' ? getContactGradient(contact.name) : 'linear-gradient(135deg, #059669 0%, #06b6d4 100%)';
+
+  if (providerEl) {
+    providerEl.textContent = network.arabicName;
+    providerEl.className = `quick-transfer-provider contact-network-badge ${network.badgeClass}`;
+  }
+
+  if (statusDotEl) {
+    statusDotEl.className = `contact-status-dot ${network.dotClass}`;
+  }
+
+  if (timestampEl) {
+    const activity = typeof getContactActivityTimestamp === 'function'
+      ? getContactActivityTimestamp(contact, cachedTransactions)
+      : { text: '', isNew: true };
+    const showTs = activity && !activity.isNew && activity.text && activity.text !== 'جهة جديدة';
+    if (!showTs) {
+      timestampEl.style.display = 'none';
+      const sep = document.querySelector('.quick-transfer-separator');
+      if (sep) sep.style.display = 'none';
+    } else {
+      timestampEl.style.display = '';
+      timestampEl.textContent = activity.text;
+      timestampEl.className = 'quick-transfer-timestamp';
+      const sep = document.querySelector('.quick-transfer-separator');
+      if (sep) sep.style.display = '';
+    }
+  }
+}
+
+function getQuickTransferAvailableContacts() {
+  const list = [];
+  const seen = new Set();
+
+  if (Array.isArray(cachedCompanionContacts)) {
+    for (const c of cachedCompanionContacts) {
+      if (c && c.name && !seen.has(c.name.trim())) {
+        seen.add(c.name.trim());
+        list.push({
+          name: c.name.trim(),
+          alias: c.alias || 'مسجل بالمحفظة',
+          phone: c.phone || ''
+        });
+      }
+    }
+  }
+
+  const defaults = [
+    { name: 'أحمد كمال', alias: 'صديق الجامعة', phone: '+9647801122334' },
+    { name: 'أم مصطفى', alias: 'الوالدة', phone: '+9647803344556' },
+    { name: 'سيف الدين', alias: 'زميل العمل', phone: '+9647804455667' },
+    { name: 'علاوي', alias: 'أخي', phone: '+9647709998877' },
+    { name: 'مرتضى', alias: 'صديق العمل', phone: '+9647819919952' }
+  ];
+
+  for (const d of defaults) {
+    if (!seen.has(d.name)) {
+      seen.add(d.name);
+      list.push(d);
+    }
+  }
+
+  return list;
+}
+
+function renderQuickTransferContactPicker() {
+  if (typeof document === 'undefined') return;
+  const listEl = document.getElementById('quick-transfer-picker-list');
+  if (!listEl) return;
+
+  const contacts = getQuickTransferAvailableContacts();
+  const currentName = currentTransferContact && currentTransferContact.name ? currentTransferContact.name.trim() : '';
+
+  let html = '';
+  contacts.forEach(c => {
+    const isSelected = (c.name === currentName);
+    const initial = typeof getContactInitial === 'function' ? getContactInitial(c.name) : (c.name ? c.name.charAt(0) : 'ف');
+    const gradient = typeof getContactGradient === 'function' ? getContactGradient(c.name) : 'linear-gradient(135deg, #059669 0%, #06b6d4 100%)';
+    const network = typeof getIraqiFintechNetwork === 'function'
+      ? getIraqiFintechNetwork(c)
+      : { arabicName: 'فاي باي', badgeClass: 'network-badge-vi', dotClass: 'status-dot-violet' };
+
+    html += `
+      <div class="qt-picker-item ${isSelected ? 'is-selected' : ''}" 
+           role="option" 
+           aria-selected="${isSelected ? 'true' : 'false'}"
+           tabindex="0"
+           data-contact-name="${escapeHtml(c.name)}"
+           data-contact-phone="${escapeHtml(c.phone || '')}"
+           data-contact-alias="${escapeHtml(c.alias || '')}">
+        <div class="qt-picker-item-lead">
+          <div class="qt-picker-avatar" style="background: ${gradient}" aria-hidden="true">
+            <span>${initial}</span>
+            <span class="contact-status-dot ${network.dotClass}"></span>
+          </div>
+          <div class="qt-picker-info">
+            <span class="qt-picker-name">${escapeHtml(c.name)}</span>
+            <span class="qt-picker-alias">${escapeHtml(c.alias)}</span>
+          </div>
+        </div>
+        <div class="qt-picker-item-end">
+          <span class="contact-network-badge ${network.badgeClass}">${network.arabicName}</span>
+          ${isSelected ? `
+            <span class="qt-picker-check-icon" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+
+  const items = listEl.querySelectorAll('.qt-picker-item');
+  items.forEach(item => {
+    const onSelect = () => {
+      const name = item.getAttribute('data-contact-name');
+      const phone = item.getAttribute('data-contact-phone');
+      const alias = item.getAttribute('data-contact-alias');
+      selectQuickTransferContact({ name, phone, alias });
+    };
+
+    item.addEventListener('click', onSelect);
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onSelect();
+      }
+    });
+  });
+}
+
+function toggleQuickTransferContactPicker(forceOpen = null) {
+  if (typeof document === 'undefined') return;
+  const menu = document.getElementById('quick-transfer-picker-menu');
+  const card = document.getElementById('quick-transfer-target-card');
+  if (!menu || !card) return;
+
+  const isCurrentlyOpen = !menu.classList.contains('hidden');
+  const shouldOpen = (forceOpen !== null) ? forceOpen : !isCurrentlyOpen;
+
+  if (shouldOpen) {
+    renderQuickTransferContactPicker();
+    menu.classList.remove('hidden');
+    card.classList.add('is-open');
+    card.setAttribute('aria-expanded', 'true');
+    if (typeof playClickSound === 'function') playClickSound();
+  } else {
+    menu.classList.add('hidden');
+    card.classList.remove('is-open');
+    card.setAttribute('aria-expanded', 'false');
+  }
+}
+
+function closeQuickTransferPicker() {
+  toggleQuickTransferContactPicker(false);
+}
+
+function selectQuickTransferContact(contact) {
+  if (!contact || !contact.name) return;
+  currentTransferContact = {
+    name: contact.name,
+    phone: contact.phone || '',
+    alias: contact.alias || ''
+  };
+
+  updateQuickTransferTargetCard(currentTransferContact);
+  closeQuickTransferPicker();
+  if (typeof playClickSound === 'function') playClickSound();
+
+  const userInput = document.getElementById('user-input');
+  if (userInput && userInput.value && userInput.value.startsWith('أريد أحول لـ')) {
+    userInput.value = `أريد أحول لـ ${contact.name} `;
+  }
+}
+
+function openQuickTransferModal(name, phone = '', alias = '', amount = null) {
+  if (typeof document === 'undefined') return;
+
+  let chosenName = name || 'أحمد كمال';
+  let chosenPhone = phone || '';
+  let chosenAlias = alias || '';
+
+  if ((!chosenPhone || !chosenAlias) && chosenName) {
+    const contacts = getQuickTransferAvailableContacts();
+    const matched = contacts.find(c => c.name === chosenName.trim() || c.name.includes(chosenName.trim()) || chosenName.trim().includes(c.name));
+    if (matched) {
+      if (!chosenPhone) chosenPhone = matched.phone || '';
+      if (!chosenAlias) chosenAlias = matched.alias || '';
+    }
+  }
+
+  currentTransferContact = {
+    name: chosenName,
+    phone: chosenPhone,
+    alias: chosenAlias
+  };
+
+  if (typeof amount === 'number' && amount > 0) {
+    currentTransferAmount = amount;
+  } else {
+    currentTransferAmount = 50000;
+  }
+
+  const modal = document.getElementById('quick-transfer-modal');
+  const backdrop = document.getElementById('quick-transfer-backdrop');
   const inputEl = document.getElementById('quick-transfer-amount-input');
 
-  if (nameEl) nameEl.textContent = currentTransferContact.name;
-  if (aliasEl) aliasEl.textContent = currentTransferContact.alias || 'مسجل بالمحفظة';
-  if (initialEl) initialEl.textContent = typeof getContactInitial === 'function' ? getContactInitial(currentTransferContact.name) : currentTransferContact.name.charAt(0);
-  if (avatarEl) avatarEl.style.background = typeof getContactGradient === 'function' ? getContactGradient(currentTransferContact.name) : 'linear-gradient(135deg, #059669 0%, #06b6d4 100%)';
+  closeQuickTransferPicker();
+  updateQuickTransferTargetCard(currentTransferContact);
 
   if (inputEl) {
     inputEl.value = (activeCurrency === 'USD')
@@ -5818,10 +7588,23 @@ function openQuickTransferModal(name, phone = '', alias = '') {
 
   if (modal) modal.classList.remove('hidden');
   if (backdrop) backdrop.classList.remove('hidden');
+
+  if (typeof validateQuickTransferCeiling === 'function') {
+    validateQuickTransferCeiling(currentTransferAmount);
+  }
+
+  // Scroll active chip into center view
+  if (modal && typeof modal.querySelector === 'function') {
+    const activeChip = modal.querySelector('.amount-wheel-chip.active');
+    if (activeChip && typeof activeChip.scrollIntoView === 'function') {
+      activeChip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }
 }
 
 function closeQuickTransferModal() {
   if (typeof document === 'undefined') return;
+  closeQuickTransferPicker();
   const modal = document.getElementById('quick-transfer-modal');
   const backdrop = document.getElementById('quick-transfer-backdrop');
   if (modal) modal.classList.add('hidden');
@@ -5829,7 +7612,10 @@ function closeQuickTransferModal() {
 }
 
 function submitQuickTransfer() {
-  if (!currentTransferContact || !currentTransferContact.name) return;
+  if (!currentTransferContact || !currentTransferContact.name) {
+    if (typeof playErrorThud === 'function') playErrorThud();
+    return;
+  }
   const inputEl = document.getElementById('quick-transfer-amount-input');
   let amountIqd = currentTransferAmount;
   if (inputEl) {
@@ -5841,11 +7627,23 @@ function submitQuickTransfer() {
       } else {
         amountIqd = Math.round(num);
       }
+    } else {
+      if (typeof playErrorThud === 'function') playErrorThud();
+      return;
     }
   }
 
   if (isNaN(amountIqd) || amountIqd <= 0) {
-    amountIqd = 50000;
+    if (typeof playErrorThud === 'function') playErrorThud();
+    return;
+  }
+
+  if (typeof validateQuickTransferCeiling === 'function') {
+    const ceilingCheck = validateQuickTransferCeiling(amountIqd);
+    if (ceilingCheck.isExceeded) {
+      if (typeof playErrorThud === 'function') playErrorThud();
+      return;
+    }
   }
 
   closeQuickTransferModal();
@@ -5871,14 +7669,126 @@ function initQuickTransferModal() {
   if (cancelBtn) cancelBtn.addEventListener('click', closeQuickTransferModal);
   if (backdrop) backdrop.addEventListener('click', closeQuickTransferModal);
 
-  // Wheel chips click
+  // Contact Picker Interaction
+  const targetCard = document.getElementById('quick-transfer-target-card');
+  const targetWrapper = document.getElementById('quick-transfer-target-wrapper');
+
+  if (targetCard) {
+    targetCard.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleQuickTransferContactPicker();
+    });
+
+    targetCard.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleQuickTransferContactPicker();
+      } else if (e.key === 'Escape') {
+        closeQuickTransferPicker();
+      }
+    });
+  }
+
+  // Close contact picker on outside click
+  if (typeof document.addEventListener === 'function') {
+    document.addEventListener('click', (e) => {
+      if (targetWrapper && !targetWrapper.contains(e.target)) {
+        closeQuickTransferPicker();
+      }
+    });
+  }
+
+  // Wheel chips click & continuous horizontal momentum drag-to-scroll
   if (wheelTrack) {
+    let isDown = false;
+    let startX = 0;
+    let scrollLeftStart = 0;
+    let hasDragged = false;
+    let lastX = 0;
+    let lastTime = 0;
+    let velocity = 0;
+    let momentumRaf = null;
+
+    // Mouse-wheel horizontal panning
+    wheelTrack.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0 || e.deltaX !== 0) {
+        e.preventDefault();
+        wheelTrack.scrollLeft += (e.deltaX || e.deltaY);
+      }
+    }, { passive: false });
+
+    // Drag-to-scroll handling
+    wheelTrack.addEventListener('mousedown', (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      isDown = true;
+      hasDragged = false;
+      wheelTrack.classList.add('is-dragging');
+      startX = e.pageX || e.clientX;
+      scrollLeftStart = wheelTrack.scrollLeft;
+      lastX = startX;
+      lastTime = Date.now();
+      velocity = 0;
+      if (momentumRaf && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(momentumRaf);
+      }
+    });
+
+    const onGlobalMouseMove = (e) => {
+      if (!isDown) return;
+      const currentX = e.pageX || e.clientX;
+      const dist = currentX - startX;
+      if (Math.abs(dist) > 5) {
+        hasDragged = true;
+      }
+      wheelTrack.scrollLeft = scrollLeftStart - (dist * 1.15);
+
+      const now = Date.now();
+      const dt = now - lastTime;
+      if (dt > 0) {
+        velocity = (currentX - lastX) / dt;
+      }
+      lastX = currentX;
+      lastTime = now;
+    };
+
+    const onGlobalMouseUp = () => {
+      if (!isDown) return;
+      isDown = false;
+      wheelTrack.classList.remove('is-dragging');
+
+      if (Math.abs(velocity) > 0.25 && typeof requestAnimationFrame === 'function') {
+        let currentVel = velocity * 12;
+        const glide = () => {
+          if (Math.abs(currentVel) > 0.5) {
+            wheelTrack.scrollLeft -= currentVel;
+            currentVel *= 0.92;
+            momentumRaf = requestAnimationFrame(glide);
+          }
+        };
+        momentumRaf = requestAnimationFrame(glide);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('mousemove', onGlobalMouseMove);
+      window.addEventListener('mouseup', onGlobalMouseUp);
+    }
+
     wheelTrack.addEventListener('click', (e) => {
+      if (hasDragged) {
+        e.preventDefault();
+        e.stopPropagation();
+        hasDragged = false;
+        return;
+      }
       const chip = e.target.closest('.amount-wheel-chip');
       if (chip) {
         e.preventDefault();
         const amt = parseInt(chip.getAttribute('data-amount'), 10);
         if (!isNaN(amt)) {
+          if (typeof playClickSound === 'function') {
+            playClickSound();
+          }
           currentTransferAmount = amt;
           if (amountInput) {
             amountInput.value = (activeCurrency === 'USD')
@@ -5888,6 +7798,9 @@ function initQuickTransferModal() {
           updateQuickTransferInputVal();
           const chips = wheelTrack.querySelectorAll('.amount-wheel-chip');
           chips.forEach(c => c.classList.toggle('active', c === chip));
+          if (typeof chip.scrollIntoView === 'function') {
+            chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          }
         }
       }
     });
@@ -5897,6 +7810,9 @@ function initQuickTransferModal() {
   if (stepMinus) {
     stepMinus.addEventListener('click', (e) => {
       e.preventDefault();
+      if (typeof playClickSound === 'function') {
+        playClickSound();
+      }
       currentTransferAmount = Math.max(250, currentTransferAmount - 5000);
       if (amountInput) {
         amountInput.value = (activeCurrency === 'USD')
@@ -5911,6 +7827,9 @@ function initQuickTransferModal() {
   if (stepPlus) {
     stepPlus.addEventListener('click', (e) => {
       e.preventDefault();
+      if (typeof playClickSound === 'function') {
+        playClickSound();
+      }
       currentTransferAmount = currentTransferAmount + 5000;
       if (amountInput) {
         amountInput.value = (activeCurrency === 'USD')
@@ -5953,7 +7872,11 @@ function initQuickTransferModal() {
     chips.forEach(c => {
       if (c && c.getAttribute && c.classList) {
         const amt = parseInt(c.getAttribute('data-amount'), 10);
-        c.classList.toggle('active', amt === currentTransferAmount);
+        const isActive = (amt === currentTransferAmount);
+        c.classList.toggle('active', isActive);
+        if (isActive && typeof c.scrollIntoView === 'function') {
+          c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
       }
     });
   }
@@ -6018,7 +7941,7 @@ function initCompanionRail() {
     });
   }
 
-  // 1-Click transfer button click delegation
+  // 1-Click transfer button & card click delegation
   if (contactsListEl) {
     contactsListEl.addEventListener('click', (e) => {
       const btn = e.target.closest('.companion-quick-transfer-btn');
@@ -6030,6 +7953,15 @@ function initCompanionRail() {
         const contactAlias = btn.getAttribute('data-contact-alias') || '';
         if (contactName) {
           handleQuickContactTransfer(contactName, contactPhone, contactAlias);
+        }
+        return;
+      }
+      const item = e.target.closest('.companion-contact-item');
+      if (item) {
+        const contactName = item.getAttribute('data-contact-name');
+        if (contactName) {
+          const matchedContact = (Array.isArray(cachedCompanionContacts) ? cachedCompanionContacts : []).find(c => c.name === contactName);
+          handleQuickContactTransfer(contactName, matchedContact?.phone || '', matchedContact?.alias || '');
         }
       }
     });
@@ -6103,6 +8035,262 @@ function initCompanionRail() {
   }
 }
 
+/* ==========================================================================
+   Section 34: Lightweight Zero-Dependency Procedural Web Audio API Haptic Sound Synthesizer (ViHaptics)
+   Zero external audio files, instant zero-latency harmonic soundscapes
+   ========================================================================== */
+const SOUND_EFFECTS_STORAGE_KEY = 'vi_sound_effects_enabled';
+let soundEffectsEnabled = true;
+let hapticAudioCtx = null;
+
+function initSoundEffectsState() {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = window.localStorage.getItem(SOUND_EFFECTS_STORAGE_KEY);
+      if (stored === 'false') {
+        soundEffectsEnabled = false;
+      } else {
+        soundEffectsEnabled = true;
+      }
+    }
+  } catch (e) {
+    soundEffectsEnabled = true;
+  }
+}
+initSoundEffectsState();
+
+function isSoundEffectsEnabled() {
+  return soundEffectsEnabled;
+}
+
+function setSoundEffectsEnabled(enabled) {
+  soundEffectsEnabled = Boolean(enabled);
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(SOUND_EFFECTS_STORAGE_KEY, String(soundEffectsEnabled));
+    }
+  } catch (e) {}
+  updateSoundEffectsUI();
+  return soundEffectsEnabled;
+}
+
+function toggleSoundEffects() {
+  const next = !soundEffectsEnabled;
+  setSoundEffectsEnabled(next);
+  if (next) {
+    playClickSound();
+  }
+  return next;
+}
+
+function updateSoundEffectsUI() {
+  if (typeof document === 'undefined') return;
+  const btn = document.getElementById('haptic-sound-toggle-btn');
+  const sw = document.getElementById('haptic-setting-switch');
+
+  if (btn) {
+    btn.setAttribute('aria-pressed', soundEffectsEnabled ? 'true' : 'false');
+    btn.classList.toggle('is-muted', !soundEffectsEnabled);
+    btn.classList.toggle('active', soundEffectsEnabled);
+    const onIcon = btn.querySelector('.haptic-on');
+    const offIcon = btn.querySelector('.haptic-off');
+    if (onIcon) onIcon.classList.toggle('hidden', !soundEffectsEnabled);
+    if (offIcon) offIcon.classList.toggle('hidden', soundEffectsEnabled);
+  }
+
+  if (sw) {
+    sw.setAttribute('aria-checked', soundEffectsEnabled ? 'true' : 'false');
+    sw.classList.toggle('active', soundEffectsEnabled);
+  }
+}
+
+function getHapticAudioContext() {
+  if (typeof window === 'undefined') return null;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+
+  if (!hapticAudioCtx || hapticAudioCtx.state === 'closed' || (hapticAudioCtx.constructor !== AudioCtx)) {
+    try {
+      hapticAudioCtx = new AudioCtx();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  if (hapticAudioCtx && hapticAudioCtx.state === 'suspended' && typeof hapticAudioCtx.resume === 'function') {
+    hapticAudioCtx.resume().catch(() => {});
+  }
+
+  return hapticAudioCtx;
+}
+
+/**
+ * Procedural Apple-Pay-style ascending major chord (C5 - E5 - G5 - C6)
+ * Synthesizes harmonic overtone crystal shimmer using exponential gain envelopes
+ */
+function playSuccessChime() {
+  if (!isSoundEffectsEnabled()) return { played: false, reason: 'muted' };
+  const ctx = getHapticAudioContext();
+  if (!ctx) return { played: false, reason: 'no-audio-context' };
+
+  const now = ctx.currentTime || 0;
+  const notes = [
+    { freq: 523.25, time: now, dur: 0.55, gain: 0.16, name: 'C5' },
+    { freq: 659.25, time: now + 0.080, dur: 0.60, gain: 0.17, name: 'E5' },
+    { freq: 783.99, time: now + 0.160, dur: 0.65, gain: 0.18, name: 'G5' },
+    { freq: 1046.50, time: now + 0.240, dur: 0.85, gain: 0.22, name: 'C6' },
+    { freq: 2093.00, time: now + 0.250, dur: 0.40, gain: 0.05, name: 'C7-shimmer' }
+  ];
+
+  notes.forEach(({ freq, time, dur, gain: peakGain }) => {
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+
+      gain.gain.setValueAtTime(0.0001, time);
+      gain.gain.linearRampToValueAtTime(peakGain, time + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(time);
+      osc.stop(time + dur + 0.05);
+      osc.onended = () => {
+        try { osc.disconnect(); gain.disconnect(); } catch (_) {}
+      };
+    } catch (_) {}
+  });
+
+  return { played: true, sound: 'success', notes };
+}
+
+/**
+ * Crisp 8ms subtle micro-click for chips, buttons, and switches
+ */
+function playClickSound() {
+  if (!isSoundEffectsEnabled()) return { played: false, reason: 'muted' };
+  const ctx = getHapticAudioContext();
+  if (!ctx) return { played: false, reason: 'no-audio-context' };
+
+  const now = ctx.currentTime || 0;
+  const dur = 0.008; // 8ms crisp micro-click
+
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(2200, now);
+    osc.frequency.exponentialRampToValueAtTime(1200, now + dur);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + dur + 0.01);
+    osc.onended = () => {
+      try { osc.disconnect(); gain.disconnect(); } catch (_) {}
+    };
+  } catch (_) {}
+
+  return { played: true, sound: 'click', durationMs: 8 };
+}
+
+/**
+ * Soft dual-tone thud on validation error (150 Hz & 110 Hz with decaying envelope)
+ */
+function playErrorThud() {
+  if (!isSoundEffectsEnabled()) return { played: false, reason: 'muted' };
+  const ctx = getHapticAudioContext();
+  if (!ctx) return { played: false, reason: 'no-audio-context' };
+
+  const now = ctx.currentTime || 0;
+  const dur = 0.13; // 130ms soft physical thud
+  const tones = [
+    { freq: 150, gain: 0.16 },
+    { freq: 110, gain: 0.14 }
+  ];
+
+  tones.forEach(({ freq, gain: peakGain }) => {
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + dur);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(peakGain, now + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + dur + 0.02);
+      osc.onended = () => {
+        try { osc.disconnect(); gain.disconnect(); } catch (_) {}
+      };
+    } catch (_) {}
+  });
+
+  return { played: true, sound: 'error', tones: [150, 110], durationMs: 130 };
+}
+
+function playToggleSound() {
+  if (!isSoundEffectsEnabled()) return { played: false, reason: 'muted' };
+  return playClickSound();
+}
+
+/**
+ * Initializes listeners for the Haptic Sound synthesizer UI controls
+ */
+function initHaptics() {
+  initSoundEffectsState();
+  updateSoundEffectsUI();
+
+  if (typeof document === 'undefined') return;
+
+  const btn = document.getElementById('haptic-sound-toggle-btn');
+  const sw = document.getElementById('haptic-setting-switch');
+
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSoundEffects();
+    });
+  }
+
+  if (sw) {
+    sw.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSoundEffects();
+    });
+  }
+}
+
+const ViHaptics = {
+  playSuccessChime,
+  playApplePaySuccessChime,
+  playClickSound,
+  playErrorThud,
+  playToggleSound,
+  isSoundEffectsEnabled,
+  setSoundEffectsEnabled,
+  toggleSoundEffects,
+  initHaptics,
+  getAudioContext: getHapticAudioContext,
+  resetAudioContext: () => { hapticAudioCtx = null; }
+};
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     handleFormSubmit,
@@ -6155,6 +8343,14 @@ if (typeof module !== 'undefined' && module.exports) {
     submitQuickTransfer,
     initQuickTransferModal,
     initCompanionRail,
+    updateQuickTransferTargetCard,
+    getQuickTransferAvailableContacts,
+    renderQuickTransferContactPicker,
+    toggleQuickTransferContactPicker,
+    closeQuickTransferPicker,
+    selectQuickTransferContact,
+    getCurrentTransferContact: () => currentTransferContact,
+    setCurrentTransferContact: (c) => { currentTransferContact = c; },
     getCachedCompanionContacts: () => cachedCompanionContacts,
     setCachedCompanionContacts: (val) => { cachedCompanionContacts = val; },
     getIsShowingAllCompanionContacts: () => isShowingAllCompanionContacts,
@@ -6163,9 +8359,17 @@ if (typeof module !== 'undefined' && module.exports) {
     setCachedCompanionBills: (val) => { cachedCompanionBills = val; },
     getIsShowingAllCompanionBills: () => isShowingAllCompanionBills,
     setIsShowingAllCompanionBills: (val) => { isShowingAllCompanionBills = val; },
+    getIraqiFintechNetwork,
+    formatRelativeIraqiTimestamp,
+    getContactActivityTimestamp,
+    getCachedTransactions: () => cachedTransactions,
+    setCachedTransactions: (val) => { cachedTransactions = val; },
     renderFintechActionButtons,
     renderConfirmationCard,
     renderFintechConfirmationCard,
+    SLIDE_COMPLETION_THRESHOLD,
+    parseAmountValue,
+    isHighValueTransfer,
     initSlideToConfirm,
     executeSlideCompletion,
     startSlideDrag,
@@ -6179,24 +8383,61 @@ if (typeof module !== 'undefined' && module.exports) {
     convertUsdToIqd,
     getExchangeRateValue,
     getExchangeRateConfig,
-    setExchangeRateValue: (rate) => { iqdPerUsdRate = rate; },
+    setExchangeRateValue: (rate) => { iqdPerUsdRate = rate; if (typeof updateFxTickerTelemetry === 'function') updateFxTickerTelemetry(); },
     formatDualBalance,
     updateCurrencyTogglePills,
     updateQuickTransferChips,
     updateQuickTransferInputVal,
+    validateQuickTransferCeiling,
+    updateFxTickerTelemetry,
+    syncFxCalculatorUsdToIqd,
+    syncFxCalculatorIqdToUsd,
+    toggleFxCalculatorPopover,
+    handleFxPresetClick,
+    handleFxTransferAction,
+    initFxCalculator,
     initCurrencySwitch,
     fetchExchangeRate,
     renderTransactionsSkeleton,
     renderCompanionContactsSkeleton,
     renderCompanionBillsSkeleton,
     calculateFintechPulseData,
+    calculateFintechPulseObligationsData,
     getFintechPulseInsight,
     renderFintechPulse,
     initFintechPulseInteractions,
     getFintechPulseActiveSegment,
     setFintechPulseActiveSegment,
+    getFintechPulsePerspective,
+    setFintechPulsePerspective,
+    handlePayAllBillsAction,
+    handleFormSubmit: (msg, opts) => (typeof handleFormSubmit === 'function' ? handleFormSubmit(msg, opts) : undefined),
+    getCachedBills: () => (typeof cachedBills !== 'undefined' ? cachedBills : cachedCompanionBills),
+    setCachedBills: (val) => { cachedBills = val; cachedCompanionBills = val; if (typeof renderFintechPulse === 'function') renderFintechPulse(); },
     parseDisambiguationData,
-    renderDisambiguationCard
+    renderDisambiguationCard,
+    normalizeArabicKeywords,
+    getContextualActionChips,
+    appendActionChipsToMessage,
+    handleBotActionChipClick,
+    initBotActionChips,
+    playTtsAudio,
+    getTtsAudioContext,
+    computeAudioRmsIntensity,
+    resetSpeechIntensity,
+    stopTtsAudioVisualizer,
+    ViHaptics,
+    playSuccessChime,
+    playApplePaySuccessChime,
+    playClickSound,
+    playErrorThud,
+    playToggleSound,
+    isSoundEffectsEnabled,
+    setSoundEffectsEnabled,
+    toggleSoundEffects,
+    initHaptics,
+    getHapticAudioContext,
+    resetAudioContext: () => { hapticAudioCtx = null; }
   };
 }
 

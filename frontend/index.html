@@ -10,7 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Reem+Kufi:wght@400..700&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=57.0">
+  <link rel="stylesheet" href="style.css?v=60.0">
 </head>
 
 <body>
@@ -181,6 +181,73 @@
           </div>
         </button>
 
+        <!-- مؤشر وتتبع سعر الصرف اللحظي وحاسبة العملات السريعة (Dual-Currency FX Ticker & Micro-Calculator) -->
+        <div class="header-fx-group" id="header-fx-group">
+          <button id="header-fx-ticker-btn" class="header-fx-ticker-btn" type="button"
+            aria-label="سعر الصرف اللحظي وحاسبة العملات السريعة" aria-haspopup="dialog" aria-expanded="false" aria-controls="fx-calculator-popover">
+            <span class="fx-ticker-text" id="header-fx-ticker-text">100$ = 153,000 د.ع ⇄</span>
+          </button>
+
+          <!-- نافذة حاسبة التحويل السريع اللحظية بتصميم زجاجي سائل (Liquid-Glass Micro-Calculator Popover) -->
+          <div class="fx-calculator-popover hidden" id="fx-calculator-popover" role="dialog" aria-label="حاسبة تحويل العملات اللحظية" aria-modal="false">
+            <div class="fx-calc-header">
+              <div class="fx-calc-title-wrap">
+                <span class="fx-calc-title">حاسبة الصرف اللحظي</span>
+              </div>
+              <button type="button" class="fx-calc-close-btn" id="fx-calc-close-btn" aria-label="إغلاق">✕</button>
+            </div>
+
+            <div class="fx-calc-body">
+              <!-- بطاقة إدخال الدولار الأمريكي -->
+              <div class="fx-input-card">
+                <div class="fx-input-header">
+                  <span class="fx-input-label">الدولار الأمريكي (USD)</span>
+                  <span class="fx-currency-flag" aria-hidden="true">🇺🇸</span>
+                </div>
+                <div class="fx-input-box">
+                  <span class="fx-currency-symbol">$</span>
+                  <input type="text" id="fx-calc-usd-input" class="fx-amount-input" inputmode="decimal" placeholder="100" value="100" aria-label="المبلغ بالدولار الأمريكي">
+                </div>
+              </div>
+
+              <!-- فاصل التبادل ومعدل التحويل اللحظي -->
+              <div class="fx-calc-divider" aria-hidden="true">
+                <span class="fx-divider-line"></span>
+                <div class="fx-rate-pill-mini" id="fx-calc-rate-badge">1$ = 1,530 د.ع</div>
+                <span class="fx-divider-line"></span>
+              </div>
+
+              <!-- بطاقة إدخال الدينار العراقي -->
+              <div class="fx-input-card">
+                <div class="fx-input-header">
+                  <span class="fx-input-label">الدينار العراقي (IQD)</span>
+                  <span class="fx-currency-flag" aria-hidden="true">🇮🇶</span>
+                </div>
+                <div class="fx-input-box">
+                  <span class="fx-currency-symbol">د.ع</span>
+                  <input type="text" id="fx-calc-iqd-input" class="fx-amount-input" inputmode="numeric" placeholder="153,000" value="153,000" aria-label="المبلغ بالدينار العراقي">
+                </div>
+              </div>
+
+              <!-- أزرار المبالغ السريعة المسبقة (Presets: $50, $100, $500) -->
+              <div class="fx-presets-section">
+                <span class="fx-presets-label">مبالغ سريعة:</span>
+                <div class="fx-presets-chips" id="fx-preset-chips">
+                  <button type="button" class="fx-preset-chip" data-usd="50">50$</button>
+                  <button type="button" class="fx-preset-chip active" data-usd="100">100$</button>
+                  <button type="button" class="fx-preset-chip" data-usd="500">500$</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- زر الإجراء الفوري لتحويل المبلغ عبر المودال السريع -->
+            <div class="fx-calc-footer">
+              <button type="button" class="fx-calc-transfer-btn" id="fx-calc-transfer-btn">
+                <span>تحويل هذا المبلغ</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <!-- 3. أدوات التحكم بالصوت وسرعة النطق (TTS Header Controls & Settings Popover) -->
         <div class="tts-header-group" id="tts-header-group">
@@ -271,6 +338,19 @@
               </div>
             </div>
 
+            <!-- مفتاح تفعيل المؤثرات الصوتية التفاعلية والنقر اللمسي (Procedural Haptics Switch) -->
+            <div class="tts-popover-section haptic-settings-section">
+              <div class="haptic-setting-row">
+                <div class="haptic-setting-info">
+                  <span class="tts-section-label">المؤثرات الصوتية التفاعلية (FX):</span>
+                  <span class="haptic-setting-sub">نقرات ونغمات لمسية عند التحويل ودفع الفواتير</span>
+                </div>
+                <button type="button" class="haptic-setting-switch active" id="haptic-setting-switch" role="switch" aria-checked="true" aria-label="تفعيل أو تعطيل المؤثرات الصوتية التفاعلية">
+                  <span class="haptic-switch-thumb"></span>
+                </button>
+              </div>
+            </div>
+
             <!-- زر الاستماع لتجربة الصوت (Glassy Preview Bubble) -->
             <div class="tts-popover-footer">
               <button type="button" class="tts-test-preview-btn" id="tts-test-preview-btn">
@@ -283,6 +363,23 @@
           </div>
         </div>
 
+        <!-- 3.5 زر المؤثرات الصوتية (مخفي من الواجهة للحفاظ على بساطة التصميم مع بقاء الصوت مفعّلاً دائماً) -->
+        <button id="haptic-sound-toggle-btn" class="haptic-sound-toggle-btn active" type="button"
+          aria-label="المؤثرات الصوتية والنقر اللمسي" aria-pressed="true" title="تبديل المؤثرات الصوتية اللمسية" style="display: none !important;">
+          <svg class="haptic-icon haptic-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <svg class="haptic-icon haptic-off hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+          <span class="haptic-fx-pill-label">FX</span>
+        </button>
 
         <!-- 4. رصيد الحساب البنكي (مخفي من الهيدر لمنع التكرار ونقله لبطاقة الشريط الجانبي) -->
         <div class="wallet-pill" id="wallet-pill" style="display: none;">
@@ -295,7 +392,7 @@
     <!-- App Workspace Body (Dual-Column Workstation on Desktop >= 1100px, Single Column on Mobile) -->
     <div class="app-workspace-body" id="app-workspace-body">
       <!-- Main Chat Pane -->
-      <div class="chat-workspace-pane" id="chat-workspace-pane">
+      <div class="chat-workspace-pane chat-container" id="chat-workspace-pane">
         <!-- Main Chat Window -->
         <main class="chat-main" id="chat-window">
       <div class="messages-container" id="messages-container">
@@ -591,6 +688,16 @@
       <!-- 4. Fintech Pulse Section (نبض المحفظة - التحليل المالي الذكي) -->
       <div class="companion-section companion-pulse-section" id="companion-pulse-section">
         <div class="companion-pulse-card" id="companion-pulse-card">
+          <!-- Segmented Perspective Switcher (المصروف الفعلي vs الالتزامات المستحقة) -->
+          <div class="pulse-perspective-toggle" id="pulse-perspective-toggle" role="tablist" aria-label="منظور نبض المحفظة">
+            <button type="button" class="pulse-perspective-btn is-active" id="pulse-mode-expenses-btn" data-perspective="expenses" role="tab" aria-selected="true">
+              المصروف الفعلي
+            </button>
+            <button type="button" class="pulse-perspective-btn" id="pulse-mode-obligations-btn" data-perspective="obligations" role="tab" aria-selected="false">
+              الالتزامات المستحقة
+            </button>
+          </div>
+
           <!-- Donut & Mini Stats Grid -->
           <div class="pulse-chart-row">
             <div class="pulse-donut-wrapper">
@@ -608,6 +715,10 @@
                   <linearGradient id="pulse-grad-bills" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stop-color="#f59e0b" />
                     <stop offset="100%" stop-color="#ef4444" />
+                  </linearGradient>
+                  <linearGradient id="pulse-grad-obligations" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#fbbf24" />
+                    <stop offset="100%" stop-color="#f59e0b" />
                   </linearGradient>
                   <filter id="pulse-donut-glow" x="-20%" y="-20%" width="140%" height="140%">
                     <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3" />
@@ -632,7 +743,7 @@
               <button type="button" class="pulse-legend-chip is-active" data-segment="balance" id="pulse-chip-balance" aria-label="الرصيد المتبقي">
                 <span class="pulse-chip-indicator indicator-balance"></span>
                 <div class="pulse-chip-details">
-                  <span class="pulse-chip-title">الرصيد</span>
+                  <span class="pulse-chip-title" id="pulse-title-balance">الرصيد</span>
                   <span class="pulse-chip-amount" id="pulse-amount-balance">--</span>
                 </div>
                 <span class="pulse-chip-pct" id="pulse-pct-balance">--%</span>
@@ -641,7 +752,7 @@
               <button type="button" class="pulse-legend-chip" data-segment="transfers" id="pulse-chip-transfers" aria-label="التحويلات المالية">
                 <span class="pulse-chip-indicator indicator-transfers"></span>
                 <div class="pulse-chip-details">
-                  <span class="pulse-chip-title">تحويلات</span>
+                  <span class="pulse-chip-title" id="pulse-title-transfers">تحويلات</span>
                   <span class="pulse-chip-amount" id="pulse-amount-transfers">--</span>
                 </div>
                 <span class="pulse-chip-pct" id="pulse-pct-transfers">--%</span>
@@ -650,7 +761,7 @@
               <button type="button" class="pulse-legend-chip" data-segment="bills" id="pulse-chip-bills" aria-label="دفع الفواتير">
                 <span class="pulse-chip-indicator indicator-bills"></span>
                 <div class="pulse-chip-details">
-                  <span class="pulse-chip-title">فواتير</span>
+                  <span class="pulse-chip-title" id="pulse-title-bills">فواتير</span>
                   <span class="pulse-chip-amount" id="pulse-amount-bills">--</span>
                 </div>
                 <span class="pulse-chip-pct" id="pulse-pct-bills">--%</span>
@@ -674,6 +785,16 @@
                 عاشت إيدك! مصاريفك هذا الشهر أقل بـ 15% من الشهر الفات
               </p>
             </div>
+          </div>
+
+          <!-- Instant 1-Tap Pay All Bills Button (Active in Obligations Perspective) -->
+          <div class="pulse-obligations-actions hidden" id="pulse-obligations-actions">
+            <button type="button" class="pulse-pay-all-btn" id="pulse-pay-all-btn" aria-label="سدّد كل الفواتير دفعة وحدة">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              <span>سدّد كل الفواتير دفعة وحدة</span>
+            </button>
           </div>
         </div>
       </div>
@@ -817,17 +938,39 @@
       </div>
     </div>
 
-    <!-- Contact summary badge -->
-    <div class="quick-transfer-target-card">
-      <div class="quick-transfer-avatar" id="quick-transfer-avatar" aria-hidden="true">
-        <span id="quick-transfer-avatar-initial">أ</span>
-      </div>
-      <div class="quick-transfer-target-info">
-        <div class="quick-transfer-name-row">
-          <span class="quick-transfer-name" id="quick-transfer-name">أحمد كمال</span>
-          <span class="quick-transfer-provider">VI Pay</span>
+    <!-- Contact summary badge & Interactive Switcher -->
+    <div class="quick-transfer-target-wrapper" id="quick-transfer-target-wrapper">
+      <div class="quick-transfer-target-card" id="quick-transfer-target-card" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false" title="اضغط لاختيار مستلم آخر">
+        <div class="quick-transfer-avatar" id="quick-transfer-avatar" aria-hidden="true">
+          <span id="quick-transfer-avatar-initial">أ</span>
+          <span class="contact-status-dot status-dot-violet" id="quick-transfer-status-dot"></span>
         </div>
-        <span class="quick-transfer-alias" id="quick-transfer-alias">صديق الجامعة</span>
+        <div class="quick-transfer-target-info">
+          <div class="quick-transfer-name-row">
+            <span class="quick-transfer-name" id="quick-transfer-name">أحمد كمال</span>
+            <span class="quick-transfer-provider contact-network-badge network-badge-vi" id="quick-transfer-provider">فاي باي</span>
+          </div>
+          <div class="quick-transfer-meta-row">
+            <span class="quick-transfer-alias" id="quick-transfer-alias">صديق الجامعة</span>
+            <span class="quick-transfer-separator" aria-hidden="true">•</span>
+            <span class="quick-transfer-timestamp" id="quick-transfer-timestamp">آخر تحويل: البارحة</span>
+          </div>
+        </div>
+        <div class="quick-transfer-picker-toggle" aria-hidden="true">
+          <svg class="quick-transfer-picker-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Quick Transfer Contact Picker Dropdown Menu -->
+      <div class="quick-transfer-picker-menu hidden" id="quick-transfer-picker-menu" role="listbox" aria-label="قائمة جهات الاتصال للتحويل السريع">
+        <div class="quick-transfer-picker-header">
+          <span>اختر جهة اتصال للتحويل:</span>
+        </div>
+        <div class="quick-transfer-picker-list" id="quick-transfer-picker-list">
+          <!-- Populated dynamically via JS -->
+        </div>
       </div>
     </div>
 
@@ -841,7 +984,7 @@
         </button>
       </div>
 
-      <!-- Quick Amount Wheels / Chips -->
+      <!-- Quick Amount Wheels / Chips (Continuous Horizontal Presets) -->
       <div class="quick-transfer-wheel-wrap">
         <div class="quick-transfer-wheel-track" id="quick-transfer-wheel-track" role="radiogroup" aria-label="خيارات المبالغ السريعة">
           <button type="button" class="amount-wheel-chip" data-amount="5000">
@@ -860,6 +1003,18 @@
             <span class="chip-primary">50,000 د.ع</span>
             <span class="chip-secondary">≈ $32.68</span>
           </button>
+          <button type="button" class="amount-wheel-chip" data-amount="100000">
+            <span class="chip-primary">100,000 د.ع</span>
+            <span class="chip-secondary">≈ $65.36</span>
+          </button>
+          <button type="button" class="amount-wheel-chip" data-amount="250000">
+            <span class="chip-primary">250,000 د.ع</span>
+            <span class="chip-secondary">≈ $163.40</span>
+          </button>
+          <button type="button" class="amount-wheel-chip" data-amount="500000">
+            <span class="chip-primary">500,000 د.ع</span>
+            <span class="chip-secondary">≈ $326.80</span>
+          </button>
         </div>
       </div>
 
@@ -875,22 +1030,28 @@
       <div class="quick-transfer-secondary-val" id="quick-transfer-secondary-val">
         يعادل تقريباً: <span class="qt-eq-val" id="qt-eq-val">$32.68</span> (بسعر 100$ = 153,000 د.ع)
       </div>
+
+      <!-- Real-time balance ceiling guidance alert -->
+      <div class="quick-transfer-ceiling-alert hidden" id="quick-transfer-ceiling-alert" role="alert" aria-live="polite">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span id="quick-transfer-ceiling-msg">المبلغ المطلوب أكبر من رصيدك المتاح</span>
+      </div>
     </div>
 
     <!-- CTA Actions -->
     <div class="quick-transfer-actions">
       <button type="button" id="quick-transfer-submit-btn" class="quick-transfer-submit-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13"></line>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-        </svg>
-        <span>إرسال عبر فاي ⚡</span>
+        <span>إرسال عبر فاي</span>
       </button>
       <button type="button" id="quick-transfer-cancel-btn" class="quick-transfer-cancel-btn">إلغاء</button>
     </div>
   </div>
 
-  <script src="script.js?v=59.0"></script>
+  <script src="script.js?v=62.0"></script>
 </body>
 
 </html>
