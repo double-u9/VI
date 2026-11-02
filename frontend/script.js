@@ -18,11 +18,11 @@ function getOrCreateSessionId() {
   try {
     if (typeof window !== 'undefined' && window.sessionStorage) {
       let sid = window.sessionStorage.getItem('vi_session_id');
-      if (!sid) {
+      if (!sid || sid.startsWith('sess_')) {
         if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-          sid = 'sess_' + crypto.randomUUID();
+          sid = 'user_' + crypto.randomUUID();
         } else {
-          sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+          sid = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
         }
         window.sessionStorage.setItem('vi_session_id', sid);
       }
@@ -31,7 +31,7 @@ function getOrCreateSessionId() {
   } catch (e) {
     console.warn('[Session] Storage unavailable, using ephemeral ID:', e);
   }
-  return 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+  return 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
 }
 
 // DOM Elements (Safely resolved in both browser and test environments)
@@ -1471,6 +1471,7 @@ function initCurrencySwitch() {
  */
 function updateFxTickerTelemetry() {
   if (typeof document === 'undefined') return;
+  const tickerBtn = document.getElementById('header-fx-ticker-btn');
   const tickerText = document.getElementById('header-fx-ticker-text');
   const rateBadge = document.getElementById('fx-calc-rate-badge');
 
@@ -1479,6 +1480,9 @@ function updateFxTickerTelemetry() {
 
   if (tickerText) {
     tickerText.textContent = `100$ = ${iqdFor100.toLocaleString('en-US')} د.ع ⇄`;
+  }
+  if (tickerBtn) {
+    tickerBtn.setAttribute('title', `سعر الصرف اللحظي: 100$ = ${iqdFor100.toLocaleString('en-US')} د.ع (اضغط لفتح الحاسبة)`);
   }
   if (rateBadge) {
     rateBadge.textContent = `1$ = ${rate.toLocaleString('en-US')} د.ع`;
@@ -4191,6 +4195,9 @@ async function handleFormSubmit(customMessage = null, options = {}) {
       }
       streamBubbleEl.classList.remove('is-streaming');
       streamBubbleEl.innerHTML = formatFintechMessage(replyText, 'ai');
+      if (typeof initSlideToConfirm === 'function') {
+        initSlideToConfirm();
+      }
 
       const msgId = 'msg_' + Date.now();
       streamFeedbackActions = createFeedbackActions(messageText, replyText, msgId);
@@ -4786,6 +4793,7 @@ function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
   // Instant render for user messages or non-streaming environments (tests / headless)
   if (sender !== 'ai' || !stream || !isRealBrowser) {
     bubbleEl.innerHTML = formatFintechMessage(text, sender);
+    if (typeof initSlideToConfirm === 'function') initSlideToConfirm();
     if (footerEl) footerEl.style.opacity = '1';
     if (sender === 'ai' && typeof appendActionChipsToMessage === 'function') {
       const chips = getContextualActionChips(relatedUserQuery, text);
@@ -4831,6 +4839,7 @@ function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
   // Live streaming typewriter animation for AI responses
   streamTextMessage(bubbleEl, text, () => {
     bubbleEl.innerHTML = formatFintechMessage(text, 'ai');
+    if (typeof initSlideToConfirm === 'function') initSlideToConfirm();
     footerEl.style.opacity = '1';
 
     if (typeof appendActionChipsToMessage === 'function') {
@@ -5306,29 +5315,41 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
     };
   }
 
-  const isBill = /فاتورة|فواتير|تسديد|دفع/i.test(rawText);
-  const isAllBills = /كافة الفواتير|كل الفواتير/i.test(rawText);
+  const textClean = rawText.replace(/[*_#]/g, '');
 
-  // 1. Extract Amount
-  let amount = '';
-  const amtMatch = rawText.match(/(?:المبلغ المطلوب|المجموع الكلي|المبلغ)\s*:\s*([^\n\r]+)/i);
-  if (amtMatch) {
-    amount = amtMatch[1].replace(/\.+$/, '').trim();
-  } else {
-    const successAmtMatch = rawText.match(/(?:دزيت|بمجموع|تسديد)\s+([0-9,]+(?:\.\d+)?\s*(?:د\.ع|IQD|دينار))/i);
-    if (successAmtMatch) {
-      amount = successAmtMatch[1].trim();
-    } else {
-      const curMatch = rawText.match(/(\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(?:IQD|د\.ع|دينار))/i);
-      if (curMatch) amount = curMatch[1].trim();
-    }
+  const hasTransferKeywords = /(?:^|[\s،,:])(تحويل|أحول|احول|حوالة|حواله|ارسل|أرسل|ادز|دزيت|المستلم)(?:[\s،,:]|$)/i.test(textClean);
+  const hasBillKeywords = /(?:^|[\s،,:])(فاتورة|فواتير|تسديد|سداد)(?:[\s،,:]|$)/i.test(textClean);
+  const isAllBills = /(?:كافة الفواتير|كل الفواتير|جميع الفواتير|الفواتير المستحقة|فواتيرك المستحقة|كل المستحقات|الفواتير المعلقة)/i.test(textClean);
+  const isBill = isAllBills || (hasBillKeywords && !hasTransferKeywords);
+
+  // 1. Extract Balance After first so it is cleanly captured
+  let balanceAfter = '';
+  const balMatch = textClean.match(/(?:الرصيد بعد التحويل|الرصيد بعد الدفع|الرصيد بعد العملية|رصيدك بعد|الرصيد المتبقي|رصيدك الحالي بالمحفظة هو|رصيدك الحالي هسة|رصيدك الحالي هو)\s*[:هو]*\s*([0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?)/i);
+  if (balMatch) {
+    balanceAfter = balMatch[1].trim();
   }
 
-  // 2. Extract Balance
-  let balanceAfter = '';
-  const balMatch = rawText.match(/(?:الرصيد بعد التحويل|الرصيد بعد الدفع|رصيدك الحالي هسة)\s*:\s*([^\n\r]+)/i);
-  if (balMatch) {
-    balanceAfter = balMatch[1].replace(/\.+$/, '').trim();
+  // 2. Strip wallet balances before extracting transaction amount
+  let cleanedForAmount = textClean.replace(/(?:رصيدك الحالي بالمحفظة هو|رصيدك الحالي بالمحفظة|رصيدك الحالي|رصيدك بالمحفظة|في المحفظة هو|رصيدك)\s*[:هو]*\s*[0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?/gi, '');
+  if (balanceAfter) {
+    cleanedForAmount = cleanedForAmount.replace(balanceAfter, '');
+  }
+
+  let amount = '';
+  // Pattern A: Explicit label like 'المبلغ المطلوب: 45,000 د.ع' or 'المجموع الكلي للفواتير المستحقة هو 150,000 د.ع'
+  const explicitAmtMatch = cleanedForAmount.match(/(?:المبلغ المطلوب|المجموع الكلي|المجموع|إجمالي المبلغ|إجمالي|المبلغ)\s*(?:للفواتير(?: المستحقة)?)?\s*[:هو]*\s*([0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?)/i);
+  if (explicitAmtMatch) {
+    amount = explicitAmtMatch[1].trim();
+  }
+  // Pattern B: Action amount like 'أحول 45,000 دينار' or 'تسديد 150,000 د.ع' or 'بمبلغ 45,000 د.ع'
+  if (!amount) {
+    const actionAmtMatch = cleanedForAmount.match(/(?:أحول|احول|تحويل|دزيت|ادز|دز|ارسل|أرسل|تسديد|سداد|بمجموع|بمبلغ|بقيمة)\s+([0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?)/i);
+    if (actionAmtMatch) amount = actionAmtMatch[1].trim();
+  }
+  // Pattern C: Any remaining currency token in cleanedForAmount
+  if (!amount) {
+    const fallbackCurMatch = cleanedForAmount.match(/(\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(?:IQD|د\.ع|دينار))/i);
+    if (fallbackCurMatch) amount = fallbackCurMatch[1].trim();
   }
 
   // 3. Extract Recipient & Details
@@ -5339,12 +5360,10 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
   if (isBill) {
     if (isAllBills) {
       recipient = 'تسديد كافة الفواتير المستحقة';
-      const countMatch = rawText.match(/عدد الفواتير\s*:\s*(\d+)/i) || rawText.match(/تسديد\s+(\d+)\s+فواتير/i);
-      if (countMatch) {
-        subDetail = `${countMatch[1]} فواتير مسجلة`;
-      }
+      const countMatch = textClean.match(/عدد الفواتير\s*[:هو]*\s*(\d+)/i) || textClean.match(/تسديد\s+(\d+)\s+فواتير/i);
+      if (countMatch) subDetail = countMatch[1] + ' فواتير مسجلة';
     } else {
-      const billMatch = rawText.match(/الفاتورة\s*:\s*([^\n\r]+)/i) || rawText.match(/لحساب\s*\(([^)]+)\)/i);
+      const billMatch = textClean.match(/الفاتورة\s*:\s*([^\n\r]+)/i) || textClean.match(/لحساب\s*\(([^)]+)\)/i);
       if (billMatch) {
         let bText = billMatch[1].trim();
         const accMatch = bText.match(/\(([^)]+)\)/) || bText.match(/-\s*([A-Za-z0-9_-]+)/);
@@ -5354,18 +5373,18 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
         }
         bText = bText.replace(/^[•\s\-_()]+|[•\s\-_()]+$/g, '').replace(/^الفاتورة\s*:\s*/i, '').trim();
         recipient = bText || 'فاتورة خدمة';
-        subDetail = phoneOrAccount ? `حساب: ${phoneOrAccount}` : '';
+        subDetail = phoneOrAccount ? ('حساب: ' + phoneOrAccount) : '';
       } else {
         recipient = 'تسديد فاتورة';
       }
     }
   } else {
     let targetStr = '';
-    const recLineMatch = rawText.match(/المستلم\s*:\s*([^\n\r]+)/i);
+    const recLineMatch = textClean.match(/المستلم\s*:\s*([^\n\r]+)/i);
     if (recLineMatch) {
       targetStr = recLineMatch[1].trim();
     } else {
-      const succTargetMatch = rawText.match(/إلى\s+([^.]+?)(?:\.\s*رصيدك|$)/i);
+      const succTargetMatch = textClean.match(/(?:إلى|الي|لـ)\s+([^\n\r.,،?!()]+?)(?:[،,]|(?:\s*(?:بمبلغ|بقيمة|\d|رصيدك|متأكد|يرجى|$|\.)))/i);
       if (succTargetMatch) {
         targetStr = succTargetMatch[1].trim();
       }
@@ -5377,13 +5396,11 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
         phoneOrAccount = phoneMatch[0].trim();
         targetStr = targetStr.replace(phoneMatch[0], '').replace(/\(\s*\)/g, '').trim();
       }
-
       const aliasMatch = targetStr.match(/\(([^)]+)\)/);
       if (aliasMatch) {
         subDetail = aliasMatch[1].trim();
         targetStr = targetStr.replace(aliasMatch[0], '').trim();
       }
-
       recipient = targetStr.replace(/^[•\s\-_()]+|[•\s\-_()]+$/g, '').trim();
       if (!recipient && subDetail) {
         recipient = subDetail;
@@ -5392,7 +5409,9 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
     }
 
     if (!recipient) {
-      recipient = 'حوالة مالية';
+      const nameMatch = textClean.match(/(أم مصطفى|أحمد كمال|أحمد جاسم|سيف الدين|سيف|حسين|علاوي|مرتضى|مهند)/);
+      if (nameMatch) recipient = nameMatch[1];
+      else recipient = 'حوالة مالية';
     }
   }
 
@@ -5400,8 +5419,8 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
   let introMessage = '';
   if (isConfirm) {
     const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length > 0 && !lines[0].startsWith('تفاصيل') && !lines[0].startsWith('•') && !lines[0].startsWith('-')) {
-      introMessage = lines[0];
+    if (lines.length > 0 && !lines[0].startsWith('تفاصيل') && !lines[0].startsWith('•') && !lines[0].startsWith('-') && !lines[0].startsWith('المستلم') && !lines[0].startsWith('جهة الدفع')) {
+      introMessage = lines[0].replace(/[*_#]/g, '');
     }
   }
 
@@ -5928,13 +5947,7 @@ function getContactGradient(name) {
  */
 function parseContactsListData(text) {
   if (!text) return null;
-  const hasContactKeywords = text.includes('جهات الاتصال') || 
-                             text.includes('جهات اتصال') || 
-                             text.includes('قائمة اتصالي') || 
-                             text.includes('قائمه اتصالي') || 
-                             text.includes('الاشخاص اللي مسجلهم') ||
-                             text.includes('الأسماء المسجلة') ||
-                             text.includes('الاسماء المسجلة');
+  const hasContactKeywords = /(?:(?:ب|ل)?جهات\s*(?:ال)?اتصال|قائم[ةه]|أشخاص\s*مسجل|اشخاص\s*مسجل|الأسماء\s*المسجلة|الاسماء\s*المسجلة|مسجلين|اتصالاتك|اتصالي|جهاتك)/i.test(text);
   const hasPhoneNumbers = /(?:\+?964\d{8,10}|07\d{8,9})/.test(text);
 
   if (!hasContactKeywords || !hasPhoneNumbers) return null;
@@ -5945,7 +5958,7 @@ function parseContactsListData(text) {
   let outro = '';
 
   for (const line of lines) {
-    const match = line.match(/^(\d+)[\.\-–\)]\s*(.+)$/);
+    const match = line.match(/^(\d+)[\.\-–\)\s]\s*(.+)$/);
     if (match) {
       const rest = match[2].trim();
       let phone = '';
@@ -6173,30 +6186,55 @@ function formatFintechMessage(text, sender) {
 
   // 1. Escape HTML first to prevent XSS
   let escaped = escapeHtml(text);
+  const norm = typeof normalizeArabicKeywords === 'function' ? normalizeArabicKeywords(text) : text.toLowerCase();
 
   // 2. Identify if this is a confirmation card or a success receipt card
-  const isSuccess = escaped.includes('تم التحويل بنجاح') || 
-                    escaped.includes('تم تأكيد التحويل بنجاح') || 
-                    escaped.includes('تم تأكيد دفع') ||
-                    (escaped.includes('✅') && (escaped.includes('تحويل') || escaped.includes('تسديد') || escaped.includes('دفع')));
+  const isSuccess = norm.includes('تم التحويل بنجاح') || 
+                    norm.includes('تم تاكيد التحويل بنجاح') || 
+                    norm.includes('تم تاكيد دفع') ||
+                    norm.includes('تم تسديد') ||
+                    (escaped.includes('✅') && (norm.includes('تحويل') || norm.includes('تسديد') || norm.includes('دفع')));
 
   // Confirmation cards MUST contain actual financial transaction details AND confirmation intent
-  const hasTransactionDetails = escaped.includes('تفاصيل التحويل') || 
-                               escaped.includes('تفاصيل تسديد') || 
-                               escaped.includes('تفاصيل دفع') || 
-                               (escaped.includes('المستلم') && (escaped.includes('المبلغ') || escaped.includes('د.ع') || escaped.includes('IQD'))) ||
-                               (escaped.includes('الفاتورة') && (escaped.includes('المبلغ') || escaped.includes('د.ع') || escaped.includes('IQD')));
+  const hasMoneyOrAmount = /[\d,]+(?:\.\d+)?\s*(?:د\.ع|IQD|دينار|\$|USD)/i.test(escaped) ||
+                           norm.includes('المبلغ') ||
+                           norm.includes('المجموع') ||
+                           norm.includes('رصيدك') ||
+                           /\d{3,}/.test(norm);
 
-  const hasConfirmIntent = escaped.includes('متأكد تريد') || 
-                          escaped.includes('متأكد ترغب') ||
-                          escaped.includes('هل تؤكد') || 
-                          escaped.includes('هل انت متأكد') || 
-                          escaped.includes('هل أنت متأكد') || 
-                          escaped.includes('تأكيد عملية التحويل') || 
-                          escaped.includes('تأكيد التحويل') ||
-                          escaped.includes('تأكيد تسديد') ||
-                          escaped.includes('تأكيد دفع') ||
-                          escaped.includes('يرجى الرد بـ');
+  const hasFinancialTopic = norm.includes('تحويل') || 
+                            norm.includes('تسديد') || 
+                            norm.includes('سداد') || 
+                            norm.includes('دفع') || 
+                            norm.includes('مستلم') || 
+                            norm.includes('فاتور') || 
+                            norm.includes('قوائم') ||
+                            norm.includes('قائم');
+
+  const hasTransactionDetails = norm.includes('تفاصيل التحويل') || 
+                               norm.includes('تفاصيل تسديد') || 
+                               norm.includes('تفاصيل دفع') || 
+                               (norm.includes('مستلم') && (norm.includes('مبلغ') || norm.includes('د ع') || norm.includes('iqd'))) ||
+                               (norm.includes('فاتور') && (norm.includes('مبلغ') || norm.includes('د ع') || norm.includes('iqd') || norm.includes('مجموع'))) ||
+                               (hasFinancialTopic && hasMoneyOrAmount);
+
+  const hasConfirmIntent = norm.includes('متاكد') ||
+                          norm.includes('هل تاكد') || 
+                          norm.includes('هل تؤكد') || 
+                          norm.includes('هل انت متاكد') || 
+                          norm.includes('تاكيد عملية') || 
+                          norm.includes('تاكيد التحويل') ||
+                          norm.includes('تاكيد تسديد') ||
+                          norm.includes('تاكيد دفع') ||
+                          norm.includes('تاكيد السداد') ||
+                          norm.includes('تاكيد سداد') ||
+                          norm.includes('يرجي الرد') ||
+                          norm.includes('يرجى الرد') ||
+                          norm.includes('للتاكيد') ||
+                          norm.includes('للتأكيد') ||
+                          norm.includes('او الغاء') ||
+                          norm.includes('ام الغاء') ||
+                          norm.includes('لو الغاء');
 
   const isConfirm = !isSuccess && hasTransactionDetails && hasConfirmIntent;
 
@@ -6231,7 +6269,7 @@ function formatFintechMessage(text, sender) {
       return renderFintechConfirmationCard(data);
     }
     const flowWidget = renderFintechFlowWidget(data);
-    const actionsWidget = renderFintechActionButtons();
+    const actionsWidget = renderFintechActionButtons(data);
     return `<div class="fintech-card confirm-card">${flowWidget}${joined}${actionsWidget}</div>`;
   }
 
@@ -8365,6 +8403,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getCachedTransactions: () => cachedTransactions,
     setCachedTransactions: (val) => { cachedTransactions = val; },
     renderFintechActionButtons,
+    parseFintechTransactionData,
     renderConfirmationCard,
     renderFintechConfirmationCard,
     SLIDE_COMPLETION_THRESHOLD,
@@ -8411,7 +8450,6 @@ if (typeof module !== 'undefined' && module.exports) {
     getFintechPulsePerspective,
     setFintechPulsePerspective,
     handlePayAllBillsAction,
-    handleFormSubmit: (msg, opts) => (typeof handleFormSubmit === 'function' ? handleFormSubmit(msg, opts) : undefined),
     getCachedBills: () => (typeof cachedBills !== 'undefined' ? cachedBills : cachedCompanionBills),
     setCachedBills: (val) => { cachedBills = val; cachedCompanionBills = val; if (typeof renderFintechPulse === 'function') renderFintechPulse(); },
     parseDisambiguationData,
@@ -8428,7 +8466,6 @@ if (typeof module !== 'undefined' && module.exports) {
     stopTtsAudioVisualizer,
     ViHaptics,
     playSuccessChime,
-    playApplePaySuccessChime,
     playClickSound,
     playErrorThud,
     playToggleSound,

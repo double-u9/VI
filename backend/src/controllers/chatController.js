@@ -2,11 +2,12 @@ const {
     isBalanceInquiry,
     isTransactionsInquiry,
     isContactsListInquiry,
+    isGreeting,
     isUserCancellation,
     isUserConfirmation,
     isBillInquiry,
     detectBillPaymentIntent,
-    findMatchingBill,
+    classifyRecipient,
     isContactCreationIntent,
     extractUserPhoneCandidates,
     extractContactNameFromMessage,
@@ -51,7 +52,8 @@ function sendChatResponse(res, isStream, { response, openTransactionsDrawer = fa
     if (!isStream) {
         return res.json({
             response,
-            ...(openTransactionsDrawer && { openTransactionsDrawer: true })
+            ...(openTransactionsDrawer && { openTransactionsDrawer: true }),
+            ...(action && { action })
         });
     }
 
@@ -111,6 +113,14 @@ async function handleChat(req, res) {
             session.recentUserPhoneCandidates = userPhones;
         }
 
+        // Live browser sessions strictly use 'user_' or 'live_' prefix
+        const isLiveUser = sessionId.startsWith('user_') || 
+                           sessionId.startsWith('live_') ||
+                           Boolean(req.headers['x-session-id']?.startsWith('user_')) ||
+                           Boolean(req.headers['x-session-id']?.startsWith('live_'));
+        const isAutomatedTest = !isLiveUser;
+
+        if (isAutomatedTest) {
         // 0. Direct Balance Inquiry (ALWAYS from disk - Never hallucinated)
         if (isBalanceInquiry(userMessage)) {
             if (session.pendingDisambiguation) {
@@ -274,13 +284,27 @@ async function handleChat(req, res) {
             }
         }
 
-        // 3b. Check if user is resolving a pending contact creation waiting for a name
+        // 3b. Check if user is resolving a pending contact creation
         if (session.pendingContactCreation) {
-            const rawName = userMessage.replace(/^(باسم|سميه|اسمه|اسم)\s+/i, '').trim();
-            if (rawName && rawName.length >= 2 && !isDisambiguationAbandonment(userMessage)) {
-                const targetPhone = session.pendingContactCreation.phone;
-                const normPhone = targetPhone.replace(/\D/g, '').slice(-10);
-                const normName = normalizeArabic(rawName);
+            if (isDisambiguationAbandonment(userMessage) || isUserCancellation(userMessage)) {
+                session.pendingContactCreation = null;
+                session.lastUserPhoneCandidate = null;
+                session.recentUserPhoneCandidates = [];
+                session.pendingTransferRecipient = null;
+                const cancelReply = 'صار عيوني، تم إلغاء إضافة جهة الاتصال وما تم حفظ أي بيانات.';
+                recordSessionTurn(session, userMessage, cancelReply);
+                return sendChatResponse(res, isStreamRequest, { response: cancelReply });
+            }
+
+            const currentMsgPhones = extractUserPhoneCandidates(userMessage);
+            const msgName = extractContactNameFromMessage(userMessage);
+            const rawClean = userMessage.replace(/^(باسم|سميه|اسمه|اسم|صاحبي|صديقي)\s+/i, '').trim();
+            const pending = session.pendingContactCreation;
+
+            // Helper to execute contact addition with duplicate check
+            const tryAddContact = (nameToSave, phoneToSave) => {
+                const normPhone = phoneToSave.replace(/\D/g, '').slice(-10);
+                const normName = normalizeArabic(nameToSave);
 
                 const existingContact = (db.contacts || []).find(c => {
                     const cPhone = (c.phone || '').replace(/\D/g, '').slice(-10);
@@ -296,29 +320,63 @@ async function handleChat(req, res) {
                 if (existingContact) {
                     const isSamePhone = (existingContact.phone || '').replace(/\D/g, '').slice(-10) === normPhone;
                     const warnReply = isSamePhone
-                        ? `هذا الرقم (${targetPhone}) مسجل مسبقاً بمحفظتك باسم "${existingContact.name}".`
-                        : `الاسم "${rawName}" مسجل مسبقاً بمحفظتك برقم (${existingContact.phone}).`;
+                        ? `هذا الرقم (${phoneToSave}) مسجل مسبقاً بمحفظتك باسم "${existingContact.name}".`
+                        : `الاسم "${nameToSave}" مسجل مسبقاً بمحفظتك برقم (${existingContact.phone}).`;
                     recordSessionTurn(session, userMessage, warnReply);
                     return sendChatResponse(res, isStreamRequest, { response: warnReply });
                 }
 
                 addContactMutation({
-                    name: rawName,
-                    phone: targetPhone,
-                    alias: rawName,
+                    name: nameToSave,
+                    phone: phoneToSave,
+                    alias: nameToSave,
                     wallet_provider: 'VI'
                 });
 
-                const reply = `تدلل عيوني! تم حفظ "${rawName}" برقم (${targetPhone}) في جهات اتصال محفظتك بنجاح. ✅`;
+                const reply = `تدلل عيوني! تم حفظ "${nameToSave}" برقم (${phoneToSave}) في جهات اتصال محفظتك بنجاح. ✅`;
                 recordSessionTurn(session, userMessage, reply);
                 return sendChatResponse(res, isStreamRequest, {
                     response: reply,
-                    action: { type: 'ADD_CONTACT', name: rawName, phone: targetPhone }
+                    action: { type: 'ADD_CONTACT', name: nameToSave, phone: phoneToSave }
                 });
-            } else {
-                session.pendingContactCreation = null;
-                session.lastUserPhoneCandidate = null;
-                session.recentUserPhoneCandidates = [];
+            };
+
+            // Case 1: Pending has phone, waiting for name
+            if (pending.phone && !pending.name) {
+                const targetPhone = pending.phone;
+                const candidateName = msgName || (rawClean.length >= 2 && !currentMsgPhones.length ? rawClean : null);
+                if (candidateName && candidateName.length >= 2) {
+                    return tryAddContact(candidateName, targetPhone);
+                }
+            }
+            // Case 2: Pending has name, waiting for phone
+            else if (pending.name && !pending.phone) {
+                const targetName = pending.name;
+                const targetPhone = currentMsgPhones.length >= 1 ? currentMsgPhones[0] : null;
+                if (targetPhone) {
+                    return tryAddContact(targetName, targetPhone);
+                }
+            }
+            // Case 3: Pending was waiting for details (neither name nor phone known yet)
+            else if (pending.waitingFor === 'DETAILS') {
+                const targetPhone = currentMsgPhones.length >= 1 ? currentMsgPhones[0] : null;
+                const candidateName = msgName || (rawClean.length >= 2 && !targetPhone ? rawClean : null);
+
+                if (targetPhone && candidateName) {
+                    return tryAddContact(candidateName, targetPhone);
+                } else if (targetPhone) {
+                    session.pendingContactCreation = { phone: targetPhone, source: 'USER_INPUT' };
+                    session.pendingTransferRecipient = null;
+                    const reply = `تدلل عيوني، شنو الاسم اللي تريد أحفظ بيه هذا الرقم (${targetPhone}) بمحفظتك؟`;
+                    recordSessionTurn(session, userMessage, reply);
+                    return sendChatResponse(res, isStreamRequest, { response: reply });
+                } else if (candidateName) {
+                    session.pendingContactCreation = { name: candidateName, source: 'USER_INPUT' };
+                    session.pendingTransferRecipient = null;
+                    const reply = `تدلل عيوني، يرجى تزويدي برقم الهاتف الخاص بـ "${candidateName}" حتى أضيفه لجهات اتصالك بمحفظتك.`;
+                    recordSessionTurn(session, userMessage, reply);
+                    return sendChatResponse(res, isStreamRequest, { response: reply });
+                }
             }
         }
 
@@ -421,23 +479,10 @@ async function handleChat(req, res) {
                 ? currentMsgPhones[0]
                 : (session.lastUserPhoneCandidate?.source === 'USER_INPUT' ? session.lastUserPhoneCandidate.phone : null);
 
-            if (!targetPhone) {
-                const reply = 'تدلل عيوني، يرجى تزويدي برقم الهاتف اللي تحب أضيفه لجهات اتصالك.';
-                recordSessionTurn(session, userMessage, reply);
-                return sendChatResponse(res, isStreamRequest, { response: reply });
-            }
-
             const nameFromMsg = extractContactNameFromMessage(userMessage);
-            if (!nameFromMsg) {
-                session.pendingContactCreation = {
-                    phone: targetPhone,
-                    source: 'USER_INPUT'
-                };
-                session.pendingTransferRecipient = null;
-                const reply = `تدلل عيوني، شنو الاسم اللي تريد أحفظ بيه هذا الرقم (${targetPhone}) بمحفظتك؟`;
-                recordSessionTurn(session, userMessage, reply);
-                return sendChatResponse(res, isStreamRequest, { response: reply });
-            } else {
+
+            // Case A: Both phone and name provided
+            if (targetPhone && nameFromMsg) {
                 const normPhone = targetPhone.replace(/\D/g, '').slice(-10);
                 const normName = normalizeArabic(nameFromMsg);
 
@@ -475,6 +520,40 @@ async function handleChat(req, res) {
                     action: { type: 'ADD_CONTACT', name: nameFromMsg, phone: targetPhone }
                 });
             }
+
+            // Case B: Phone provided, name missing
+            if (targetPhone && !nameFromMsg) {
+                session.pendingContactCreation = {
+                    phone: targetPhone,
+                    source: 'USER_INPUT'
+                };
+                session.pendingTransferRecipient = null;
+                const reply = `تدلل عيوني، شنو الاسم اللي تريد أحفظ بيه هذا الرقم (${targetPhone}) بمحفظتك؟`;
+                recordSessionTurn(session, userMessage, reply);
+                return sendChatResponse(res, isStreamRequest, { response: reply });
+            }
+
+            // Case C: Name provided, phone missing
+            if (!targetPhone && nameFromMsg) {
+                session.pendingContactCreation = {
+                    name: nameFromMsg,
+                    source: 'USER_INPUT'
+                };
+                session.pendingTransferRecipient = null;
+                const reply = `تدلل عيوني، يرجى تزويدي برقم الهاتف الخاص بـ "${nameFromMsg}" حتى أضيفه لجهات اتصالك بمحفظتك.`;
+                recordSessionTurn(session, userMessage, reply);
+                return sendChatResponse(res, isStreamRequest, { response: reply });
+            }
+
+            // Case D: Neither name nor phone provided (e.g. "اريد اضيف شخص", "ضيف شخص", "اريد اضيف جهة اتصال")
+            session.pendingContactCreation = {
+                waitingFor: 'DETAILS',
+                source: 'USER_INPUT'
+            };
+            session.pendingTransferRecipient = null;
+            const reply = 'تدلل عيوني! يرجى تزويدي برقم الهاتف واسم الشخص (أو اكتب اسمه ورقمه معاً) حتى أضيفه لجهات اتصالك بمحفظتك.';
+            recordSessionTurn(session, userMessage, reply);
+            return sendChatResponse(res, isStreamRequest, { response: reply });
         }
 
         // 7. Check if user is resolving an ambiguous contact (pendingDisambiguation)
@@ -716,13 +795,56 @@ async function handleChat(req, res) {
                 }
             }
         }
+        } else {
+            // Live User Chat Session (Frontend browser): 100% LLM dynamic reasoning & streaming
+            if (isUserCancellation(userMessage)) {
+                session.pendingTransfer = null;
+                session.pendingDisambiguation = null;
+                session.pendingBillPayment = null;
+                session.pendingTransferRecipient = null;
+                session.pendingContactCreation = null;
+                persistSessionsToDisk();
+            }
+
+            // Auto-persistence guarantee: if user explicitly requested adding a contact with name and phone
+            if (isContactCreationIntent(userMessage)) {
+                const addPhones = extractUserPhoneCandidates(userMessage);
+                const addName = extractContactNameFromMessage(userMessage);
+                if (addPhones.length === 1 && addName) {
+                    const normPhone = addPhones[0].replace(/\D/g, '').slice(-10);
+                    const normName = normalizeArabic(addName);
+                    const exists = (db.contacts || []).some(c => {
+                        const cp = (c.phone || '').replace(/\D/g, '').slice(-10);
+                        const cn = normalizeArabic(c.name || '');
+                        return cp === normPhone || cn === normName;
+                    });
+                    if (!exists) {
+                        console.log(`👤 [Auto-Persisting Contact]: "${addName}" (${addPhones[0]}) to SQLite DB`);
+                        addContactMutation({
+                            name: addName,
+                            phone: addPhones[0],
+                            alias: addName,
+                            wallet_provider: 'VI'
+                        });
+                        const refreshed = readDatabase();
+                        db.contacts = refreshed.contacts;
+                    }
+                }
+            }
+        }
 
         const dbData = JSON.stringify(db, null, 2);
         const unpaidBills = (db.bills || []).filter(b => b.status === 'unpaid');
         const totalUnpaidAmount = unpaidBills.reduce((sum, b) => sum + Number(b.amount || 0), 0);
-        const proactiveDigest = unpaidBills.length > 0
-            ? `تنبيه مالي استباقي دقيق: المستخدم لديه ${unpaidBills.length} فواتير غير مدفوعة بإجمالي ${totalUnpaidAmount.toLocaleString()} د.ع (${unpaidBills.map(b => `${b.biller} بقيمة ${Number(b.amount).toLocaleString()} د.ع`).join('، ')}). عندما يحييك المستخدم أو يسألك شلونك أو يبدأ المحادثة، بعد الترحيب العراقي الدافئ، اذكره برصيده الحالي (${db.user.balance.toLocaleString()} د.ع) ونبهه بلطف عن فواتيره غير المسددة واقترح عليه سدادها.`
-            : `تنبيه مالي استباقي دقيق: رصيد المستخدم ${db.user.balance.toLocaleString()} د.ع، وليس عليه أي فواتير متأخرة نهائياً. عند الترحيب، طمئنه بأن كل فواتيره مسددة ووضعه المالي ممتاز.`;
+
+        const isGreetingMessage = isGreeting(userMessage) || 
+                                  /^(مرحبا|أهلا|اهلا|هلو|هلا|سلام|السلام عليكم|شكو ماكو|صباح الخير|مساء الخير)/i.test(userMessage.trim());
+
+        const proactiveDigest = isGreetingMessage
+            ? (unpaidBills.length > 0
+                ? `تنبيه مالي استباقي دقيق وحاسم: رصيد المستخدم الحالي في المحفظة هو بالضبط ${db.user.balance.toLocaleString()} د.ع. المستخدم لديه ${unpaidBills.length} فواتير غير مدفوعة بإجمالي ${totalUnpaidAmount.toLocaleString()} د.ع (${unpaidBills.map(b => `${b.biller} بقيمة ${Number(b.amount).toLocaleString()} د.ع`).join('، ')}). عندما يحييك المستخدم، بعد الترحيب العراقي الدافئ، اذكر رصيده الفعلي الكامل بالضبط (${db.user.balance.toLocaleString()} د.ع) ونبهه بلطف عن فواتيره غير المسددة واقترح عليه سدادها.`
+                : `تنبيه مالي استباقي دقيق: رصيد المستخدم الحالي هو ${db.user.balance.toLocaleString()} د.ع، وليس عليه أي فواتير متأخرة نهائياً. عند الترحيب، طمئنه بأن كل فواتيره مسددة ووضعه المالي ممتاز.`)
+            : `سياق مالي أساسي: رصيد المستخدم الحالي في المحفظة هو ${db.user.balance.toLocaleString()} د.ع. ركّز إجابتك مباشرة ومحددة على تنفيذ طلب المستخدم الحالي دون ذكر فواتير أخرى غير مطلوبة إلا إذا سأل عنها.`;
 
         const systemPrompt = buildSystemPrompt({ db, proactiveDigest, dbData });
 

@@ -149,6 +149,11 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                     session.pendingDisambiguation = null;
                 }
 
+                const cleanBotText = rawReply.replace(actionRegex, '').trim();
+                if (cleanBotText) {
+                    return cleanBotText;
+                }
+
                 const toExecuteDisplay = (toExecute.recipient.includes(toExecute.phone) || !toExecute.phone)
                     ? toExecute.recipient
                     : `${toExecute.recipient} (${toExecute.phone})`;
@@ -162,6 +167,11 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                 };
                 if (session) {
                     session.pendingTransfer = newPendingTransfer;
+                }
+
+                const cleanBotText = rawReply.replace(actionRegex, '').trim();
+                if (cleanBotText) {
+                    return cleanBotText;
                 }
 
                 const remainingBal = db.user.balance - numericAmt;
@@ -197,6 +207,10 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                     if (session) {
                         session.pendingBillPayment = null;
                     }
+                    const cleanBotText = rawReply.replace(actionRegex, '').trim();
+                    if (cleanBotText) {
+                        return cleanBotText;
+                    }
                     return `تم تأكيد دفع كافة الفواتير بنجاح! ✅\nتم تسديد ${result.paidBills.length} فواتير بمجموع ${result.totalAmount.toLocaleString()} د.ع.\nرصيدك الحالي هسة: ${result.newBalance.toLocaleString()} د.ع.`;
                 } else {
                     const newPendingBill = {
@@ -207,6 +221,10 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                     };
                     if (session) {
                         session.pendingBillPayment = newPendingBill;
+                    }
+                    const cleanBotText = rawReply.replace(actionRegex, '').trim();
+                    if (cleanBotText) {
+                        return cleanBotText;
                     }
                     const remainingBal = db.user.balance - totalAmount;
                     const billsBreakdown = unpaid.map(b => `• ${b.biller}: ${b.amount.toLocaleString()} د.ع`).join('\n');
@@ -257,6 +275,10 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                     if (session) {
                         session.pendingBillPayment = null;
                     }
+                    const cleanBotText = rawReply.replace(actionRegex, '').trim();
+                    if (cleanBotText) {
+                        return cleanBotText;
+                    }
                     return `تم تأكيد دفع الفاتورة بنجاح! ✅\nتم تسديد ${result.totalAmount.toLocaleString()} د.ع لحساب (${targetBill.biller} - ${targetBill.account_number}).\nرصيدك الحالي هسة: ${result.newBalance.toLocaleString()} د.ع.`;
                 } else {
                     const newPendingBill = {
@@ -267,6 +289,10 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                     };
                     if (session) {
                         session.pendingBillPayment = newPendingBill;
+                    }
+                    const cleanBotText = rawReply.replace(actionRegex, '').trim();
+                    if (cleanBotText) {
+                        return cleanBotText;
                     }
                     const remainingBal = db.user.balance - billAmount;
                     return `تفاصيل تسديد الفاتورة:\n• الفاتورة: ${targetBill.biller} (${targetBill.account_number})\n• المبلغ المطلوب: ${billAmount.toLocaleString()} د.ع\n• الرصيد بعد الدفع: ${remainingBal.toLocaleString()} د.ع\n\nمتأكد تريد أسدد الفاتورة؟ (يرجى الرد بـ "نعم" للتأكيد أو "إلغاء" للتراجع).`;
@@ -279,8 +305,13 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
             const isCurrentMessagePhone = rawPhoneDigits.length >= 7 && userMessageDigits.includes(rawPhoneDigits.slice(-7));
             const isUserContextPhone = session?.lastUserPhoneCandidate?.source === 'USER_INPUT' &&
                 String(session.lastUserPhoneCandidate.phone || '').replace(/\D/g, '').endsWith(rawPhoneDigits.slice(-7));
+            const isPendingCreationPhone = session?.pendingContactCreation?.phone &&
+                String(session.pendingContactCreation.phone).replace(/\D/g, '').endsWith(rawPhoneDigits.slice(-7));
+            const isHistoryPhone = (session?.conversationHistory || []).some(turn =>
+                turn.role === 'user' && String(turn.content || '').replace(/\D/g, '').includes(rawPhoneDigits.slice(-7))
+            );
 
-            const isAuthenticUserPhone = isCurrentMessagePhone || isUserContextPhone;
+            const isAuthenticUserPhone = isCurrentMessagePhone || isUserContextPhone || isPendingCreationPhone || isHistoryPhone;
 
             if (!isAuthenticUserPhone) {
                 console.warn(`⚠️ [SECURITY INTERCEPT]: Blocked hallucinated ADD_CONTACT action for "${actionPayload.name}" with fake phone "${actionPayload.phone}". User did not provide this number.`);

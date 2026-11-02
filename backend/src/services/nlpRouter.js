@@ -252,18 +252,28 @@ function isContactCreationIntent(text) {
     if (!text || typeof text !== 'string') return false;
     const clean = normalizeArabic(text);
 
+    // Exclude inquiries about transaction logs / histories where "سجل" is a noun
+    if (clean.includes('سجل الحركات') || clean.includes('سجل التحويلات') || clean.includes('سجل المعاملات') || clean.includes('سجل العمليات') || clean.includes('سجل المصاريف')) {
+        return false;
+    }
+
     // Common Iraqi contact creation phrases
     const directPhrases = [
         'ضيفه عندك', 'ضيفة عندك', 'احفظه عندك', 'احفظة عندك', 'سجله عندك', 'سجلة عندك',
         'ضيف هذا الرقم', 'احفظ هذا الرقم', 'سجل هذا الرقم', 'خزن هذا الرقم',
         'اي ضيفه عندك', 'اي ضيفه', 'اي احفظه', 'اي سجله', 'إي ضيفه عندك', 'إي ضيفه', 'إي احفظه', 'إي سجله',
-        'ضيف جهة اتصال', 'احفظ جهة اتصال', 'اضافة جهة اتصال'
+        'ضيف جهة اتصال', 'احفظ جهة اتصال', 'اضافة جهة اتصال',
+        'اريد اضيف شخص', 'اريد اضيف جهة اتصال', 'اريد اضيف جهة', 'اريد اضيف صديق', 'اريد اضيف مستخدم',
+        'اريد اضيف رقم', 'اريد اضيف احد', 'اريد اضيف واحد',
+        'ضيف شخص', 'ضيفلي شخص', 'ضيف جهة', 'ضيف صديق', 'ضيف مستخدم', 'ضيف جهة جديدة', 'ضيف هذا الشخص',
+        'اضافة شخص', 'اضافة جهة', 'اضافة صديق', 'اضافة مستخدم', 'اضافة رقم',
+        'اريد اسجل شخص', 'اريد احفظ شخص', 'سجل شخص', 'احفظ شخص', 'سجل جهة', 'احفظ جهة'
     ];
 
     if (directPhrases.some(p => clean.includes(p))) return true;
 
     // Standalone single-word action commands with strict word boundaries
-    const singleWordActions = ['ضيفه', 'ضيفة', 'احفظه', 'احفظة', 'سجله', 'سجلة', 'خزنه', 'خزنة'];
+    const singleWordActions = ['ضيفه', 'ضيفة', 'احفظه', 'احفظة', 'سجله', 'سجلة', 'خزنه', 'خزنة', 'ضيفها', 'احفظها', 'سجلها', 'خزنها', 'ضيفهن', 'احفظهن'];
     const hasStandaloneAction = singleWordActions.some(w => {
         const regex = new RegExp(`(^|[\\s،,])(${w})([\\s،,]|$)`, 'i');
         return regex.test(clean);
@@ -271,27 +281,73 @@ function isContactCreationIntent(text) {
     if (hasStandaloneAction) return true;
 
     const hasAddVerb = clean.includes('ضيف') || clean.includes('اضف') || clean.includes('احفظ') ||
-                       (/(^|[\s،,])سجل([\s،,]|$)/.test(clean)) || clean.includes('خزن') || clean.includes('اضافة') || clean.includes('حفظ');
+                       (/(^|[\s،,])سجل([\s،,]|$)/.test(clean)) || clean.includes('خزن') || clean.includes('اضافة') ||
+                       (/(^|[\s،,])(حفظ|حفظه|حفظها)([\s،,]|$)/.test(clean));
 
-    const hasContactContext = clean.includes('عندك') || clean.includes('بمحفظتك') || clean.includes('بجهات') ||
-                             clean.includes('جهات الاتصال') || clean.includes('بالاسماء') || clean.includes('بالاصدقاء') ||
-                             clean.includes('رقم') || clean.includes('الرقم') || clean.includes('باسم') ||
-                             clean.includes('اسمه') || clean.includes('اسم');
+    if (!hasAddVerb) return false;
 
-    return hasAddVerb && hasContactContext;
+    // If it clearly has a transfer verb and an amount, it is a transfer, not a contact creation
+    const transferVerbs = ['حول', 'تحول', 'احول', 'دز', 'تدز', 'ادز', 'ارسل', 'ترسل'];
+    const hasTransferVerb = transferVerbs.some(v => new RegExp(`(^|[\\s،,])(${v})([\\s،,]|$)`, 'i').test(clean));
+    const amount = extractAmount(text);
+    if (hasTransferVerb && amount) return false;
+
+    // Has a phone candidate alongside add verb (e.g. "ضيف علي 07801234567" or "ضيف 07801234567")
+    const normText = normalizeDigits(text);
+    const hasPhone = /(?:(?:\+|00)?964[\s-]*)?0?7[578]/.test(normText);
+    if (hasPhone) return true;
+
+    const hasContactContext =
+        clean.includes('شخص') || clean.includes('جهة') || clean.includes('جهات') ||
+        clean.includes('صديق') || clean.includes('اصدقاء') || clean.includes('صاحب') ||
+        clean.includes('مستخدم') || clean.includes('مستخدمين') ||
+        clean.includes('عندك') || clean.includes('يمك') ||
+        clean.includes('بمحفظتك') || clean.includes('بالمحفظة') || clean.includes('بالمحفظه') ||
+        clean.includes('بالدفتر') || clean.includes('بدفترك') || clean.includes('دفتر') ||
+        clean.includes('بجهات') || clean.includes('جهات الاتصال') || clean.includes('جهة اتصال') ||
+        clean.includes('بالاسماء') || clean.includes('بالاسامي') || clean.includes('بالاصدقاء') ||
+        clean.includes('رقم') || clean.includes('الرقم') || clean.includes('ارقام') ||
+        clean.includes('باسم') || clean.includes('اسمه') || clean.includes('اسمها') || clean.includes('اسم') ||
+        clean.includes('احد') || clean.includes('واحد') || clean.includes('هذا الشخص');
+
+    return hasContactContext;
 }
 
 function extractContactNameFromMessage(text) {
     if (!text || typeof text !== 'string') return null;
     const clean = text.trim();
 
-    // Match "باسم ...", "اسمه ...", "سميه ...", "اسم ..."
-    const nameMatch = clean.match(/(?:باسم|اسمه|سميه|اسم)\s+([^\s,،]+(?:\s+[^\s,،]+)?)/i);
-    if (nameMatch) {
-        const rawName = nameMatch[1].trim();
-        const stopWords = ['عندك', 'محفظتك', 'رقم', 'هاتف', 'هذا', 'جهة', 'اتصال'];
-        if (!stopWords.includes(rawName)) {
-            return rawName;
+    // 1. Explicit marker: "باسم ...", "اسمه ...", "اسمها ...", "سميه ..."
+    const markerMatch = clean.match(/(?:باسم|اسمه|اسمها|سميه)\s+([^\s,،]+(?:\s+[^\s,،]+)?)/i);
+    if (markerMatch) {
+        let candidate = markerMatch[1].trim().replace(/['"“”]/g, '');
+        // Clean out trailing connectors / stop words if captured in the 2-word match
+        candidate = candidate.replace(/\s+(?:ورقمه|والرقم|ورقم|برقم|رقم|هاتف|وهاتف|تلفون|وتلفون|بالمحفظة|بالمحفظه|عندك|يمك|لقائمه|لقائمة|بقائمه|بقائمة|لجهات|بجهات|في\s+جهات|في\s+قائمة|في\s+قائمه|\d+).*$/i, '').trim();
+        const stopWords = ['عندك', 'محفظتك', 'رقم', 'هاتف', 'هذا', 'جهة', 'اتصال', 'شخص', 'صديق'];
+        if (candidate && !stopWords.includes(candidate)) {
+            return candidate;
+        }
+    }
+
+    // 2. Pattern without marker: e.g. "ضيف علي 07801234567", "اريد اضيف كرار البصراوي 07812345678"
+    let remaining = clean
+        .replace(/(?:\+|00)?964[\s-]*0?7[578]\d{8}/g, '')
+        .replace(/0?7[578]\d{8}/g, '')
+        .replace(/\b\d{10,16}\b/g, '')
+        .trim();
+
+    remaining = remaining
+        .replace(/^(?:اي\s+|إي\s+|نعم\s+|ايوا\s+|ايوه\s+|اوكي\s+|تمام\s+|ماشي\s+|اريد\s+|ودي\s+|حباب\s+|ياريت\s+|ممكن\s+)?(?:اضيف|ضيفلي|ضيفه|ضيفة|ضيفها|ضيف|اضف|احفظه|احفظة|احفظها|احفظ|سجله|سجلة|سجلها|سجل|خزنه|خزنة|خزنها|خزن|حفظ|اضافة)\s*/i, '')
+        .replace(/^(?:شخص|شخصا|صديق|صديقي|جهة\s+اتصال|جهة|مستخدم|احد|واحد)\s*/i, '')
+        .replace(/^(?:اسمه|اسمها|باسم|سميه|اسم)\s*/i, '')
+        .replace(/(?:ورقمه|والرقم|ورقم|برقم|رقم|هاتف|وهاتف|تلفون|وتلفون|عندك|يمك|بمحفظتك|بالمحفظة|بالمحفظه|لجهات\s+الاتصال|بجهات\s+الاتصال|في\s+جهات\s+الاتصال|لجهات\s+اتصالك|بجهات\s+اتصالك|لجهات\s+اتصالي|بجهات\s+اتصالي|جهات\s+الاتصال|جديد|جديدة)[\s\S]*$/i, '')
+        .replace(/['"“”]/g, '')
+        .trim();
+
+    const stopWords = ['عندك', 'يمك', 'محفظتك', 'رقم', 'هاتف', 'هذا', 'جهة', 'اتصال', 'شخص', 'صديق', 'جديد', 'جديدة', 'ضيفه', 'ضيفة', 'احفظه', 'سجله', 'خزنه', 'اي ضيفه', 'إي ضيفه', ''];
+    if (remaining && !stopWords.includes(remaining) && remaining.length >= 2 && remaining.length <= 40) {
+        if (/^[\u0600-\u06FFa-zA-Z\s]+$/.test(remaining)) {
+            return remaining;
         }
     }
 
@@ -559,11 +615,21 @@ function handleDirectTransferIntent(userMessage, db, session = null) {
     // Exclude bill inquiries/payments
     if (clean.includes('فاتور') || clean.includes('قائم')) return null;
 
+    // Exclude contact creation intents or active pending contact creation
+    if (isContactCreationIntent(userMessage) || session?.pendingContactCreation) return null;
+
     const transferVerbs = ['حول', 'تحول', 'احول', 'تحولي', 'تحوللي', 'تدز', 'دز', 'ادز', 'ارسل', 'ترسل', 'ابعت', 'ابعث'];
     const isTransferVerb = transferVerbs.some(v => {
         const regex = new RegExp(`(^|[\\s،,])(${v})([\\s،,]|$)`, 'i');
         return regex.test(clean);
     });
+
+    const addVerbs = ['ضيف', 'اضف', 'احفظ', 'خزن'];
+    const isAddVerb = addVerbs.some(v => {
+        const regex = new RegExp(`(^|[\\s،,])(${v})([\\s،,]|$)`, 'i');
+        return regex.test(clean);
+    });
+    if (isAddVerb && !isTransferVerb) return null;
 
     const normText = normalizeDigits(userMessage);
     const hasPhoneCandidate = /(?:(?:\+|00)?964[\s-]*)?0?7[578]/.test(normText);
@@ -674,7 +740,8 @@ function isUserCancellation(text) {
     const topicWords = ['قائم', 'جهات', 'اتصال', 'اتصالي', 'اتصالاتي', 'جهاز', 'اسماء', 'اشخاص', 'رصيد', 'فلوس', 'فواتير', 'فاتور', 'كهرباء', 'مياه', 'ماء', 'انترنت', 'حول', 'دز', 'ارسل', 'ادفع', 'سدد'];
     const hasTopicWord = topicWords.some(tw => clean.includes(tw));
     if (hasTopicWord) {
-        const explicitCancel = clean.includes('الغاء') || clean.includes('الغي') || clean.includes('إلغاء') || clean.includes('بطلت') || clean.includes('هونت') || clean.includes('ما اريد') || clean.includes('ما أريد') || clean.includes('cancel');
+        const cancelRegex = /(?:^|[\s،,])(الغاء|الغي|الغيه|الغيها|إلغاء|بطلت|هونت|ما\s*اريد|ما\s*أريد|cancel)(?:[\s،,]|$)/i;
+        const explicitCancel = cancelRegex.test(clean);
         return explicitCancel;
     }
 
@@ -749,14 +816,27 @@ function isStandaloneNumberedChoice(text) {
 
 const GREETING_WORDS = [
     'اهلا', 'أهلا', 'مرحبا', 'مرحباً', 'هلا', 'هلو', 'يا هلا', 'سلام', 'السلام عليكم', 'سلام عليكم',
-    'شلونك', 'شلونكم', 'شخبارك', 'صباح الخير', 'مساء الخير', 'يعطيك العافيه', 'يعطيك العافية'
+    'اهلين', 'أهلين', 'يا هلا بيك', 'هلا بيك', 'هلا والله', 'يا هلا والله',
+    'شلونك', 'شلونكم', 'شخبارك', 'شلون الصحه', 'شلون الصحة', 'شكو ماكو',
+    'صباح الخير', 'مساء الخير', 'يعطيك العافيه', 'يعطيك العافية'
 ];
 
 function isGreeting(text) {
-    if (!text) return false;
+    if (!text || typeof text !== 'string') return false;
     const clean = normalizeArabic(text);
     const words = clean.split(/\s+/).filter(Boolean);
     if (words.length > 5) return false;
+
+    // Must NOT contain financial action commands
+    if (extractAmount(text) !== null) return false;
+    const actionVerbs = ['حول', 'تحول', 'دز', 'تدز', 'ارسل', 'ادفع', 'سدد', 'ضيف', 'احفظ', 'سجل'];
+    if (actionVerbs.some(v => new RegExp(`(^|[\\s،,])(${v})([\\s،,]|$)`, 'i').test(clean))) {
+        return false;
+    }
+    if (clean.includes('رصيد') || clean.includes('فلوس') || clean.includes('فاتور') || clean.includes('قائم') || clean.includes('حساب')) {
+        return false;
+    }
+
     return GREETING_WORDS.some(gw => {
         const normGw = normalizeArabic(gw);
         return clean === normGw || clean.startsWith(normGw + ' ') || clean.endsWith(' ' + normGw);
@@ -798,6 +878,12 @@ function isBillInquiry(text) {
         .replace(/الغير\s*مدفوع[هة]?/g, '')
         .replace(/مدفوع[هة]?/g, '')
         .replace(/ما\s*مدفوع[هة]?/g, '')
+        .replace(/غير\s*مسدد[هة]?/g, '')
+        .replace(/الغير\s*مسدد[هة]?/g, '')
+        .replace(/مسدد[هة]?/g, '')
+        .replace(/ما\s*مسدد[هة]?/g, '')
+        .replace(/مستحق[هة]?/g, '')
+        .replace(/المستحق[هة]?/g, '')
         .replace(/مطلوب[هة]?/g, '')
         .replace(/المطلوب[هة]?/g, '');
 
@@ -808,8 +894,9 @@ function isBillInquiry(text) {
 function isPayAllBillsRequest(text) {
     if (!text) return false;
     const clean = normalizeArabic(text);
-    const hasPayment = clean.includes('ادفع') || clean.includes('دفع') || clean.includes('سدد') || clean.includes('تسديد') || clean.includes('سدلي') || clean.includes('ادفعلي');
-    const hasAll = clean.includes('كل الفواتير') || clean.includes('جميع الفواتير') || clean.includes('الفواتير كلها') || clean.includes('كل فواتيري') || clean.includes('كل القوائم') || clean.includes('كلها');
+    const hasPayment = clean.includes('ادفع') || clean.includes('دفع') || clean.includes('سدد') || clean.includes('تسديد') || clean.includes('سدلي') || clean.includes('ادفعلي') || clean.includes('سداد');
+    const hasAll = clean.includes('كل الفواتير') || clean.includes('جميع الفواتير') || clean.includes('الفواتير كلها') || clean.includes('كل فواتيري') || clean.includes('كل القوائم') || clean.includes('كلها') ||
+                    clean.includes('المستحق') || clean.includes('المعلق') || clean.includes('فواتيري');
     return hasPayment && hasAll;
 }
 
@@ -847,7 +934,8 @@ function findMatchingBill(text, bills) {
             return b;
         }
 
-        if ((clean.includes('خط') || clean.includes('موبايل') || clean.includes('هاتف') || clean.includes('اتصال')) && (normBiller.includes('خط') || normBiller.includes('هاتف') || normBiller.includes('موبايل'))) {
+        const isContactContext = clean.includes('جهات الاتصال') || clean.includes('قائمه الاتصال') || clean.includes('قائمة الاتصال') || clean.includes('قائمه الاتصالات') || clean.includes('قائمة الاتصالات') || clean.includes('جهات اتصالي');
+        if (!isContactContext && (clean.includes('خط') || clean.includes('موبايل') || clean.includes('هاتف') || clean.includes('فاتورة اتصال') || clean.includes('فاتوره اتصال')) && (normBiller.includes('خط') || normBiller.includes('هاتف') || normBiller.includes('موبايل'))) {
             return b;
         }
 
@@ -865,6 +953,7 @@ function findMatchingBill(text, bills) {
 
 function detectBillPaymentIntent(userMessage, bills) {
     if (!userMessage || !Array.isArray(bills)) return null;
+    if (isContactCreationIntent(userMessage) || isContactsListInquiry(userMessage)) return null;
     const clean = normalizeArabic(userMessage);
     const unpaid = bills.filter(b => b.status === 'unpaid');
 

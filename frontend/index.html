@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>فاي | VI - المساعد المالي الذكي</title>
+  <link rel="icon" type="image/png" href="assets/logo-emerald.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -181,11 +182,15 @@
           </div>
         </button>
 
-        <!-- مؤشر وتتبع سعر الصرف اللحظي وحاسبة العملات السريعة (Dual-Currency FX Ticker & Micro-Calculator) -->
+        <!-- مؤشر وتتبع سعر الصرف اللحظي وحاسبة العملات السريعة (رمز فقط أنيق متناسق مع الواجهة) -->
         <div class="header-fx-group" id="header-fx-group">
           <button id="header-fx-ticker-btn" class="header-fx-ticker-btn" type="button"
-            aria-label="سعر الصرف اللحظي وحاسبة العملات السريعة" aria-haspopup="dialog" aria-expanded="false" aria-controls="fx-calculator-popover">
-            <span class="fx-ticker-text" id="header-fx-ticker-text">100$ = 153,000 د.ع ⇄</span>
+            aria-label="سعر الصرف اللحظي وحاسبة العملات السريعة" aria-haspopup="dialog" aria-expanded="false" aria-controls="fx-calculator-popover" title="سعر الصرف اللحظي وحاسبة العملات السريعة">
+            <svg class="fx-ticker-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 8h16m0 0l-4-4m4 4l-4 4"></path>
+              <path d="M20 16H4m0 0l4-4m-4 4l4 4"></path>
+            </svg>
+            <span class="fx-ticker-text" id="header-fx-ticker-text" style="display: none !important;">100$ = 153,000 د.ع</span>
           </button>
 
           <!-- نافذة حاسبة التحويل السريع اللحظية بتصميم زجاجي سائل (Liquid-Glass Micro-Calculator Popover) -->

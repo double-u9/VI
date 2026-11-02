@@ -5,13 +5,13 @@
 **وكيل سداد الفواتير والتحويلات المالية الذكي باللهجة العراقية**
 
 <p align="center">
-  <strong>An enterprise-grade, autonomous financial agent engineered for Iraqi digital wallets. Features dynamic multi-model LLM failover, deterministic financial safety guardrails, embedded SQLite WAL persistence with ACID transactions, zero-dependency sub-millisecond semantic intent classification, Server-Sent Events (SSE) token streaming with sliding-window action delimiter buffering, procedural Web Audio API haptic sound synthesis (ViHaptics), Apple Pay-style Slide-to-Confirm gesture (0.88 threshold & high-value protection), dual-perspective Fintech Pulse analytics (Expenses vs. Obligations), continuous horizontal banknote chip wheel with balance ceiling guard, interactive contact picker, live dual-currency IQD ⇄ USD conversion, hybrid neural TTS voice synthesis, desktop companion workstation, and resilient self-healing persistence.</strong>
+  <strong>An enterprise-grade, autonomous financial agent engineered for Iraqi digital wallets. Features dynamic multi-model LLM failover, deterministic financial safety guardrails, embedded SQLite WAL persistence with ACID transactions, zero-dependency sub-millisecond semantic intent classification, Server-Sent Events (SSE) token streaming with sliding-window action delimiter buffering, procedural Web Audio API haptic sound synthesis (ViHaptics), Apple Pay-style Slide-to-Confirm gesture (0.88 threshold & high-value protection), precision transaction flow disambiguation (Transfer vs. Bills & Amount Isolation), multi-turn conversational contact registration, dual-perspective Fintech Pulse analytics (Expenses vs. Obligations), continuous horizontal banknote chip wheel with balance ceiling guard, interactive contact picker, live dual-currency IQD ⇄ USD conversion, hybrid neural TTS voice synthesis, desktop companion workstation, and resilient self-healing persistence.</strong>
 </p>
 
 [![Node.js](https://img.shields.io/badge/Node.js-v18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express.js](https://img.shields.io/badge/Express.js-5.x_Modular-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![SQLite Database](https://img.shields.io/badge/SQLite-WAL_%26_ACID_Engine-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](#5-embedded-sqlite-persistence-layer--acid-transaction-engine)
-[![Automated Tests](https://img.shields.io/badge/Automated_Tests-272_Passed_(100%25)-10b981?style=for-the-badge&logo=node.js&logoColor=white)](#-automated-testing--quality-assurance)
+[![Automated Tests](https://img.shields.io/badge/Automated_Tests-281_Passed_(100%25)-10b981?style=for-the-badge&logo=node.js&logoColor=white)](#-automated-testing--quality-assurance)
 [![AI Engine](https://img.shields.io/badge/AI_Engine-LM_Studio_%7C_Gemini_%7C_Groq-7c3aed?style=for-the-badge&logo=openai&logoColor=white)](#-multi-model-orchestration-engine)
 [![NLP Router](https://img.shields.io/badge/NLP_Router-Hybrid_%2B_Sub--ms_Semantic-0284c7?style=for-the-badge&logo=probot&logoColor=white)](#3-high-performance-local-semantic-vector-similarity-classifier-sub-ms-latency)
 [![Streaming](https://img.shields.io/badge/Streaming-SSE_%2B_Sliding--Window_Delimiter-f97316?style=for-the-badge)](#4-server-sent-events-sse-token-streaming--sliding-window-delimiter-interception)
@@ -34,14 +34,14 @@
 | [🌟 Executive Summary & Vision](#-executive-summary--vision) | Architectural philosophy, problem space, and the 7 zero-trust financial pillars |
 | [🎥 Interactive Demo Walkthrough](#-interactive-demo-walkthrough) | Visual walkthrough of multi-model switching, confirmation cards, slide-to-confirm, and voice flow |
 | [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow) | High-level Mermaid diagram, tier-by-tier deep dive, and request lifecycle |
-| [✨ Core Feature Modules](#-core-feature-modules) | Detailed breakdown of the 20 core operational, fintech, and UX capabilities |
+| [✨ Core Feature Modules](#-core-feature-modules) | Detailed breakdown of the 22 core operational, fintech, and UX capabilities |
 | [🧠 Multi-Model Orchestration Engine](#-multi-model-orchestration-engine) | Provider matrix, local offline execution, and automated failover routing |
 | [🛡️ Deterministic Security & Guardrails](#️-deterministic-security--guardrails) | Financial integrity rules, contact provenance, and anti-fabrication gates |
 | [🩺 Failure Handling & Self-Healing Architecture](#-failure-handling--self-healing-architecture) | The 7 resilience pillars: rate limits, JSON repair, corruption, isolation, faults |
 | [📡 API Specifications & Route Reference](#-api-specifications--route-reference) | Endpoints, headers, SSE event protocols, request/response JSON schemas, and status codes |
 | [📂 Project Directory Layout](#-project-directory-layout) | Annotated file tree structure reflecting the new modular architecture |
 | [⚡ Quick Start & Installation Guide](#-quick-start--installation-guide) | Prerequisites, environment configuration, LM Studio setup, and launch |
-| [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance) | 272-test regression coverage across 59 suites with 100% pass rate |
+| [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance) | 281-test regression coverage across 60 suites with 100% pass rate |
 | [💬 Colloquial Iraqi Dialect Showcase](#-colloquial-iraqi-dialect-showcase) | Real-world linguistic scenarios, slang verbs, and deterministic execution examples |
 | [🛠️ Troubleshooting & Extended FAQs](#️-troubleshooting--extended-faqs) | Solutions for common setup issues, audio permissions, and technical Q&A |
 | [🗺️ Future Roadmap & License](#️-future-roadmap--license) | Milestones, open-source license, and project credits |
@@ -76,8 +76,8 @@ Deploying generative AI directly into banking or payment applications poses seve
 > 6. **🧠 Multi-Model Dynamic Orchestration & Failover Chain**  
 >    Seamless runtime switching between **100% Local On-Premise Inference** (via **LM Studio** / **Ollama**) with zero cloud data egress, **Google Gemini Flash** for deep dialectal reasoning, and **Groq Cloud** for sub-second LPU throughput, backed by exponential backoff and closed-loop JSON action self-repair.
 >
-> 7. **🇮🇶 Native Iraqi Linguistic Comprehension & Tactile Interaction**  
->    Comprehensive parsing of real Iraqi financial colloquialisms (*"دزله 50 ألف"*, *"طير خمسين الف"*, *"شمرلي فليسات"*, *"شكد رصيدي هسة"*, *"صفّيلي اشتراك النت"*, *"سدد كل الفواتير دفعة وحدة"*), coupled with tactile Apple Pay-style **Slide-to-Confirm** gestures (0.88 travel threshold & high-value security protection), procedural Web Audio API haptic sound synthesis (**ViHaptics**), dual-perspective **Fintech Pulse** analytics, a continuous horizontal banknote chip wheel, and animated circular ripple transitions.
+> 7. **🇮🇶 Native Iraqi Linguistic Comprehension, Flow Disambiguation & Tactile Interaction**  
+>    Comprehensive parsing of real Iraqi financial colloquialisms (*"دزله 50 ألف"*, *"طير خمسين الف"*, *"شمرلي فليسات"*, *"شكد رصيدي هسة"*, *"صفّيلي اشتراك النت"*, *"سدد كل الفواتير دفعة وحدة"*, *"اريد اضيف شخص"*), coupled with precision transaction flow disambiguation (preventing current wallet balances from ever being mistaken for transfer sums or bill totals), tactile Apple Pay-style **Slide-to-Confirm** gestures (0.88 travel threshold & high-value security protection), multi-turn conversational contact creation, procedural Web Audio API haptic sound synthesis (**ViHaptics**), dual-perspective **Fintech Pulse** analytics, a continuous horizontal banknote chip wheel, and animated circular ripple transitions.
 
 [▲ Back to Top](#-table-of-contents)
 
@@ -206,8 +206,8 @@ flowchart TD
 
 | Tier | Primary Modules | Key Responsibilities & Operational Guarantees |
 | :--- | :--- | :--- |
-| **1. Executive Frontend** | `frontend/script.js`<br>`frontend/style.css`<br>`frontend/index.html` | • **Apple Pay Slide-to-Confirm**: Interactive slider (`اسحب لتأكيد التحويل`) with 88% travel threshold, high-value transfer detection (> 100,000 IQD) with glowing security badge, RTL drag physics, spring-back below 88% (`cubic-bezier(0.175, 0.885, 0.32, 1.275)`), snap-to-confirm, haptic vibration `[15, 30, 20]`, Web Audio chime, and confetti explosion.<br>• **ViHaptics Procedural Synthesizer**: 100% synthetic Web Audio API procedural sounds: ascending 5-harmonic major chord success chime (C5-E5-G5-C6-C7), 8ms crisp frequency-drop click (`2200Hz -> 1200Hz`), and 130ms dual-tone error thud (`150Hz & 110Hz`).<br>• **Fintech Pulse Dual-Perspective Analytics**: Perspective switcher between actual expenses and pending utility obligations with amber warning gradients (`#f59e0b`), guaranteed 100% donut chart sum, and a 1-tap bulk settlement CTA button (*"سدّد كل الفواتير دفعة وحدة"*).<br>• **Continuous Banknote Chip Wheel**: 7 preset denominations (5K to 500K IQD + USD equivalents) with horizontal scroll-snap panning and real-time balance ceiling validation that disables submit on insufficient funds.<br>• **Interactive Quick Transfer Contact Picker**: Dropdown chevron selector allowing seamless recipient switching directly inside the transfer modal with live monogram generation.<br>• **Circular Ripple View Transition**: iOS & Android 14-style circular clip-path transition expanding from exact button center coordinates via `document.startViewTransition` with reduced-motion compliance. |
-| **2. Express Gateway** | `backend/server.js`<br>`backend/src/controllers/`<br>`backend/src/middlewares/` | • **Modular Architecture**: Clean separation into `chatController`, `walletController`, `billsController`, `contactsController`, `feedbackController`, `auditController`, and `ttsController`.<br>• **Token Bucket Rate Limiting**: Burst capacity management (Capacity: 30, Refill: 30/min) emitting standard RFC compliance headers (`X-RateLimit-*`, `Retry-After`) with automated test bypass.<br>• **Sliding-Window Token Parser**: SSE token streaming parser buffering delimiter candidates to intercept and strip `<<<DB_ACTION>>>` markup from visible prose.<br>• **Persistent Session Store**: In-memory `Map` synchronized to `.session_cache.json` on disk with 24-hour TTL pruning. |
+| **1. Executive Frontend** | `frontend/script.js`<br>`frontend/style.css`<br>`frontend/index.html` | • **Apple Pay Slide-to-Confirm**: Interactive slider (`اسحب لتأكيد التحويل` / `اسحب لتأكيد سداد الفواتير`) with 88% travel threshold, high-value transfer detection (> 100,000 IQD) with glowing security badge, RTL drag physics, spring-back below 88% (`cubic-bezier(0.175, 0.885, 0.32, 1.275)`), snap-to-confirm, haptic vibration `[15, 30, 20]`, Web Audio chime, and confetti explosion.<br>• **Precision Flow & Amount Isolation**: `parseFintechTransactionData` cleanly discriminates transfers from single or bulk bill payments, strictly isolating transaction values and preventing wallet balances (e.g. 3,000,000 IQD) from being captured as payment amounts.<br>• **ViHaptics Procedural Synthesizer**: 100% synthetic Web Audio API procedural sounds: ascending 5-harmonic major chord success chime (C5-E5-G5-C6-C7), 8ms crisp frequency-drop click (`2200Hz -> 1200Hz`), and 130ms dual-tone error thud (`150Hz & 110Hz`).<br>• **Fintech Pulse Dual-Perspective Analytics**: Perspective switcher between actual expenses and pending utility obligations with amber warning gradients (`#f59e0b`), guaranteed 100% donut chart sum, and a 1-tap bulk settlement CTA button (*"سدّد كل الفواتير دفعة وحدة"*).<br>• **Continuous Banknote Chip Wheel**: 7 preset denominations (5K to 500K IQD + USD equivalents) with horizontal scroll-snap panning and real-time balance ceiling validation that disables submit on insufficient funds.<br>• **Interactive Quick Transfer Contact Picker**: Dropdown chevron selector allowing seamless recipient switching directly inside the transfer modal with live monogram generation.<br>• **Sleek Minimalist FX Ticker**: Circular transfer symbol button (`fx-ticker-icon`) with 180° rotation on hover and live tooltip telemetry.<br>• **Circular Ripple View Transition**: iOS & Android 14-style circular clip-path transition expanding from exact button center coordinates via `document.startViewTransition` with reduced-motion compliance. |
+| **2. Express Gateway** | `backend/server.js`<br>`backend/src/controllers/`<br>`backend/src/middlewares/` | • **Modular Architecture**: Clean separation into `chatController`, `walletController`, `billsController`, `contactsController` (with programmatic `POST /api/contacts`), `feedbackController`, `auditController`, and `ttsController`.<br>• **Dynamic LLM Reasoning**: Live browser chat sessions (`user_` / `live_`) route directly through dynamic LLM generative reasoning with conversational warmth and zero robotic shortcut responses.<br>• **Token Bucket Rate Limiting**: Burst capacity management (Capacity: 30, Refill: 30/min) emitting standard RFC compliance headers (`X-RateLimit-*`, `Retry-After`) with automated test bypass.<br>• **Sliding-Window Token Parser**: SSE token streaming parser buffering delimiter candidates to intercept and strip `<<<DB_ACTION>>>` markup from visible prose.<br>• **Persistent Session Store**: In-memory `Map` synchronized to `.session_cache.json` on disk with 24-hour TTL pruning. |
 | **3. Hybrid NLP & Semantic Engine** | `backend/src/services/nlpRouter.js`<br>`backend/src/services/semanticClassifier.js` | • **Zero-Dependency Semantic Classifier**: Sub-millisecond offline cosine vector similarity using character (3/4-gram) and word (1/2-gram) n-grams, L2 normalization, and calibrated confidence scoring.<br>• **Iraqi Slang Seed Corpora**: Pre-calibrated centroids covering colloquial verbs (*"طيرلي"*, *"شمرلي"*, *"عبرلي"*, *"دزلي فليسات"*, *"صفّيلي اشتراك النت"*, *"منو مسجل يمي بالدفتر"*).<br>• **Deterministic Rule Prioritization**: Exact carrier validation (Zain 078, Asiacell 077, Korek 075), Arabic-Indic / Persian digit normalization, and spoken currency phrasing (*"مليونين ونص"*). |
 | **4. Deterministic Safety** | `backend/src/services/walletService.js`<br>`backend/src/services/nlpRouter.js` | • **Contact Provenance Guard**: Phone digits must exist verbatim in the user's input buffer or verified history.<br>• **Two-Step Consent Lock**: Zero funds deducted without secondary verbal confirmation or >88% slide gesture.<br>• **Anti-Fabrication Interceptor**: Intercepts verbal claims of payment when no programmatic action tag was executed. |
 | **5. AI Orchestration & Audio** | `backend/src/services/llmService.js`<br>`backend/src/services/ttsEngine.js` | • **Unified Universal Wrapper**: Single wrapper normalizing payloads across LM Studio, Gemini, and Groq.<br>• **Closed-Loop Self-Correction**: Feeds broken action JSON snippets and schema back to LLM at $T = 0.1$ for automated syntax repair.<br>• **Dynamic Failover Matrix**: Automatically transitions requests down the provider chain on HTTP 429 or outages.<br>• **Hybrid Neural TTS**: Sanitizes text, strips internal markup, maps currency abbreviations to natural Arabic, and streams audio from Google Cloud Neural TTS or ElevenLabs. |
@@ -391,8 +391,9 @@ flowchart TD
 
 ### 15. Dual-Currency Financial Converter & Live Micro-Calculator Popover (IQD ⇄ USD)
 * **Real-Time Exchange Rate Integration**: Fetches dynamic market exchange rate ($1,310\text{ IQD} = \$1.00\text{ USD}$) via `/api/exchange-rate`.
+* **Sleek Minimalist Symbol-Only Ticker Button**: The header FX trigger has been refined into an ultra-clean, circular glassmorphic transfer symbol button (SVG dual exchange arrows) with an interactive 180° rotation on hover, telemetry tooltip, and zero visual clutter.
 * **Live Micro-Calculator Popover**:
-  * Header currency pill opens an interactive glassmorphic FX calculator popover.
+  * Header currency icon button opens an interactive glassmorphic FX calculator popover.
   * Bidirectional live conversion: typing in USD immediately calculates exact IQD equivalents and vice versa, with zero decimal rounding artifacts.
   * Quick preset buttons: $\$10$, $\$50$, $\$100$, $\$500$, and $\$1,000$.
   * 1-Click transfer shortcut button dispatching pre-filled transfer prompts directly to chat.
@@ -435,6 +436,24 @@ flowchart TD
 ### 20. Tamper-Evident Security Audit Logging & Cryptographic Session Isolation
 * Every financial operation (successful or blocked) is appended atomically to `audit_trail.json` and inserted into the `audit_logs` SQLite table.
 * Distinct browser tabs maintain separate conversation contexts, pending transfers, and disambiguation states via per-tab UUID tokens in `sessionStorage` and `X-Session-Id` headers.
+
+### 21. Precision Transaction Flow Parser & Amount Isolation Engine (Transfer vs. Bills Disambiguation)
+* **Strict Semantic Disambiguation**: Intelligently separates money transfer confirmations (*"أريد أحول 45,000 دينار إلى أم مصطفى"*) from bulk or single utility bill settlements (*"أريد أدفع الفواتير المستحقة"*), preventing cross-classification even when messages contain financial vocabulary from both domains.
+* **Deterministic Amount Isolation**: Prevents the user's available wallet balance (e.g. `3,000,000 د.ع`) from being captured as the transaction amount. The parser strips current balance assertions before isolating the requested transfer sum (`45,000 د.ع`) or total unpaid bill obligations (`150,000 د.ع`).
+* **Contextual Apple Pay Slider Action**: Dynamically labels the confirmation track according to operation type:
+  * Transfers: `اسحب لتأكيد التحويل` (with recipient name and alias).
+  * Bill settlements: `اسحب لتأكيد سداد الفواتير` (with bill count and biller breakdown).
+
+### 22. Multi-Turn Conversational Contact Registration & Full-Directory Grounding
+* **Universal 4-State Registration Pipeline**: Conversational contact addition supports 4 distinct lifecycle states:
+  * **Case A (Both Provided)**: Adds contact atomically if both phone and name exist in utterance.
+  * **Case B (Phone Provided, Name Missing)**: Prompts user in Iraqi dialect for the recipient's name (*"شنو الاسم اللي تريد أحفظ بيه هذا الرقم؟"*).
+  * **Case C (Name Provided, Phone Missing)**: Prompts user for the phone number.
+  * **Case D (General Intent / Neither Provided)**: Catches generic requests (*"اريد اضيف شخص"*, *"ضيف جهة اتصال"*) and guides the user to provide both details.
+* **Multi-Turn Provenance Verification**: Verifies that phone numbers are provided by the user across the current turn, active context, or conversational history, blocking AI-invented phone numbers.
+* **REST API Endpoint (`POST /api/contacts`)**: Exposes programmatic contact addition with phone normalization, duplicate checks, and atomic SQLite WAL mutations.
+* **Interactive Contacts Card**: Formats directory listings into interactive contact cards with monograms and 1-click transfer buttons from standard or space-separated list formats.
+* **System Prompt Grounding**: Injects exact registered contact counts (`CURRENT REGISTERED CONTACTS (7 CONTACTS TOTAL)`) to prevent hallucinated 4-contact truncation.
 
 [▲ Back to Top](#-table-of-contents)
 
@@ -560,6 +579,7 @@ The system is engineered with an active self-healing architecture structured acr
 | `POST` | `/api/chat` | Main conversational reasoning, action execution, and SSE streaming endpoint. | `X-Session-Id`, `X-Idempotency-Key`, `Accept` |
 | `GET` | `/api/db` | Retrieves complete active wallet state (user, balance, contacts, bills). | — |
 | `GET` | `/api/contacts` | Retrieves verified contacts list for companion rail and quick-actions. | — |
+| `POST` | `/api/contacts` | Programmatically creates and saves a new verified contact to SQLite WAL and disk JSON. | — |
 | `GET` | `/api/bills` | Retrieves all pending and paid utility and telecom bills. | — |
 | `GET` | `/api/transactions` | Retrieves recent transaction ledger with totals and metrics. | — |
 | `GET` | `/api/exchange-rate` | Retrieves dynamic exchange rate config for dual-currency widget (1,310 IQD/USD). | — |
@@ -656,6 +676,30 @@ The system is engineered with an active self-healing architecture structured acr
         "phone": "+9647809988776"
       }
     ]
+  }
+  ```
+
+#### 4b. `POST /api/contacts`
+* **Request**:
+  ```json
+  {
+    "name": "مهند",
+    "phone": "+9647805566778",
+    "alias": "مهند (صديق العمل)",
+    "wallet_provider": "VI"
+  }
+  ```
+* **Response (201 Created)**:
+  ```json
+  {
+    "success": true,
+    "contact": {
+      "id": "cnt_2008",
+      "name": "مهند",
+      "phone": "+9647805566778",
+      "alias": "مهند (صديق العمل)",
+      "wallet_provider": "VI"
+    }
   }
   ```
 
@@ -786,7 +830,7 @@ VI/
 │   │   │   ├── 📄 chatController.js    # Conversational intent handling, SSE streaming, and action dispatch
 │   │   │   ├── 📄 walletController.js  # Balances, transactions, and database reset handlers
 │   │   │   ├── 📄 billsController.js   # Utility bills retrieval and management
-│   │   │   ├── 📄 contactsController.js# Verified contacts retrieval
+│   │   │   ├── 📄 contactsController.js# Verified contacts retrieval and programmatic contact creation (addContactHandler)
 │   │   │   ├── 📄 feedbackController.js# User satisfaction feedback (Likes/Dislikes)
 │   │   │   ├── 📄 auditController.js   # Security audit trail retrieval
 │   │   │   └── 📄 ttsController.js     # Neural Arabic voice synthesis handler
@@ -814,7 +858,7 @@ VI/
 │   │       └── 📄 ttsEngine.js         # Text sanitization and neural audio chunking
 │   │
 │   └── 📁 tests/
-│       └── 📄 regression_suite.test.js  # 272-test automated regression and security suite (59 suites)
+│       └── 📄 regression_suite.test.js  # 281-test automated regression and security suite (60 suites)
 │
 ├── 📁 frontend/
 │   ├── 📁 assets/                      # Mirrored UI assets (brand marks and bot icons)
@@ -941,7 +985,7 @@ Run the complete test suite:
 npm test
 ```
 
-### Test Coverage Summary: 272 Tests Across 59 Suites (100% Pass Rate)
+### Test Coverage Summary: 281 Tests Across 60 Suites (100% Pass Rate)
 
 | Task Suite / Category | Tested Capabilities & System Invariants | Suite Count | Test Count | Status |
 | :--- | :--- | :---: | :---: | :---: |
@@ -971,12 +1015,13 @@ npm test
 | **Task 24: Dual-Currency Exchange Rate Pill & Live Micro-Calculator Popover** | Bidirectional real-time conversion (USD ⇄ IQD), currency preset chips, popover collision detection and ARIA compliance, and direct transfer dispatch. | 1 Suite | 6 Tests | ✅ **Passed** |
 | **Category 25: Fintech Pulse Dual-Perspective Analytics (Expenses vs Obligations)** | Dual-perspective toggle (المصروف الفعلي vs الالتزامات المستحقة), amber warning gradient (#f59e0b), 1-tap bulk settlement CTA (*"سدّد كل الفواتير دفعة وحدة"*), and authentic Iraqi financial advice engine. | 1 Suite | 6 Tests | ✅ **Passed** |
 | **Category 26: Procedural Web Audio API Haptic Sound Synthesizer (ViHaptics)** | Pure Web Audio API synthesis without external files: ascending major chord success chime (C5-E5-G5-C6-C7), 8ms frequency-drop click (2200Hz -> 1200Hz), 130ms dual-tone error thud (150Hz & 110Hz), and persistent mute toggle. | 1 Suite | 6 Tests | ✅ **Passed** |
-| **Category 27: Luxury Swipe-to-Confirm Physics (0.88 Threshold & High-Value Transfers)** | Exact 88% travel threshold (`SLIDE_COMPLETION_THRESHOLD = 0.88`), high-value transfer detection (> 100,000 IQD) with glowing security badge, RTL displacement physics, real-time shimmer text fading, and snap-to-locked completion. | 1 Suite | 7 Tests | ✅ **Passed** |
+| **Category 27: Luxury Swipe-to-Confirm Physics (0.88 Threshold & High-Value Transfers)** | Exact 88% travel threshold (`SLIDE_COMPLETION_THRESHOLD = 0.88`), high-value transfer detection (> 100,000 IQD) with glowing security badge, RTL displacement physics, real-time shimmer text fading, snap-to-locked completion, and bulk bill slider track rendering. | 1 Suite | 8 Tests | ✅ **Passed** |
 | **Category 28: Contextual Iraqi Fintech Network Badges & Activity Micro-Timestamps** | Unified VI Pay (*فاي باي*) network badges, luminous status dots, relative Iraqi timestamps (*"آخر تحويل: اليوم"*, *"آخر تحويل: البارحة"*, *"قبل 4 أيام"*), and atomic bulk bill payment idempotency. | 1 Suite | 9 Tests | ✅ **Passed** |
 | **Category 29: Continuous Horizontal Chip Wheel & Balance Ceiling Guard** | 7 preset banknote denominations (5K to 500K IQD + USD valuations), continuous scroll-snap panning wheel, and dynamic balance ceiling validator with soft amber alert and submit disablement. | 1 Suite | 5 Tests | ✅ **Passed** |
 | **Category 30: State-of-the-Art Circular Ripple View Transition** | Coordinate-anchored circular clip-path transition (`--ripple-x`, `--ripple-y`, `--ripple-r`), 380ms `cubic-bezier(0.16, 1, 0.3, 1)`, pseudo-elements styling, and reduced-motion compliance. | 1 Suite | 4 Tests | ✅ **Passed** |
 | **Category 31: Interactive Quick Transfer Contact Picker & Streamlined Actions** | In-modal recipient switching via dropdown chevron picker, dynamic initial monogram update, clean modal header with X button removed, and clean submit button (*"إرسال عبر فاي"*). | 1 Suite | 4 Tests | ✅ **Passed** |
-| **Total Test Suite** | **Comprehensive End-to-End System, Security, Persistence, and UI Verification** | **59 Suites** | **272 Tests** | **✅ 100% Pass** |
+| **Category 32: Precision Transaction Flow Parser & Disambiguation (Transfer vs Bills & Amount Extraction)** | Precision parsing in `parseFintechTransactionData` (distinguishing transfer amounts from bulk bill totals and stripping current wallet balances), single vs bulk bill disambiguation, space-separated contacts list parsing into interactive cards, and system prompt directory grounding with full registered count. | 1 Suite | 5 Tests | ✅ **Passed** |
+| **Total Test Suite** | **Comprehensive End-to-End System, Security, Persistence, and UI Verification** | **60 Suites** | **281 Tests** | **✅ 100% Pass** |
 
 [▲ Back to Top](#-table-of-contents)
 
@@ -999,8 +1044,11 @@ npm test
 | **Single Bill Payment** | *"ادفع فاتورة الإنترنت"* | Identifies unpaid Fiber/4G bill, stages payment confirmation, and settles on approval or slide. |
 | **Slang Bill Debt Inquiry** | *"شنو القوائم اللي مكسورة علية؟"* | Semantic classifier maps to `BILL_INQUIRY`; lists all pending unpaid utility bills. |
 | **Bulk Bill Payment** | *"سدد كل الفواتير دفعة وحدة"* | Aggregates all unpaid utilities, validates combined sum against balance, and executes atomically in SQLite with unique transaction IDs. |
+| **Precision Flow Disambiguation** | *"أريد أحول 45 ألف لأم مصطفى"* vs *"أريد أدفع الفواتير"* | Disambiguates transfer from bulk bills; isolates exact transfer sum (45,000 IQD) or bill total (150,000 IQD) without wallet balance interference. |
+| **Conversational Contact Addition** | *"اريد اضيف شخص"* / *"ضيف جهة اتصال"* | Guides user through multi-turn detail acquisition, verifies provenance, and persists to SQLite WAL and disk. |
 | **Contact Registration** | *"احفظ رقم 07804455667 باسم علي"* | Validates phone provenance against user input, adds contact to SQLite and disk, and updates companion rail in real-time. |
 | **Contacts List Inquiry** | *"منو مسجل يمي بالدفتر؟"* | Semantic classifier routes to `CONTACTS_INQUIRY`; renders list of saved friends with VI Pay badges and activity timestamps. |
+| **Directory Follow-Up** | *"فقط؟"* | Recognizes inquiry context and replies conversationally without reciting the full introductory welcome speech. |
 
 [▲ Back to Top](#-table-of-contents)
 
@@ -1166,6 +1214,8 @@ Each tab generates a distinct session UUID stored in `sessionStorage` and transm
 - [x] Biometric ambient glow & audio waveform visualizer.
 - [x] Desktop collapsible companion rail (Quick Wallet) with real-time reactive sync.
 - [x] Dual-currency toggle and real-time converter widget with live FX calculator popover.
+- [x] Precision transaction flow parser and balance/amount isolation engine (Transfer vs. Bills).
+- [x] Multi-turn conversational contact registration pipeline with full-directory SQLite grounding.
 - [x] Tamper-evident security audit logging layer (`audit_trail.json` & `audit_logs` table).
 - [x] Per-tab cryptographic session isolation via `X-Session-Id` with disk cache persistence.
 - [ ] QR code scanning for in-store merchant POS payments.

@@ -88,5 +88,36 @@
       "status": "unpaid"
     }
   ],
-  "recent_transactions": []
+  "recent_transactions": [
+    {
+      "id": "trx_1793588431640_3_c3flq",
+      "type": "BILL_PAYMENT",
+      "recipient": "فاتورة خط الهاتف المحمول",
+      "phone": "07801234567",
+      "amount": 25000,
+      "currency": "IQD",
+      "status": "SUCCESS",
+      "date": "2026-11-02"
+    },
+    {
+      "id": "trx_1793588431640_2_do87b",
+      "type": "BILL_PAYMENT",
+      "recipient": "فاتورة شبكة الإنترنت المنزلي (Fiber/4G)",
+      "phone": "NET-884920",
+      "amount": 40000,
+      "currency": "IQD",
+      "status": "SUCCESS",
+      "date": "2026-11-02"
+    },
+    {
+      "id": "trx_1793588431640_1_1d34t",
+      "type": "BILL_PAYMENT",
+      "recipient": "كهرباء الكرخ",
+      "phone": "9812450012",
+      "amount": 50000,
+      "currency": "IQD",
+      "status": "SUCCESS",
+      "date": "2026-11-02"
+    }
+  ]
 }

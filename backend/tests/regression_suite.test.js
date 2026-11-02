@@ -1155,6 +1155,89 @@ describe('VI Wallet Regression Suite - Task 2', () => {
             assert.ok(saved);
             assert.equal(saved.phone, '+9647899887766');
         });
+
+        test('Adding a person with colloquial "ضيف حيدر 07822334455" saves to database without transfer hijack', async () => {
+            const testSessionId = `test_direct_add_${Date.now()}`;
+            const initialCount = readDatabase().contacts.length;
+
+            const res = await fetch(`${baseUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-session-id': testSessionId },
+                body: JSON.stringify({ message: 'ضيف حيدر 07822334455' })
+            });
+            const data = await res.json();
+            assert.match(data.response, /تم حفظ "حيدر" برقم \(07822334455\)/);
+            assert.doesNotMatch(data.response, /شكد المبلغ/);
+            assert.doesNotMatch(data.response, /تم تحديد المستلم/);
+
+            const contacts = readDatabase().contacts;
+            assert.equal(contacts.length, initialCount + 1);
+            const saved = contacts.find(c => c.name === 'حيدر');
+            assert.ok(saved);
+            assert.equal(saved.phone, '+9647822334455');
+        });
+
+        test('Multi-turn add starting with "اريد اضيف شخص" prompts for details, saves when provided, and never hijacks to transfer', async () => {
+            const testSessionId = `test_multiturn_person_${Date.now()}`;
+            const initialCount = readDatabase().contacts.length;
+
+            // Turn 1: "اريد اضيف شخص"
+            const res1 = await fetch(`${baseUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-session-id': testSessionId },
+                body: JSON.stringify({ message: 'اريد اضيف شخص' })
+            });
+            const data1 = await res1.json();
+            assert.match(data1.response, /يرجى تزويدي برقم الهاتف/);
+            assert.doesNotMatch(data1.response, /شكد المبلغ/);
+
+            // Turn 2: User provides name and phone
+            const res2 = await fetch(`${baseUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-session-id': testSessionId },
+                body: JSON.stringify({ message: 'فاضل 07844332211' })
+            });
+            const data2 = await res2.json();
+            assert.match(data2.response, /تم حفظ "فاضل" برقم \(07844332211\)/);
+            assert.doesNotMatch(data2.response, /شكد المبلغ/);
+
+            const contacts = readDatabase().contacts;
+            assert.equal(contacts.length, initialCount + 1);
+            const saved = contacts.find(c => c.name === 'فاضل');
+            assert.ok(saved);
+            assert.equal(saved.phone, '+9647844332211');
+        });
+
+        test('Multi-turn add starting with name only "اريد اضيف شخص اسمه وسام" prompts for phone, then saves to database', async () => {
+            const testSessionId = `test_name_first_${Date.now()}`;
+            const initialCount = readDatabase().contacts.length;
+
+            // Turn 1: name only
+            const res1 = await fetch(`${baseUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-session-id': testSessionId },
+                body: JSON.stringify({ message: 'اريد اضيف شخص اسمه وسام' })
+            });
+            const data1 = await res1.json();
+            assert.match(data1.response, /يرجى تزويدي برقم الهاتف الخاص بـ "وسام"/);
+            assert.doesNotMatch(data1.response, /شكد المبلغ/);
+
+            // Turn 2: phone only
+            const res2 = await fetch(`${baseUrl}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-session-id': testSessionId },
+                body: JSON.stringify({ message: '07877665544' })
+            });
+            const data2 = await res2.json();
+            assert.match(data2.response, /تم حفظ "وسام" برقم \(07877665544\)/);
+            assert.doesNotMatch(data2.response, /شكد المبلغ/);
+
+            const contacts = readDatabase().contacts;
+            assert.equal(contacts.length, initialCount + 1);
+            const saved = contacts.find(c => c.name === 'وسام');
+            assert.ok(saved);
+            assert.equal(saved.phone, '+9647877665544');
+        });
     });
 });
 
@@ -2908,22 +2991,36 @@ describe('VI Wallet Regression Suite - Task 12: Desktop Workstation Layout & Col
 
     let serverInstance = null;
     before((_, done) => {
+        let called = false;
+        const safeDone = () => {
+            if (!called) {
+                called = true;
+                done();
+            }
+        };
         try {
-            serverInstance = app.listen(3000, () => done());
+            serverInstance = app.listen(3000, () => safeDone());
             serverInstance.on('error', () => {
                 // If port 3000 is already in use by a live server, continue gracefully
-                done();
+                safeDone();
             });
         } catch (_) {
-            done();
+            safeDone();
         }
     });
 
     after((_, done) => {
+        let called = false;
+        const safeDone = () => {
+            if (!called) {
+                called = true;
+                done();
+            }
+        };
         if (serverInstance && serverInstance.listening) {
-            serverInstance.close(() => done());
+            serverInstance.close(() => safeDone());
         } else {
-            done();
+            safeDone();
         }
     });
 
@@ -5468,6 +5565,8 @@ describe('VI Wallet Regression Suite - Task 24: Dual-Currency Exchange Rate Pill
 
         // CSS Architecture tests
         assert.ok(css.includes('.header-fx-ticker-btn'), 'CSS must style .header-fx-ticker-btn');
+        assert.ok(html.includes('class="fx-ticker-icon"'), 'Header FX button must include .fx-ticker-icon SVG icon');
+        assert.ok(css.includes('.header-fx-ticker-btn .fx-ticker-text') && css.includes('display: none !important;'), 'CSS must keep text hidden for symbol-only button');
         assert.ok(css.includes('.fx-ticker-pulse'), 'CSS must define .fx-ticker-pulse indicator');
         assert.ok(css.includes('@keyframes fxTickerPulse'), 'CSS must animate live telemetry pulse');
         assert.ok(css.includes('.fx-calculator-popover'), 'CSS must style .fx-calculator-popover');
@@ -6412,6 +6511,15 @@ describe('VI Wallet Regression Suite - Category 27: Luxury Swipe-to-Confirm Slid
         assert.ok(css.includes('.confirm-card.high-value-card'), 'Must style high-value confirmation card');
         assert.ok(css.includes('touch-action: none'), 'Track & thumb must have touch-action: none');
     });
+
+    test('8. formatFintechMessage renders Apple Pay slide-to-confirm-track for bulk bill settlement confirmations', () => {
+        const msg = 'تدلل عيوني! المجموع الكلي للفواتير المستحقة هو **150,000 د.ع** (فاتورة الهاتف 25,000 ، الإنترنت 40,000 ، كهرباء الكرخ 50,000 ، ومياه البصرة 35,000).\n\nمتأكد تريد أسدد كل الفواتير هسة؟ (يرجى الرد بـ **نعم** للتأكيد أو **إلغاء** للرجوع).';
+        const formatted = frontend.formatFintechMessage(msg, 'ai');
+        assert.ok(formatted.includes('confirm-card'), 'Must render confirm-card');
+        assert.ok(formatted.includes('slide-to-confirm-track'), 'Must render slide-to-confirm-track slider');
+        assert.ok(formatted.includes('اسحب لتأكيد سداد الفواتير'), 'Slider track must have bill payment label');
+        assert.ok(formatted.includes('high-value-card'), 'Must have high-value-card since 150,000 > 100,000');
+    });
 });
 
 describe('VI Wallet Regression Suite - Category 28: Contextual Iraqi Fintech Network Badges & Recent Activity Micro-Timestamps', () => {
@@ -7241,6 +7349,76 @@ describe('VI Wallet Regression Suite - Category 31: Interactive Quick Transfer C
         assert.ok(css.includes('.qt-picker-item.is-selected'), 'Must style selected picker item');
     });
 });
+
+describe('VI Wallet Regression Suite - Category 32: Precision Transaction Flow Parser & Disambiguation (Transfer vs Bills & Amount Extraction)', () => {
+    const frontend = require('../../frontend/script.js');
+
+    test('1. parseFintechTransactionData extracts 150,000 IQD for bulk bills confirmation (NOT the 3,000,000 wallet balance)', () => {
+        const text = 'تدلل عيوني! المجموع الكلي للفواتير المستحقة هو **150,000 د.ع** (فاتورة الهاتف 25,000 د.ع ، الإنترنت 40,000 د.ع ، كهرباء الكرخ 50,000 د.ع ، ومياه البصرة 35,000 د.ع).\nمتأكد تريد أسدد كل الفواتير هسة؟ (يرجى الرد بـ **نعم** للتأكيد أو **إلغاء** للرجوع).';
+        const parsed = frontend.parseFintechTransactionData(text, true, false);
+
+        assert.strictEqual(parsed.isBill, true, 'Must identify transaction as bill settlement');
+        assert.strictEqual(parsed.isAllBills, true, 'Must identify bulk settlement');
+        assert.strictEqual(parsed.recipient, 'تسديد كافة الفواتير المستحقة');
+        assert.strictEqual(parsed.amount, '150,000 د.ع', 'Must extract sum of bills (150,000 د.ع), NEVER wallet balance');
+    });
+
+    test('2. parseFintechTransactionData extracts 45,000 IQD and recipient "أم مصطفى" for transfer (NOT bill payment or 3,000,000 wallet balance)', () => {
+        const text = 'يا هلا عيوني! نورت محفظتك ويا فاي... رصيدك الحالي بمحفظتك هو: 3,000,000 د.ع. تفاصيل التحويل:\n• المستلم: أم مصطفى (الوالدة)\n• رقم الهاتف: +9647803344556\n• المبلغ المطلوب: 45,000 د.ع\n• الرصيد بعد التحويل: 2,955,000 د.ع\n\nمتأكد تريد أحول؟ (يرجى الرد بـ نعم أو إلغاء)';
+        const parsed = frontend.parseFintechTransactionData(text, true, false);
+
+        assert.strictEqual(parsed.isBill, false, 'Must NOT classify money transfer as bill payment');
+        assert.strictEqual(parsed.recipient, 'أم مصطفى', 'Must extract recipient name');
+        assert.strictEqual(parsed.subDetail, 'الوالدة', 'Must extract relation or alias');
+        assert.strictEqual(parsed.amount, '45,000 د.ع', 'Must extract transfer amount (45,000 د.ع), NEVER wallet balance');
+        assert.strictEqual(parsed.balanceAfter, '2,955,000 د.ع');
+
+        const card = frontend.renderFintechConfirmationCard(parsed);
+        assert.ok(card.includes('اسحب لتأكيد التحويل'), 'Slider must say "اسحب لتأكيد التحويل", NOT "اسحب لتأكيد سداد الفواتير"');
+        assert.ok(!card.includes('high-value-security-badge'), '45,000 IQD is <= 100,000 IQD and must NOT trigger high-value badge');
+    });
+
+    test('3. parseFintechTransactionData parses single bill settlement accurately', () => {
+        const text = 'تفاصيل تسديد الفاتورة:\n• الفاتورة: شبكة الإنترنت المنزلي (NET-004920)\n• المبلغ المطلوب: 40,000 د.ع\n• الرصيد بعد الدفع: 2,810,000 د.ع\n\nمتأكد تريد أسدد الفاتورة؟ (يرجى الرد بـ نعم للتأكيد أو إلغاء للتراجع).';
+        const parsed = frontend.parseFintechTransactionData(text, true, false);
+
+        assert.strictEqual(parsed.isBill, true);
+        assert.strictEqual(parsed.isAllBills, false);
+        assert.strictEqual(parsed.recipient, 'شبكة الإنترنت المنزلي');
+        assert.strictEqual(parsed.phoneOrAccount, 'NET-004920');
+        assert.strictEqual(parsed.amount, '40,000 د.ع');
+        assert.strictEqual(parsed.balanceAfter, '2,810,000 د.ع');
+
+        const card = frontend.renderFintechConfirmationCard(parsed);
+        assert.ok(card.includes('اسحب لتأكيد سداد الفواتير'), 'Slider must say "اسحب لتأكيد سداد الفواتير"');
+    });
+
+    test('4. parseContactsListData parses "قائمة اتصالاتك" and space-separated numbering into interactive card', () => {
+        const textFromScreenshot = 'حالياً، لديك 4 أشخاص مسجلين في قائمة اتصالاتك:\n1 أحمد كمال (صديق الجامعة) - +9647801122334\n2 أحمد جاسم (الفيترجي / المصلح) - +9647802233445\n3 أم مصطفى (الوالدة) - +9647803344556\n4 سيف الدين - +9647804455667\n\nيمكنك دفع الأموال لهم بسهولة من خلال محفظتك الرقمية.';
+        const parsed = frontend.parseContactsListData(textFromScreenshot);
+
+        assert.ok(parsed, 'Must parse contacts list from screenshot format');
+        assert.strictEqual(parsed.contacts.length, 4);
+        assert.strictEqual(parsed.contacts[0].name, 'أحمد كمال');
+        assert.strictEqual(parsed.contacts[0].phone, '+9647801122334');
+
+        const cardHtml = frontend.renderFintechContactsCard(parsed);
+        assert.ok(cardHtml.includes('contacts-card'), 'Must render luxury contacts card');
+        assert.ok(cardHtml.includes('contact-quick-transfer-btn'), 'Must include 1-click transfer buttons');
+    });
+
+    test('5. buildSystemPrompt explicitly embeds CURRENT REGISTERED CONTACTS count and all contacts', () => {
+        const { buildSystemPrompt } = require('../src/prompts/systemPrompt');
+        const { readDatabase } = require('../src/services/walletService');
+        const db = readDatabase();
+        const prompt = buildSystemPrompt({ db, proactiveDigest: 'test', dbData: '{}' });
+
+        assert.ok(prompt.includes(`CURRENT REGISTERED CONTACTS (${db.contacts.length} CONTACTS TOTAL)`), 'Prompt must state exact total count of contacts');
+        assert.ok(prompt.includes('YOU MUST LIST ALL'), 'Prompt must instruct model to list all contacts without truncating');
+        assert.ok(prompt.includes('فقط؟'), 'Prompt must instruct model on how to handle "فقط؟" follow-up queries');
+    });
+});
+
 
 
 

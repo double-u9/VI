@@ -18,7 +18,7 @@ const { chatRateLimiter, ttsRateLimiter, createTokenBucketRateLimiter, TokenBuck
 const { handleChat } = require('./src/controllers/chatController');
 const { getExchangeRateHandler, getDbHandler, getTransactionsHandler, resetHandler } = require('./src/controllers/walletController');
 const { getBillsHandler } = require('./src/controllers/billsController');
-const { getContactsHandler } = require('./src/controllers/contactsController');
+const { getContactsHandler, addContactHandler } = require('./src/controllers/contactsController');
 const { submitFeedbackHandler, getLikesHandler, getDislikesHandler } = require('./src/controllers/feedbackController');
 const { getAuditLogsHandler } = require('./src/controllers/auditController');
 const { handleTts } = require('./src/controllers/ttsController');
@@ -110,6 +110,7 @@ app.get('/api/exchange-rate', getExchangeRateHandler);
 app.get('/api/db', getDbHandler);
 app.get('/api/transactions', getTransactionsHandler);
 app.get('/api/contacts', getContactsHandler);
+app.post('/api/contacts', addContactHandler);
 app.get('/api/bills', getBillsHandler);
 app.post('/api/reset', resetHandler);
 app.post('/api/feedback', submitFeedbackHandler);
