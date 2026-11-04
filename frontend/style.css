@@ -1387,6 +1387,14 @@ button,
   -webkit-backdrop-filter: blur(32px) saturate(210%);
 }
 
+.msg-conversational-body {
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: var(--text-main);
+  margin-bottom: 0.85rem;
+  word-break: break-word;
+}
+
 .msg-timestamp {
   font-size: 0.72rem;
   color: var(--text-muted);

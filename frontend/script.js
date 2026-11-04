@@ -456,7 +456,7 @@ function stopWaveVisualizer() {
     micStream = null;
   }
   if (audioCtx && audioCtx.state !== 'closed') {
-    audioCtx.close().catch(() => {});
+    audioCtx.close().catch(() => { });
     audioCtx = null;
   }
   if (waveHistory && waveHistory.fill) {
@@ -579,7 +579,7 @@ function setupRecognitionSession() {
       if (isVoiceActive && !explicitlyStopped) {
         try {
           recognition.start();
-        } catch (err) {}
+        } catch (err) { }
       }
     };
 
@@ -661,7 +661,7 @@ function finishVoiceRecording(autoSend = false) {
     recognition.onend = null;
     try {
       recognition.abort();
-    } catch (err) {}
+    } catch (err) { }
     recognition = null;
   }
 
@@ -786,10 +786,10 @@ function initSpeechRecognition() {
  */
 function getBotFallbackAvatarUri(theme) {
   const isLight = theme === 'light';
-  const bgGradient = isLight 
+  const bgGradient = isLight
     ? '<defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#9333ea"/><stop offset="100%" stop-color="#6b21a8"/></linearGradient></defs>'
     : '<defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#047857"/></linearGradient></defs>';
-  
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${bgGradient}<rect width="100" height="100" rx="50" fill="url(#g)"/><circle cx="50" cy="27" r="4" fill="white"/><rect x="48" y="27" width="4" height="9" fill="white"/><rect x="23" y="36" width="54" height="40" rx="17" fill="white"/><rect x="18" y="47" width="8" height="18" rx="4" fill="white"/><rect x="74" y="47" width="8" height="18" rx="4" fill="white"/><rect x="29" y="42" width="42" height="28" rx="11" fill="url(#g)"/><ellipse cx="42" cy="56" rx="4" ry="5.5" fill="white"/><ellipse cx="58" cy="56" rx="4" ry="5.5" fill="white"/></svg>`;
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 }
@@ -813,7 +813,7 @@ function createBotAvatarElement() {
   avatarEl.classList.add('msg-avatar');
   const imgEl = document.createElement('img');
   imgEl.classList.add('avatar-img');
-  
+
   const currentTheme = (document.documentElement && typeof document.documentElement.getAttribute === 'function')
     ? (document.documentElement.getAttribute('data-theme') || 'light')
     : 'light';
@@ -823,7 +823,7 @@ function createBotAvatarElement() {
   imgEl.decoding = 'async';
 
   // Multi-tier resilience: if network or relative path has any issue, failover gracefully
-  imgEl.onerror = function() {
+  imgEl.onerror = function () {
     const theme = (typeof document !== 'undefined' && document.documentElement && typeof document.documentElement.getAttribute === 'function')
       ? (document.documentElement.getAttribute('data-theme') || 'light')
       : 'light';
@@ -878,7 +878,7 @@ function applyTheme(theme) {
   document.querySelectorAll('.avatar-img').forEach(img => {
     delete img.dataset.retriedRoot;
     delete img.dataset.retriedFrontend;
-    img.onerror = function() {
+    img.onerror = function () {
       this.onerror = null;
       this.src = getBotFallbackAvatarUri(theme);
     };
@@ -913,12 +913,12 @@ function toggleThemeWithRipple(targetTheme, triggerBtn) {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('fintech_theme', targetTheme);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
-  const prefersReducedMotion = typeof window !== 'undefined' && 
-                               window.matchMedia && 
-                               window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const prefersReducedMotion = typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Gracefully fallback to instant theme switch if View Transitions API is not supported or reduced motion is preferred
   if (typeof document === 'undefined' || !document.startViewTransition || prefersReducedMotion) {
@@ -995,7 +995,7 @@ function initThemeToggle() {
     if (typeof localStorage !== 'undefined') {
       savedTheme = localStorage.getItem('fintech_theme') || 'dark';
     }
-  } catch (e) {}
+  } catch (e) { }
   applyTheme(savedTheme);
 
   if (themeToggleBtn) {
@@ -1031,7 +1031,7 @@ try {
       activeCurrency = saved;
     }
   }
-} catch (_) {}
+} catch (_) { }
 
 /**
  * Currency conversion mathematical helpers
@@ -1331,8 +1331,15 @@ function updateQuickTransferInputVal() {
   if (unitSpan) {
     unitSpan.textContent = activeCurrency === 'USD' ? '$' : 'د.ع';
   }
-  const rawDigits = inputEl.value.replace(/[^\d.]/g, '');
-  const num = parseFloat(rawDigits) || 0;
+  let rawDigits = inputEl.value.replace(/[^\d.]/g, '');
+  let num = parseFloat(rawDigits) || 0;
+
+  // Sanity check: If in USD mode but input contains unconverted IQD amount (e.g. 50,000 from default HTML)
+  if (activeCurrency === 'USD' && num >= 10000) {
+    num = Number((num / iqdPerUsdRate).toFixed(2));
+    inputEl.value = num.toFixed(2);
+  }
+
   const currentIqd = (activeCurrency === 'USD')
     ? Math.round(num * iqdPerUsdRate)
     : Math.round(num);
@@ -1365,7 +1372,15 @@ function setActiveCurrency(curr, animate = true) {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('vi_active_currency', curr);
     }
-  } catch (_) {}
+  } catch (_) { }
+
+  // Synchronize quick transfer modal input value immediately to the new currency
+  const inputEl = (typeof document !== 'undefined') ? document.getElementById('quick-transfer-amount-input') : null;
+  if (inputEl) {
+    inputEl.value = (activeCurrency === 'USD')
+      ? (currentTransferAmount / iqdPerUsdRate).toFixed(2)
+      : Number(currentTransferAmount).toLocaleString('en-US');
+  }
 
   renderWalletBalance(animate);
   updateCurrencyTogglePills();
@@ -1380,7 +1395,7 @@ function setActiveCurrency(curr, animate = true) {
       window.dispatchEvent(new CustomEvent('currency-changed', {
         detail: { currency: activeCurrency, rate: iqdPerUsdRate }
       }));
-    } catch (_) {}
+    } catch (_) { }
   }
 }
 
@@ -1447,13 +1462,15 @@ function initCurrencySwitch() {
     qtToggle.addEventListener('click', (e) => {
       e.preventDefault();
       toggleActiveCurrency();
-      const inputEl = document.getElementById('quick-transfer-amount-input');
-      if (inputEl) {
-        inputEl.value = (activeCurrency === 'USD')
-          ? (currentTransferAmount / iqdPerUsdRate).toFixed(2)
-          : Number(currentTransferAmount).toLocaleString('en-US');
-      }
     });
+  }
+
+  const inputEl = document.getElementById('quick-transfer-amount-input');
+  if (inputEl && activeCurrency === 'USD') {
+    const rawVal = parseFloat(inputEl.value.replace(/[^\d.]/g, '')) || 0;
+    if (rawVal >= 10000) {
+      inputEl.value = (rawVal / iqdPerUsdRate).toFixed(2);
+    }
   }
 
   updateCurrencyTogglePills();
@@ -2315,7 +2332,7 @@ try {
       }
     }
   }
-} catch (e) {}
+} catch (e) { }
 
 // User-configurable voice preference: 'cloud-google' (default high-fidelity) or local browser voice name
 let selectedVoiceId = 'cloud-google';
@@ -2326,7 +2343,7 @@ try {
       selectedVoiceId = savedVoice;
     }
   }
-} catch (e) {}
+} catch (e) { }
 
 let currentTtsAudio = null;
 let activeTtsBtn = null;
@@ -2509,7 +2526,7 @@ function populateVoiceSelectDropdown() {
           if (typeof window !== 'undefined' && window.localStorage) {
             window.localStorage.setItem('vi_tts_voice', selectedVoiceId);
           }
-        } catch (err) {}
+        } catch (err) { }
 
         if (voiceSelect) {
           voiceSelect.value = selectedVoiceId;
@@ -2594,7 +2611,7 @@ function getTtsAudioContext() {
   }
 
   if (ttsAudioContext.state === 'suspended') {
-    ttsAudioContext.resume().catch(() => {});
+    ttsAudioContext.resume().catch(() => { });
   }
 
   return ttsAudioContext;
@@ -2660,14 +2677,14 @@ function stopTtsAudioVisualizer() {
   if (activeTtsSourceNode) {
     try {
       activeTtsSourceNode.disconnect();
-    } catch (e) {}
+    } catch (e) { }
     activeTtsSourceNode = null;
   }
 
   if (activeTtsAnalyserNode) {
     try {
       activeTtsAnalyserNode.disconnect();
-    } catch (e) {}
+    } catch (e) { }
     activeTtsAnalyserNode = null;
   }
 
@@ -2807,19 +2824,19 @@ function stopSpeaking() {
   if (ttsAbortController) {
     try {
       ttsAbortController.abort();
-    } catch (e) {}
+    } catch (e) { }
     ttsAbortController = null;
   }
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
-    } catch (e) {}
+    } catch (e) { }
   }
   if (currentTtsAudio) {
     try {
       currentTtsAudio.pause();
       currentTtsAudio.currentTime = 0;
-    } catch (e) {}
+    } catch (e) { }
     currentTtsAudio = null;
   }
   if (activeTtsBtn) {
@@ -3049,7 +3066,7 @@ function initTtsEngine() {
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem('vi_tts_enabled', isTtsEnabled ? 'true' : 'false');
       }
-    } catch (err) {}
+    } catch (err) { }
 
     if (!isTtsEnabled) {
       stopSpeaking();
@@ -3102,7 +3119,7 @@ function initTtsEngine() {
           if (typeof window !== 'undefined' && window.localStorage) {
             window.localStorage.setItem('vi_tts_speed', newSpeed.toString());
           }
-        } catch (err) {}
+        } catch (err) { }
 
         if (currentTtsAudio) {
           currentTtsAudio.playbackRate = currentTtsSpeed;
@@ -3151,7 +3168,7 @@ function initTtsEngine() {
         if (typeof window !== 'undefined' && window.localStorage) {
           window.localStorage.setItem('vi_tts_voice', selectedVoiceId);
         }
-      } catch (err) {}
+      } catch (err) { }
     });
   }
 
@@ -3208,9 +3225,11 @@ function initFintechActionButtons() {
     const disambigBtn = event.target && event.target.closest ? event.target.closest('.disambiguation-option-btn') : null;
     if (disambigBtn) {
       event.preventDefault();
-      const choice = disambigBtn.getAttribute('data-choice');
-      if (choice && typeof handleFormSubmit === 'function') {
-        handleFormSubmit(choice);
+      const choice = disambigBtn.getAttribute('data-choice') || disambigBtn.getAttribute('data-choice-number');
+      const name = disambigBtn.getAttribute('data-name');
+      const textToSend = choice || name;
+      if (textToSend && typeof handleFormSubmit === 'function') {
+        handleFormSubmit(textToSend);
       }
       return;
     }
@@ -3283,7 +3302,7 @@ const SLIDE_COMPLETION_THRESHOLD = 0.88;
 function parseAmountValue(amountStr) {
   if (!amountStr || typeof amountStr !== 'string') return 0;
   // Convert Eastern Arabic numerals (٠-٩) to Western (0-9)
-  const arabicNumerals = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+  const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
   let normalized = amountStr;
   arabicNumerals.forEach((d, i) => {
     normalized = normalized.split(d).join(i.toString());
@@ -3327,7 +3346,7 @@ function getEventClientX(e) {
 function startSlideDrag(e) {
   if (activeSlider) return;
 
-  const track = (e.target && typeof e.target.closest === 'function') 
+  const track = (e.target && typeof e.target.closest === 'function')
     ? (e.target.classList && e.target.classList.contains && e.target.classList.contains('slide-to-confirm-track') ? e.target : e.target.closest('.slide-to-confirm-track'))
     : (e.target || null);
   if (!track) return;
@@ -3356,8 +3375,8 @@ function startSlideDrag(e) {
     actionsBar.classList.add('is-slider-active');
   }
 
-  const trackRect = (typeof track.getBoundingClientRect === 'function') 
-    ? track.getBoundingClientRect() 
+  const trackRect = (typeof track.getBoundingClientRect === 'function')
+    ? track.getBoundingClientRect()
     : { width: 280, left: 0, right: 280 };
   const fullWidth = (actionsBar && actionsBar.clientWidth) ? actionsBar.clientWidth : (trackRect.width || 280);
   const thumbWidth = thumb.offsetWidth || 40;
@@ -3393,7 +3412,7 @@ function startSlideDrag(e) {
   track.classList.add('is-dragging');
 
   if (e.pointerId != null && typeof track.setPointerCapture === 'function') {
-    try { track.setPointerCapture(e.pointerId); } catch (_) {}
+    try { track.setPointerCapture(e.pointerId); } catch (_) { }
   }
 }
 
@@ -3401,7 +3420,7 @@ function onSlideDragMove(e) {
   if (!activeSlider || !activeSlider.isDragging || activeSlider.completed) return;
 
   if (e.cancelable) {
-    try { e.preventDefault(); } catch (_) {}
+    try { e.preventDefault(); } catch (_) { }
   }
 
   // Dynamically update maxTravel if track width expanded when cancel button collapsed
@@ -3411,8 +3430,8 @@ function onSlideDragMove(e) {
   }
 
   const clientX = getEventClientX(e);
-  const rawDelta = activeSlider.isRtl 
-    ? (activeSlider.startX - clientX) 
+  const rawDelta = activeSlider.isRtl
+    ? (activeSlider.startX - clientX)
     : (clientX - activeSlider.startX);
   const clampedDelta = Math.max(0, Math.min(activeSlider.maxTravel, rawDelta));
   const progress = activeSlider.maxTravel > 0 ? (clampedDelta / activeSlider.maxTravel) : 0;
@@ -3439,7 +3458,7 @@ function onSlideDragMove(e) {
   if (progress >= SLIDE_COMPLETION_THRESHOLD && !activeSlider.hasHapticTick) {
     activeSlider.hasHapticTick = true;
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      try { navigator.vibrate(10); } catch (_) {}
+      try { navigator.vibrate(10); } catch (_) { }
     }
     activeSlider.thumb.classList.add('ready-to-snap');
   } else if (progress < SLIDE_COMPLETION_THRESHOLD && activeSlider.hasHapticTick) {
@@ -3452,8 +3471,8 @@ function onSlideDragEnd(e) {
   if (!activeSlider || !activeSlider.isDragging || activeSlider.completed) return;
 
   const clientX = getEventClientX(e);
-  const rawDelta = activeSlider.isRtl 
-    ? (activeSlider.startX - clientX) 
+  const rawDelta = activeSlider.isRtl
+    ? (activeSlider.startX - clientX)
     : (clientX - activeSlider.startX);
   const clampedDelta = Math.max(0, Math.min(activeSlider.maxTravel, rawDelta));
   const progress = activeSlider.maxTravel > 0 ? (clampedDelta / activeSlider.maxTravel) : 0;
@@ -3461,7 +3480,7 @@ function onSlideDragEnd(e) {
   activeSlider.track.classList.remove('is-dragging');
 
   if (activeSlider.pointerId != null && typeof activeSlider.track.releasePointerCapture === 'function') {
-    try { activeSlider.track.releasePointerCapture(activeSlider.pointerId); } catch (_) {}
+    try { activeSlider.track.releasePointerCapture(activeSlider.pointerId); } catch (_) { }
   }
 
   if (progress >= SLIDE_COMPLETION_THRESHOLD) {
@@ -3571,17 +3590,17 @@ function executeSlideCompletion(slider) {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
     try {
       navigator.vibrate([15, 30, 20]);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   // 5. Execute tactile success chime (ViHaptics Ascending Major Chord + Apple Pay Chime)
   if (typeof ViHaptics !== 'undefined' && typeof ViHaptics.playSuccessChime === 'function') {
-    try { ViHaptics.playSuccessChime(); } catch (_) {}
+    try { ViHaptics.playSuccessChime(); } catch (_) { }
   } else if (typeof playSuccessChime === 'function') {
-    try { playSuccessChime(); } catch (_) {}
+    try { playSuccessChime(); } catch (_) { }
   }
   if (typeof playApplePaySuccessChime === 'function') {
-    try { playApplePaySuccessChime(); } catch (_) {}
+    try { playApplePaySuccessChime(); } catch (_) { }
   }
 
   // 6. Micro-confetti burst from the thumb
@@ -3616,7 +3635,7 @@ function executeSlideCompletion(slider) {
 }
 
 function handleSlideKeyboard(e) {
-  const track = (e.target && typeof e.target.closest === 'function') 
+  const track = (e.target && typeof e.target.closest === 'function')
     ? (e.target.classList && e.target.classList.contains && e.target.classList.contains('slide-to-confirm-track') ? e.target : e.target.closest('.slide-to-confirm-track'))
     : (e.target || null);
   if (!track) return;
@@ -3641,8 +3660,8 @@ function handleSlideKeyboard(e) {
     const text = track.querySelector('.slide-track-text');
     if (!thumb) return;
 
-    const trackRect = (typeof track.getBoundingClientRect === 'function') 
-      ? track.getBoundingClientRect() 
+    const trackRect = (typeof track.getBoundingClientRect === 'function')
+      ? track.getBoundingClientRect()
       : { width: 280, left: 0, right: 280 };
     const thumbWidth = thumb.offsetWidth || 40;
     const maxTravel = Math.max(0, (trackRect.width || 280) - thumbWidth - 8);
@@ -3993,7 +4012,7 @@ async function startNewChat() {
       'X-Session-Id': resetSessionId
     },
     body: JSON.stringify({ sessionId: resetSessionId })
-  }).catch(() => {});
+  }).catch(() => { });
 
   setTimeout(() => {
     window.dispatchEvent(new Event('resize'));
@@ -4104,8 +4123,8 @@ async function handleFormSubmit(customMessage = null, options = {}) {
   if (typeof updateInputState === 'function') updateInputState();
 
   // 4. If transitioning from welcome screen, wait for exit animation (~300ms) to finish cleanly
-  const appLayout = typeof document !== 'undefined' && typeof document.getElementById === 'function' 
-    ? document.getElementById('app-layout') 
+  const appLayout = typeof document !== 'undefined' && typeof document.getElementById === 'function'
+    ? document.getElementById('app-layout')
     : null;
   const wasHero = appLayout && appLayout.classList && appLayout.classList.contains && appLayout.classList.contains('hero-mode');
   if (wasHero && typeof exitHeroMode === 'function') {
@@ -4171,6 +4190,7 @@ async function handleFormSubmit(customMessage = null, options = {}) {
     }
 
     // 7. Send POST request to Local Backend API (with real-time streaming handlers)
+    let lastAction = null;
     const result = await sendMessageToBackend(messageText, {
       onToken: (token) => {
         ensureStreamingBubble();
@@ -4182,10 +4202,12 @@ async function handleFormSubmit(customMessage = null, options = {}) {
       },
       onAction: (actionData) => {
         console.log('[SSE Action Received]:', actionData);
+        lastAction = actionData;
       }
     });
 
     const replyText = typeof result === 'object' ? result.text : result;
+    const actionData = (typeof result === 'object' && result.action) ? result.action : lastAction;
     showTypingIndicator(false);
 
     // 8. Finalize AI message display
@@ -4194,7 +4216,7 @@ async function handleFormSubmit(customMessage = null, options = {}) {
         streamCursor.remove();
       }
       streamBubbleEl.classList.remove('is-streaming');
-      streamBubbleEl.innerHTML = formatFintechMessage(replyText, 'ai');
+      streamBubbleEl.innerHTML = formatFintechMessage(replyText, 'ai', messageText, actionData);
       if (typeof initSlideToConfirm === 'function') {
         initSlideToConfirm();
       }
@@ -4227,22 +4249,18 @@ async function handleFormSubmit(customMessage = null, options = {}) {
     } else {
       // Fallback or headless environment: render complete message
       if (typeof document !== 'undefined') {
-        appendMessage(replyText, 'ai', messageText, false);
+        appendMessage(replyText, 'ai', messageText, false, actionData);
       }
     }
 
     // 9. Permanently resolve the confirmation card and update button states!
     const targetCard = sourceCard || (typeof document !== 'undefined' && typeof document.querySelector === 'function' ? document.querySelector('.fintech-card.confirm-card:not(.card-resolved)') : null);
-    
-    const isSuccessReply = replyText.includes('تم التحويل بنجاح') || 
-                           replyText.includes('تم تأكيد التحويل بنجاح') || 
-                           replyText.includes('تم تأكيد دفع') ||
-                           replyText.includes('تم تسديد') ||
-                           (replyText.includes('✅') && (replyText.includes('تحويل') || replyText.includes('تسديد')));
 
-    const isCancelReply = replyText.includes('تم إلغاء') || 
-                          replyText.includes('إلغاء العملية') || 
-                          replyText.includes('تم التراجع');
+    const isSuccessReply = /(?:تم(?:ت)?\s*(?:عملية\s*)?(?:ال)?(?:تحويل|دفع|تسديد|سداد|ارسال)[\s\S]*?بنجاح|تم\s*ت[أا]كيد\s*(?:ال)?(?:تحويل|دفع|تسديد|سداد)[\s\S]*?بنجاح|تم\s*(?:تسديد|سداد|دفع)[\s\S]*?بنجاح|تم\s*(?:تسديد|سداد|دفع)|دزيت[\s\S]*?بنجاح)/i.test(replyText) || replyText.includes('✅');
+
+    const isCancelReply = replyText.includes('تم إلغاء') ||
+      replyText.includes('إلغاء العملية') ||
+      replyText.includes('تم التراجع');
 
     if (targetCard) {
       if (actionType === 'confirm' || isSuccessReply) {
@@ -4479,6 +4497,9 @@ async function sendMessageToBackend(userMessage, callbacks = {}) {
               if (parsedData?.openTransactionsDrawer) {
                 openDrawer = true;
               }
+              if (parsedData?.action) {
+                finalAction = parsedData.action;
+              }
               if (typeof callbacks.onDone === 'function') {
                 callbacks.onDone(parsedData);
               }
@@ -4505,7 +4526,8 @@ async function sendMessageToBackend(userMessage, callbacks = {}) {
 
     return {
       text: reply,
-      openDrawer: !!data.openTransactionsDrawer
+      openDrawer: !!data.openTransactionsDrawer,
+      action: data.action || null
     };
   } catch (err) {
     clearTimeout(timeoutId);
@@ -4729,7 +4751,7 @@ function streamTextMessage(targetEl, fullText, onComplete) {
  * @param {string} relatedUserQuery - The user question that triggered this response (for feedback correlation)
  * @param {boolean} stream - Whether to stream the response with character-by-character animation
  */
-function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
+function appendMessage(text, sender, relatedUserQuery = '', stream = true, actionData = null) {
   if (typeof document === 'undefined' || typeof document.createElement !== 'function' || !messagesContainer) {
     return null;
   }
@@ -4792,7 +4814,7 @@ function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
 
   // Instant render for user messages or non-streaming environments (tests / headless)
   if (sender !== 'ai' || !stream || !isRealBrowser) {
-    bubbleEl.innerHTML = formatFintechMessage(text, sender);
+    bubbleEl.innerHTML = formatFintechMessage(text, sender, relatedUserQuery, actionData);
     if (typeof initSlideToConfirm === 'function') initSlideToConfirm();
     if (footerEl) footerEl.style.opacity = '1';
     if (sender === 'ai' && typeof appendActionChipsToMessage === 'function') {
@@ -4838,7 +4860,7 @@ function appendMessage(text, sender, relatedUserQuery = '', stream = true) {
 
   // Live streaming typewriter animation for AI responses
   streamTextMessage(bubbleEl, text, () => {
-    bubbleEl.innerHTML = formatFintechMessage(text, 'ai');
+    bubbleEl.innerHTML = formatFintechMessage(text, 'ai', relatedUserQuery, actionData);
     if (typeof initSlideToConfirm === 'function') initSlideToConfirm();
     footerEl.style.opacity = '1';
 
@@ -4953,7 +4975,8 @@ function getContextualActionChips(userQuery = '', botReply = '') {
       { label: '💳 سداد الآن', action: 'prompt:أريد أدفع الفواتير المستحقة' },
       { label: '⚡ تسديد الإنترنت', action: 'prompt:أريد أدفع فاتورة شبكة الإنترنت' },
       { label: '💡 تسديد الكهرباء', action: 'prompt:أريد أدفع فاتورة كهرباء الكرخ' },
-      { label: '📊 كم رصيدي؟', action: 'prompt:كم رصيدي هسة؟' }
+      { label: '💧 تسديد المياه', action: 'prompt:أريد أدفع فاتورة مياه البصرة' },
+      { label: '📱 تسديد الهاتف', action: 'prompt:أريد أدفع فاتورة خط الهاتف' }
     ];
   }
 
@@ -5271,15 +5294,16 @@ function getCurrentFormattedTime() {
  * Basic HTML escaping helper to prevent XSS
  */
 function escapeHtml(string) {
-  if (typeof string !== 'string') return '';
+  if (string === null || string === undefined) return '';
+  const str = typeof string === 'string' ? string : String(string);
   if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
     const div = document.createElement('div');
-    div.textContent = string;
+    div.textContent = str;
     if (typeof div.innerHTML === 'string' && div.innerHTML) {
       return div.innerHTML;
     }
   }
-  return string
+  return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -5288,11 +5312,27 @@ function escapeHtml(string) {
 }
 
 /**
- * Parses financial transaction details (recipient, amount, biller, direction)
- * from confirmation or receipt text for visual flow rendering.
- * @param {string} rawText
- * @returns {object|null}
+ * Stores the last active pending confirmation details for reliable success receipt rendering
  */
+let lastActiveConfirmationData = null;
+
+/**
+ * Formats conversational text with highlighted amounts and preserved line breaks
+ * @param {string} rawText
+ * @returns {string} HTML string
+ */
+function formatConversationalText(rawText) {
+  if (!rawText || typeof rawText !== 'string') return '';
+  let escaped = escapeHtml(rawText.trim());
+  escaped = escaped.replace(/(\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(?:IQD|دينار(?: عراقي)?|د\.ع)?)/gi, (match) => {
+    if (/\d/.test(match) && (match.includes('IQD') || match.includes('دينار') || match.includes(',') || match.includes('د.ع'))) {
+      return `<span class="amount-pill">${match.trim()}</span>`;
+    }
+    return match;
+  });
+  return escaped.replace(/\n/g, '<br>');
+}
+
 /**
  * Parses financial transaction details (recipient, amount, biller, direction, balance)
  * from confirmation or receipt text for structured visual flow rendering.
@@ -5319,37 +5359,59 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
 
   const hasTransferKeywords = /(?:^|[\s،,:])(تحويل|أحول|احول|حوالة|حواله|ارسل|أرسل|ادز|دزيت|المستلم)(?:[\s،,:]|$)/i.test(textClean);
   const hasBillKeywords = /(?:^|[\s،,:])(فاتورة|فواتير|تسديد|سداد)(?:[\s،,:]|$)/i.test(textClean);
-  const isAllBills = /(?:كافة الفواتير|كل الفواتير|جميع الفواتير|الفواتير المستحقة|فواتيرك المستحقة|كل المستحقات|الفواتير المعلقة)/i.test(textClean);
-  const isBill = isAllBills || (hasBillKeywords && !hasTransferKeywords);
+
+  const explicitAllBills = /(?:كافة\s+الفواتير|كل\s+الفواتير|جميع\s+الفواتير|كل\s+المستحقات|كل\s+القوائم|المجموع\s+الكلي\s+للفواتير|الفواتير\s+المستحقة\s*هو|الفواتير\s+المستحقة\s*هي)/i.test(textClean);
+  const explicitSingleBill = (/تفاصيل\s+تسديد\s+الفاتورة\s*:/i.test(textClean) || /أسدد\s+فاتورة/i.test(textClean)) && !explicitAllBills;
+  const isAllBills = explicitAllBills;
+  let isBill = isAllBills || (hasBillKeywords && !hasTransferKeywords) || explicitSingleBill;
 
   // 1. Extract Balance After first so it is cleanly captured
   let balanceAfter = '';
-  const balMatch = textClean.match(/(?:الرصيد بعد التحويل|الرصيد بعد الدفع|الرصيد بعد العملية|رصيدك بعد|الرصيد المتبقي|رصيدك الحالي بالمحفظة هو|رصيدك الحالي هسة|رصيدك الحالي هو)\s*[:هو]*\s*([0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?)/i);
+  const balMatch = textClean.match(/(?:الرصيد الجديد بعد التحويل|رصيدك الجديد بعد التحويل|الرصيد الجديد بعد الدفع|رصيدك الجديد بعد الدفع|الرصيد بعد التحويل|الرصيد بعد الدفع|الرصيد بعد العملية|رصيدك بعد التحويل|رصيدك بعد الدفع|رصيدك بعد|الرصيد المتبقي|الرصيد الجديد للمحفظة هو|الرصيد الجديد للمحفظة|الرصيد الجديد|رصيدك الجديد|رصيدك الحالي بالمحفظة هو|رصيدك الحالي بالمحفظة|رصيدك الحالي هسة|رصيدك الحالي هو)\s*[:هو]*\s*(?:د\.ع\s*)?([0-9,]+(?:\.\d+)?)\s*(?:IQD|د\.ع|دينار)?/i);
   if (balMatch) {
-    balanceAfter = balMatch[1].trim();
+    balanceAfter = `${balMatch[1].trim()} د.ع`;
   }
 
-  // 2. Strip wallet balances before extracting transaction amount
-  let cleanedForAmount = textClean.replace(/(?:رصيدك الحالي بالمحفظة هو|رصيدك الحالي بالمحفظة|رصيدك الحالي|رصيدك بالمحفظة|في المحفظة هو|رصيدك)\s*[:هو]*\s*[0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?/gi, '');
-  if (balanceAfter) {
-    cleanedForAmount = cleanedForAmount.replace(balanceAfter, '');
-  }
+  // 2. Strip wallet balances and background bill reminders before extracting transaction amount
+  let cleanedForAmount = textClean
+    .replace(/(?:الرصيد الجديد بعد التحويل|رصيدك الجديد بعد التحويل|الرصيد الجديد بعد الدفع|رصيدك الجديد بعد الدفع|الرصيد بعد التحويل|الرصيد بعد الدفع|الرصيد بعد العملية|رصيدك بعد التحويل|رصيدك بعد الدفع|رصيدك بعد|الرصيد المتبقي|الرصيد الجديد للمحفظة هو|الرصيد الجديد للمحفظة|الرصيد الجديد|رصيدك الجديد|رصيدك الحالي بالمحفظة هو|رصيدك الحالي بالمحفظة|رصيدك الحالي|رصيدك بالمحفظة|في المحفظة هو|رصيدك)\s*[:هو]*\s*(?:د\.ع\s*)?[0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?/gi, '')
+    .replace(/(?:تذكر\s+أن(?:ك)?\s+لديك|لديك)?\s*(?:\d+\s+)?فواتير\s+غير\s+(?:مدفوع[ةه]|مسدد[ةه]|مستحق[ةه])(?:\s+حالياً)?(?:\s+بإجمالي|\s+بمجموع|\s+ومجموعها|\s+وإجمالها|:)?\s*(?:د\.ع\s*)?[0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?[\s\S]*?(?:\.|\)|$)/gi, '');
 
   let amount = '';
-  // Pattern A: Explicit label like 'المبلغ المطلوب: 45,000 د.ع' or 'المجموع الكلي للفواتير المستحقة هو 150,000 د.ع'
-  const explicitAmtMatch = cleanedForAmount.match(/(?:المبلغ المطلوب|المجموع الكلي|المجموع|إجمالي المبلغ|إجمالي|المبلغ)\s*(?:للفواتير(?: المستحقة)?)?\s*[:هو]*\s*([0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?)/i);
-  if (explicitAmtMatch) {
-    amount = explicitAmtMatch[1].trim();
+  // Pattern A1: Strict explicit required amount (e.g. 'المبلغ المطلوب: 25,000 د.ع' or 'المبلغ المستحق: 40,000 د.ع')
+  // Prioritized to prevent conversational total mentions (e.g. 150,000) from overriding single bill amounts!
+  const requiredAmtMatch = cleanedForAmount.match(/(?:المبلغ المطلوب|المبلغ المستحق)\s*[:هو]*\s*(?:د\.ع\s*)?([0-9,]+(?:\.\d+)?)\s*(?:IQD|د\.ع|دينار)?/i);
+  if (requiredAmtMatch) {
+    amount = `${requiredAmtMatch[1].trim()} د.ع`;
+  }
+  // Pattern A2: Broader explicit label like 'المجموع الكلي للفواتير المستحقة هو 150,000 د.ع'
+  if (!amount) {
+    const explicitAmtMatch = cleanedForAmount.match(/(?:المجموع الكلي|المجموع|إجمالي المبلغ|إجمالي|المبلغ)\s*(?:للفواتير(?: المستحقة)?)?\s*[:هو]*\s*(?:د\.ع\s*)?([0-9,]+(?:\.\d+)?)\s*(?:IQD|د\.ع|دينار)?/i);
+    if (explicitAmtMatch) {
+      amount = `${explicitAmtMatch[1].trim()} د.ع`;
+    }
   }
   // Pattern B: Action amount like 'أحول 45,000 دينار' or 'تسديد 150,000 د.ع' or 'بمبلغ 45,000 د.ع'
   if (!amount) {
-    const actionAmtMatch = cleanedForAmount.match(/(?:أحول|احول|تحويل|دزيت|ادز|دز|ارسل|أرسل|تسديد|سداد|بمجموع|بمبلغ|بقيمة)\s+([0-9,]+(?:\.\d+)?\s*(?:IQD|د\.ع|دينار)?)/i);
-    if (actionAmtMatch) amount = actionAmtMatch[1].trim();
+    const actionAmtMatch = cleanedForAmount.match(/(?:أحول|احول|تحويل|دزيت|ادز|دز|ارسل|أرسل|تسديد|سداد|بمجموع|بمبلغ|بقيمة)\s+(?:د\.ع\s*)?([0-9,]+(?:\.\d+)?)\s*(?:IQD|د\.ع|دينار)?/i);
+    if (actionAmtMatch) amount = `${actionAmtMatch[1].trim()} د.ع`;
   }
   // Pattern C: Any remaining currency token in cleanedForAmount
   if (!amount) {
-    const fallbackCurMatch = cleanedForAmount.match(/(\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(?:IQD|د\.ع|دينار))/i);
-    if (fallbackCurMatch) amount = fallbackCurMatch[1].trim();
+    const fallbackCurMatch = cleanedForAmount.match(/(?:(?:د\.ع|IQD|دينار)\s*)?(\b\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:IQD|د\.ع|دينار)?/i);
+    if (fallbackCurMatch) amount = `${fallbackCurMatch[1].trim()} د.ع`;
+  }
+
+  // Safety guard: For bulk bill settlement, amount must never reflect the total wallet balance
+  if (isAllBills) {
+    const numAmt = Number((amount || '').replace(/\D/g, ''));
+    if (!amount || numAmt >= 3000000) {
+      const unpaidList = (typeof cachedBills !== 'undefined' && Array.isArray(cachedBills) ? cachedBills : (typeof cachedCompanionBills !== 'undefined' && Array.isArray(cachedCompanionBills) ? cachedCompanionBills : [])).filter(b => b.status === 'unpaid');
+      const trueUnpaidSum = unpaidList.reduce((s, b) => s + Number(b.amount || 0), 0);
+      if (trueUnpaidSum > 0) {
+        amount = trueUnpaidSum.toLocaleString() + ' د.ع';
+      }
+    }
   }
 
   // 3. Extract Recipient & Details
@@ -5363,7 +5425,7 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
       const countMatch = textClean.match(/عدد الفواتير\s*[:هو]*\s*(\d+)/i) || textClean.match(/تسديد\s+(\d+)\s+فواتير/i);
       if (countMatch) subDetail = countMatch[1] + ' فواتير مسجلة';
     } else {
-      const billMatch = textClean.match(/الفاتورة\s*:\s*([^\n\r]+)/i) || textClean.match(/لحساب\s*\(([^)]+)\)/i);
+      const billMatch = textClean.match(/(?:الفاتورة|جهة الدفع)\s*:\s*([^\n\r]+)/i) || textClean.match(/لحساب\s*\(([^)]+)\)/i);
       if (billMatch) {
         let bText = billMatch[1].trim();
         const accMatch = bText.match(/\(([^)]+)\)/) || bText.match(/-\s*([A-Za-z0-9_-]+)/);
@@ -5371,11 +5433,16 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
           phoneOrAccount = accMatch[1].trim();
           bText = bText.replace(accMatch[0], '').replace(/[-()]/g, '').trim();
         }
-        bText = bText.replace(/^[•\s\-_()]+|[•\s\-_()]+$/g, '').replace(/^الفاتورة\s*:\s*/i, '').trim();
+        bText = bText.replace(/^[•\s\-_()]+|[•\s\-_()]+$/g, '').replace(/^(?:الفاتورة|جهة الدفع)\s*:\s*/i, '').trim();
         recipient = bText || 'فاتورة خدمة';
         subDetail = phoneOrAccount ? ('حساب: ' + phoneOrAccount) : '';
       } else {
-        recipient = 'تسديد فاتورة';
+        const billerNameMatch = textClean.match(/(مياه البصرة|كهرباء الكرخ|فاتورة شبكة الإنترنت المنزلي|فاتورة خط الهاتف المحمول|شبكة الإنترنت|خط الهاتف)/i);
+        if (billerNameMatch) {
+          recipient = billerNameMatch[1];
+        } else {
+          recipient = 'تسديد فاتورة';
+        }
       }
     }
   } else {
@@ -5384,13 +5451,14 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
     if (recLineMatch) {
       targetStr = recLineMatch[1].trim();
     } else {
-      const succTargetMatch = textClean.match(/(?:إلى|الي|لـ)\s+([^\n\r.,،?!()]+?)(?:[،,]|(?:\s*(?:بمبلغ|بقيمة|\d|رصيدك|متأكد|يرجى|$|\.)))/i);
+      const succTargetMatch = textClean.match(/(?:^|[\s،,.:])(?:إلى|الي|لـ)\s+([^\n\r.,،?!()]+?)(?:[،,]|(?:\s*(?:بمبلغ|بقيمة|بنجاح|\d|رصيدك|متأكد|يرجى|$|\.)))/i);
       if (succTargetMatch) {
         targetStr = succTargetMatch[1].trim();
       }
     }
 
-    if (targetStr) {
+    if (targetStr && !/^\d+$/.test(targetStr)) {
+      targetStr = targetStr.replace(/بنجاح/g, '').trim();
       const phoneMatch = targetStr.match(/(?:\+?964\d{8,10}|07\d{8,9})/);
       if (phoneMatch) {
         phoneOrAccount = phoneMatch[0].trim();
@@ -5408,10 +5476,61 @@ function parseFintechTransactionData(rawText, isConfirm, isSuccess) {
       }
     }
 
-    if (!recipient) {
+    if (!recipient || /^\d+$/.test(recipient)) {
       const nameMatch = textClean.match(/(أم مصطفى|أحمد كمال|أحمد جاسم|سيف الدين|سيف|حسين|علاوي|مرتضى|مهند)/);
       if (nameMatch) recipient = nameMatch[1];
       else recipient = 'حوالة مالية';
+    }
+  }
+
+  // Safety guard: For single bill settlement, verify amount matches the specific bill and does NOT reflect 150,000 bulk total
+  if (isBill && !isAllBills) {
+    const billsList = (typeof cachedBills !== 'undefined' && Array.isArray(cachedBills) ? cachedBills : (typeof cachedCompanionBills !== 'undefined' && Array.isArray(cachedCompanionBills) ? cachedCompanionBills : []));
+    const matchedBill = billsList.find(b => {
+      const normB = (b.biller || b.title || '').toLowerCase();
+      if (!normB) return false;
+      const normR = (recipient || textClean || '').toLowerCase();
+      return normR.includes(normB) || normB.includes(normR) ||
+             (normR.includes('خط') && normB.includes('خط')) ||
+             (normR.includes('كهرباء') && normB.includes('كهرباء')) ||
+             (normR.includes('انترنت') && (normB.includes('انترنت') || normB.includes('إنترنت'))) ||
+             (normR.includes('مياه') && normB.includes('مياه'));
+    });
+    if (matchedBill && matchedBill.amount) {
+      const numAmt = Number((amount || '').replace(/\D/g, ''));
+      if (!amount || numAmt === 150000 || numAmt >= 3000000) {
+        amount = matchedBill.amount.toLocaleString() + ' د.ع';
+      }
+      if (!recipient || recipient === 'تسديد فاتورة') {
+        recipient = matchedBill.biller || matchedBill.title;
+      }
+      if (matchedBill.account_number && !phoneOrAccount) {
+        phoneOrAccount = matchedBill.account_number;
+        subDetail = 'حساب: ' + matchedBill.account_number;
+      }
+    }
+  }
+
+  // Fallback to last confirmed transaction data if success message is concise
+  const activeConfirm = (typeof lastActiveConfirmationData === 'object' && lastActiveConfirmationData !== null)
+    ? lastActiveConfirmationData
+    : ((typeof window !== 'undefined' && window.lastActiveConfirmationData) || (typeof globalThis !== 'undefined' && globalThis.lastActiveConfirmationData) || null);
+
+  if (isSuccess && activeConfirm) {
+    if (!amount || (balanceAfter && amount.replace(/\D/g, '') === balanceAfter.replace(/\D/g, ''))) {
+      amount = activeConfirm.amount || amount;
+    }
+    if (!recipient || recipient === 'حوالة مالية' || /^\d+$/.test(recipient)) {
+      recipient = activeConfirm.recipient || recipient;
+    }
+    if (!subDetail) {
+      subDetail = activeConfirm.subDetail || subDetail;
+    }
+    if (!phoneOrAccount) {
+      phoneOrAccount = activeConfirm.phoneOrAccount || phoneOrAccount;
+    }
+    if (!isBill && activeConfirm.isBill) {
+      isBill = true;
     }
   }
 
@@ -5559,18 +5678,17 @@ function renderConfirmationCard(data) {
  * @returns {string} HTML string
  */
 function renderFintechConfirmationCard(data) {
+  if (data && typeof data === 'object') {
+    lastActiveConfirmationData = { ...data };
+    if (typeof window !== 'undefined') window.lastActiveConfirmationData = lastActiveConfirmationData;
+    if (typeof globalThis !== 'undefined') globalThis.lastActiveConfirmationData = lastActiveConfirmationData;
+  }
   const isHighValue = isHighValueTransfer(data);
   const flowWidget = renderFintechFlowWidget(data);
   const actionsWidget = renderFintechActionButtons(data);
 
   return `
     <div class="fintech-card confirm-card${isHighValue ? ' high-value-card' : ''}" role="region" aria-label="مراجعة وتأكيد المعاملة المالية"${isHighValue ? ' data-high-value="true"' : ''}>
-      ${data && data.introMessage ? `
-      <div class="fintech-ai-intro">
-        <span class="ai-intro-text">${escapeHtml(data.introMessage)}</span>
-      </div>
-      ` : ''}
-
       ${isHighValue ? `
       <div class="high-value-security-badge" role="status" aria-label="تحويل مالي عالي القيمة">
         <span class="security-badge-icon">
@@ -5637,7 +5755,7 @@ function getSharedAudioContext() {
     }
   }
   if (sharedAudioCtx.state === 'suspended') {
-    sharedAudioCtx.resume().catch(() => {});
+    sharedAudioCtx.resume().catch(() => { });
   }
   return sharedAudioCtx;
 }
@@ -5706,9 +5824,9 @@ function playApplePaySuccessChime() {
 function launchMicroConfetti(originElement) {
   if (typeof document === 'undefined' || !originElement || typeof document.createElement !== 'function') return null;
 
-  const prefersReducedMotion = typeof window !== 'undefined' && 
-                               window.matchMedia && 
-                               window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const prefersReducedMotion = typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (prefersReducedMotion) return null;
 
   const width = 240;
@@ -5766,8 +5884,8 @@ function launchMicroConfetti(originElement) {
     });
   }
 
-  const startTime = (typeof performance !== 'undefined' && typeof performance.now === 'function') 
-    ? performance.now() 
+  const startTime = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now()
     : Date.now();
   const duration = 1200; // 1.2s auto-fade
   let animId = null;
@@ -6060,12 +6178,11 @@ function renderFintechContactsCard(data) {
  */
 function parseDisambiguationData(text) {
   if (!text || typeof text !== 'string') return null;
-  const isAmbiguousPrompt = (text.includes('أكثر من جهة اتصال') || text.includes('اكثر من جهة اتصال')) &&
-                            (text.includes('يا واحد منهم تقصد') || text.includes('يرجى كتابة الرقم') || text.includes('تقصد؟'));
-  if (!isAmbiguousPrompt) return null;
 
-  const nameMatch = text.match(/باسم\s*["']?([\u0621-\u064A\s]+?)["']?\s*بمحفظتك/);
-  const name = nameMatch ? nameMatch[1].trim() : '';
+  // General contacts list inquiry (e.g. "هاي قائمة بجهات الاتصال المسجلة بمحفظتك") is NOT a disambiguation card
+  const isGeneralContactsList = /(?:قائم[ةه]\s*(?:ب)?جهات\s*(?:ال)?اتصال|جهات\s*الاتصال\s*المسجل[ةه]|أشخاص\s*مسجلين)/i.test(text) &&
+    !/(?:أكثر\s*من\s*(?:شخص|جهة)|اكثر\s*من\s*(?:شخص|جهة)|أي(?:هم)?\s*تقصد|اي(?:هم)?\s*تقصد|هل\s+(?:هو|تقصد)|حدد|حدّد)/i.test(text);
+  if (isGeneralContactsList) return null;
 
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const options = [];
@@ -6109,8 +6226,56 @@ function parseDisambiguationData(text) {
   }
 
   if (options.length >= 2) {
-    return { name, promptText, options };
+    const nameMatch = text.match(/باسم\s*["']?([\u0621-\u064A\s]+?)["']?\s*بمحفظتك/) ||
+      text.match(/عن\s*["']?([\u0621-\u064A\s]+?)["']?\s*اللي/) ||
+      text.match(/تقصد\s*["']?([\u0621-\u064A\s]+?)["']?/);
+    const name = nameMatch ? nameMatch[1].trim() : 'المستلم';
+    return { name, promptText: promptText || 'اختر جهة الاتصال المطلوبة:', options };
   }
+
+  // Fallback for conversational disambiguation without numbered lines (e.g. Screenshot 8)
+  // "هل هو أحمد كمال (صديق الجامعة) (+9647801122334) أو أحمد جاسم (الفيترجي / المصلح) (+9647802233445)؟"
+  const knownContacts = [
+    { name: 'أحمد كمال', alias: 'صديق الجامعة', phone: '+9647801122334' },
+    { name: 'أحمد جاسم', alias: 'الفيترجي / المصلح', phone: '+9647802233445' },
+    { name: 'أم مصطفى', alias: 'الوالدة', phone: '+9647803344556' },
+    { name: 'سيف الدين', alias: 'زميل العمل', phone: '+9647804455667' },
+    { name: 'سيف', alias: 'سيف الدين', phone: '+9647804455667' },
+    { name: 'حسين', alias: 'حسين', phone: '+9647807778899' },
+    { name: 'علاوي', alias: 'أخي', phone: '+9647709998877' },
+    { name: 'مرتضى', alias: 'صديق العمل', phone: '+9647819919952' }
+  ];
+
+  const matched = knownContacts.filter(c => text.includes(c.name));
+  const seenPhones = new Set();
+  const uniqueMatched = [];
+  for (const c of matched) {
+    if (!seenPhones.has(c.phone)) {
+      seenPhones.add(c.phone);
+      uniqueMatched.push(c);
+    }
+  }
+
+  const isDisambigPrompt = /(?:هل\s+(?:هو|تقصد)|أي(?:هم)?\s+تقصد|يا\s+واحد\s+منهم|أكثر\s+من\s+جهة\s+اتصال|اكثر\s+من\s+جهة\s+اتصال)/i.test(text) ||
+    (uniqueMatched.length >= 2 && /(?:أو|او|\/)/.test(text));
+
+  if (isDisambigPrompt && uniqueMatched.length >= 2) {
+    const convOptions = uniqueMatched.map((c, i) => ({
+      number: i + 1,
+      num: i + 1,
+      name: c.name,
+      subtitle: c.alias,
+      alias: c.alias,
+      phone: c.phone,
+      raw: `${c.name} (${c.alias}) (${c.phone})`
+    }));
+    return {
+      name: 'أحمد',
+      promptText: 'اختر جهة الاتصال المطلوبة:',
+      options: convOptions
+    };
+  }
+
   return null;
 }
 
@@ -6120,15 +6285,16 @@ function parseDisambiguationData(text) {
 function renderDisambiguationCard(data) {
   if (!data || !Array.isArray(data.options)) return '';
 
-  const optionsHtml = data.options.map(opt => {
-    const initial = typeof getContactInitial === 'function' ? getContactInitial(opt.name) : opt.name.charAt(0);
+  const optionsHtml = data.options.map((opt, index) => {
+    const initial = typeof getContactInitial === 'function' ? getContactInitial(opt.name) : (opt.name ? opt.name.charAt(0) : 'أ');
     const grad = typeof getContactGradient === 'function' ? getContactGradient(opt.name) : 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
     const subtext = opt.subtitle || opt.alias || opt.phone || '';
-    const choiceNum = opt.number || opt.num;
+    const choiceNum = opt.number || opt.num || (index + 1);
+    const choiceStr = String(choiceNum);
 
     return `
-      <button type="button" class="disambiguation-option-btn" data-choice="${escapeHtml(choiceNum)}" data-choice-number="${escapeHtml(choiceNum)}" data-name="${escapeHtml(opt.name)}" aria-label="اختيار ${escapeHtml(opt.name)}">
-        <span class="disambiguation-num-badge option-badge">${escapeHtml(choiceNum)}</span>
+      <button type="button" class="disambiguation-option-btn" data-choice="${escapeHtml(choiceStr)}" data-choice-number="${escapeHtml(choiceStr)}" data-name="${escapeHtml(opt.name)}" aria-label="اختيار ${escapeHtml(opt.name)}">
+        <span class="disambiguation-num-badge option-badge">${escapeHtml(choiceStr)}</span>
         <span class="disambiguation-avatar option-avatar" style="background: ${grad}">${escapeHtml(initial)}</span>
         <span class="disambiguation-info">
           <span class="disambiguation-name option-name">${escapeHtml(opt.name)}</span>
@@ -6173,70 +6339,67 @@ function renderDisambiguationCard(data) {
  * @param {'user'|'ai'} sender - Sender type
  * @returns {string} - Styled HTML string
  */
-function formatFintechMessage(text, sender) {
+function formatFintechMessage(text, sender, relatedUserQuery = '', actionData = null) {
   if (sender === 'user') {
     return escapeHtml(text).replace(/\n/g, '<br>');
   }
 
   // Check if this is an ambiguous contact disambiguation response (Tier-1 Interactive Disambiguation Card)
-  const disambiguationData = parseDisambiguationData(text);
+  let disambiguationData = null;
+  if (actionData && actionData.type === 'DISAMBIGUATION' && Array.isArray(actionData.candidates) && actionData.candidates.length >= 2) {
+    disambiguationData = {
+      name: actionData.name || '',
+      promptText: 'اختر جهة الاتصال المطلوبة:',
+      options: actionData.candidates.map((c, i) => ({
+        number: i + 1,
+        num: i + 1,
+        name: c.alias ? c.alias.replace(/\s*\([^)]*\)/, '').trim() : c.name,
+        subtitle: c.alias ? (c.alias.match(/\(([^)]+)\)/)?.[1] || '') : '',
+        alias: c.alias || '',
+        phone: c.phone || '',
+        raw: `${c.alias || c.name} (${c.phone || ''})`
+      }))
+    };
+  } else {
+    disambiguationData = parseDisambiguationData(text);
+  }
+
   if (disambiguationData) {
-    return renderDisambiguationCard(disambiguationData);
+    const cardHtml = renderDisambiguationCard(disambiguationData);
+    let introHtml = '';
+    if (text && text.trim()) {
+      introHtml = `<div class="msg-conversational-body">${formatConversationalText(text)}</div>`;
+    }
+    return `${introHtml}${cardHtml}`;
   }
 
   // 1. Escape HTML first to prevent XSS
   let escaped = escapeHtml(text);
   const norm = typeof normalizeArabicKeywords === 'function' ? normalizeArabicKeywords(text) : text.toLowerCase();
+  const queryNorm = typeof normalizeArabicKeywords === 'function' ? normalizeArabicKeywords(relatedUserQuery || '') : (relatedUserQuery || '').toLowerCase();
 
-  // 2. Identify if this is a confirmation card or a success receipt card
-  const isSuccess = norm.includes('تم التحويل بنجاح') || 
-                    norm.includes('تم تاكيد التحويل بنجاح') || 
-                    norm.includes('تم تاكيد دفع') ||
-                    norm.includes('تم تسديد') ||
-                    (escaped.includes('✅') && (norm.includes('تحويل') || norm.includes('تسديد') || norm.includes('دفع')));
+  // Guard: Pure informational inquiries from user MUST NOT trigger confirmation card or success ticket
+  const isCommandAction = /(?:^|[\s،,.:])(?:سدد|ادفع|حول|دز|ارسل|أرسل|أحول|أسدد|أدفع|نعم|تاكيد|تأكيد)(?:[\s،,.:]|$)/i.test(queryNorm);
+  const isInquiryKeyword = /(?:شنو|شكد|شقد|كم|ماهي|ما هي|اعرض|عرض|هل|قائمه|قائمة|سجل|المسدده|المسددة|غير المسدده|غير المسددة|غير المدفوعه|غير المدفوعة|الرصيد)/i.test(queryNorm);
+  const isPureInquiry = Boolean(queryNorm && isInquiryKeyword && !isCommandAction);
 
-  // Confirmation cards MUST contain actual financial transaction details AND confirmation intent
-  const hasMoneyOrAmount = /[\d,]+(?:\.\d+)?\s*(?:د\.ع|IQD|دينار|\$|USD)/i.test(escaped) ||
-                           norm.includes('المبلغ') ||
-                           norm.includes('المجموع') ||
-                           norm.includes('رصيدك') ||
-                           /\d{3,}/.test(norm);
+  // Structured confirmation header and prompt
+  const hasStructuredConfirmHeader = /(?:تفاصيل\s+(?:التحويل|تسديد|دفع)|ت[أا]كيد\s+التحويل|المجموع\s+الكلي\s+للفواتير|المستلم\s*:|جهة\s+الدفع\s*:|•?\s*الفاتورة\s*:|المبلغ\s+المطلوب\s*:|تفاصيلها\s+هي)/i.test(norm) ||
+    /(?:تفاصيل\s+(?:التحويل|تسديد|دفع)|ت[أا]كيد\s+التحويل|المجموع\s+الكلي\s+للفواتير|المستلم\s*:|جهة\s+الدفع\s*:|•?\s*الفاتورة\s*:|المبلغ\s+المطلوب\s*:|تفاصيلها\s+هي)/i.test(text);
 
-  const hasFinancialTopic = norm.includes('تحويل') || 
-                            norm.includes('تسديد') || 
-                            norm.includes('سداد') || 
-                            norm.includes('دفع') || 
-                            norm.includes('مستلم') || 
-                            norm.includes('فاتور') || 
-                            norm.includes('قوائم') ||
-                            norm.includes('قائم');
+  const hasExplicitConfirmPrompt = /(?:مت?اكد\s+تريد\s+(?:[أا]حول|[أا]سدد|[أا]دفع)|هل\s+ت?[وؤ]كد|يرج[يى]\s+(?:مراجعة\s+التفاصيل|الرد)|بـ?\s*["'*_]*نعم["'*_]*|بـ?\s*["'*_]*ت[أا]كيد["'*_]*|للتاكيد|للتأكيد|اسحب\s+ل?لت[أا]كيد)/i.test(norm) ||
+    /(?:مت?اكد\s+تريد\s+(?:[أا]حول|[أا]سدد|[أا]دفع)|هل\s+ت?[وؤ]كد|يرج[يى]\s+(?:مراجعة\s+التفاصيل|الرد)|بـ?\s*["'*_]*نعم["'*_]*|بـ?\s*["'*_]*ت[أا]كيد["'*_]*|للتاكيد|للتأكيد|اسحب\s+ل?لت[أا]كيد)/i.test(text);
 
-  const hasTransactionDetails = norm.includes('تفاصيل التحويل') || 
-                               norm.includes('تفاصيل تسديد') || 
-                               norm.includes('تفاصيل دفع') || 
-                               (norm.includes('مستلم') && (norm.includes('مبلغ') || norm.includes('د ع') || norm.includes('iqd'))) ||
-                               (norm.includes('فاتور') && (norm.includes('مبلغ') || norm.includes('د ع') || norm.includes('iqd') || norm.includes('مجموع'))) ||
-                               (hasFinancialTopic && hasMoneyOrAmount);
+  const isProposalAction = Boolean(actionData && actionData.type === 'PROPOSAL' && actionData.data);
+  const isConfirm = !isPureInquiry && (isProposalAction || (hasStructuredConfirmHeader && hasExplicitConfirmPrompt));
 
-  const hasConfirmIntent = norm.includes('متاكد') ||
-                          norm.includes('هل تاكد') || 
-                          norm.includes('هل تؤكد') || 
-                          norm.includes('هل انت متاكد') || 
-                          norm.includes('تاكيد عملية') || 
-                          norm.includes('تاكيد التحويل') ||
-                          norm.includes('تاكيد تسديد') ||
-                          norm.includes('تاكيد دفع') ||
-                          norm.includes('تاكيد السداد') ||
-                          norm.includes('تاكيد سداد') ||
-                          norm.includes('يرجي الرد') ||
-                          norm.includes('يرجى الرد') ||
-                          norm.includes('للتاكيد') ||
-                          norm.includes('للتأكيد') ||
-                          norm.includes('او الغاء') ||
-                          norm.includes('ام الغاء') ||
-                          norm.includes('لو الغاء');
-
-  const isConfirm = !isSuccess && hasTransactionDetails && hasConfirmIntent;
+  // Strict isSuccess regex with word boundary on 'تم' so 'يتم' (e.g. 'لكي يتم الدفع بنجاح') can never match!
+  const isExecutionAction = Boolean(actionData && (actionData.type === 'TRANSFER' || actionData.type === 'BILL_PAYMENT'));
+  const isSuccess = !isPureInquiry && !isConfirm && (
+    isExecutionAction ||
+    /(?:(?:^|[\s،,.:!؟?])تم(?:ت)?\s*(?:عملي[ةه]\s*)?(?:ال)?(?:تحويل|دفع|تسديد|سداد|ارسال)[\s\S]*?بنجاح|(?:^|[\s،,.:!؟?])تم\s*ت[أا]كيد\s*(?:ال)?(?:تحويل|دفع|تسديد|سداد)[\s\S]*?بنجاح|(?:^|[\s،,.:!؟?])تم\s*(?:تسديد|سداد|دفع)[\s\S]*?بنجاح|(?:^|[\s،,.:!؟?])تم\s*(?:تسديد|سداد|دفع)|(?:^|[\s،,.:!؟?])دزيت[\s\S]*?بنجاح)/i.test(norm) ||
+    (escaped.includes('✅') && (norm.includes('تحويل') || norm.includes('تسديد') || norm.includes('دفع') || norm.includes('سداد')))
+  );
 
   // 3. Highlight currency amounts (e.g. 300,000,000 IQD or 50,000 دينار)
   escaped = escaped.replace(/(\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(?:IQD|دينار(?: عراقي)?|د\.ع)?)/gi, (match) => {
@@ -6264,21 +6427,90 @@ function formatFintechMessage(text, sender) {
   const joined = processedLines.join('<br>').replace(/(?:<br>)+(<div class="fintech-list-row)/g, '$1');
 
   if (isConfirm) {
-    const data = parseFintechTransactionData(text, true, false);
-    if (data.recipient || data.amount) {
-      return renderFintechConfirmationCard(data);
+    const data = isProposalAction ? { ...actionData.data } : parseFintechTransactionData(text, true, false);
+    if (data && typeof data === 'object') {
+      lastActiveConfirmationData = { ...data };
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.setItem('vi_last_active_confirmation', JSON.stringify(data));
+        }
+      } catch (_) { }
     }
-    const flowWidget = renderFintechFlowWidget(data);
-    const actionsWidget = renderFintechActionButtons(data);
-    return `<div class="fintech-card confirm-card">${flowWidget}${joined}${actionsWidget}</div>`;
+
+    const cardHtml = (data.recipient || data.amount)
+      ? renderFintechConfirmationCard(data)
+      : `<div class="fintech-card confirm-card">${renderFintechFlowWidget(data)}${joined}${renderFintechActionButtons(data)}</div>`;
+
+    // Extract conversational intro (text appearing before structured template)
+    let introHtml = '';
+    const introMatch = text.match(/^([\s\S]*?)(?:تفاصيل\s+(?:التحويل|تسديد|دفع)|المستلم:|جهة الدفع:|المبلغ المطلوب:)/i);
+    if (introMatch && introMatch[1].trim()) {
+      introHtml = `<div class="msg-conversational-body">${formatConversationalText(introMatch[1])}</div>`;
+    } else if (text && text.trim() && !text.includes('•')) {
+      introHtml = `<div class="msg-conversational-body">${formatConversationalText(text)}</div>`;
+    }
+    return `${introHtml}${cardHtml}`;
   }
 
   if (isSuccess) {
-    const data = parseFintechTransactionData(text, false, true);
-    if (data.amount || data.recipient) {
-      return renderFintechSuccessReceipt(data);
+    let data = (actionData && actionData.transactionData)
+      ? { ...actionData.transactionData }
+      : parseFintechTransactionData(text, false, true);
+
+    // If data fields are missing from short conversational text, fall back to lastActiveConfirmationData / sessionStorage / previous card
+    if (!data.amount || !data.recipient || data.recipient === 'حوالة مالية') {
+      let activeConfirm = (typeof lastActiveConfirmationData === 'object' && lastActiveConfirmationData !== null)
+        ? lastActiveConfirmationData
+        : ((typeof window !== 'undefined' && window.lastActiveConfirmationData) || null);
+      if (!activeConfirm) {
+        try {
+          if (typeof window !== 'undefined' && window.sessionStorage) {
+            const stored = window.sessionStorage.getItem('vi_last_active_confirmation');
+            if (stored) activeConfirm = JSON.parse(stored);
+          }
+        } catch (_) { }
+      }
+      if (activeConfirm) {
+        data.amount = data.amount || activeConfirm.amount;
+        data.recipient = (data.recipient && data.recipient !== 'حوالة مالية') ? data.recipient : activeConfirm.recipient;
+        data.balanceAfter = data.balanceAfter || activeConfirm.balanceAfter;
+        data.phoneOrAccount = data.phoneOrAccount || activeConfirm.phoneOrAccount;
+        data.subDetail = data.subDetail || activeConfirm.subDetail;
+        data.isBill = (typeof data.isBill === 'boolean' && data.isBill) || Boolean(activeConfirm.isBill);
+      }
     }
-    return `<div class="fintech-card success-card">${joined}</div>`;
+
+    // Secondary DOM fallback: if lastActiveConfirmationData was cleared, read values from existing confirm-card in DOM
+    if (!data.amount || !data.recipient || data.recipient === 'حوالة مالية') {
+      const prevCard = (typeof document !== 'undefined') ? document.querySelector('.fintech-card.confirm-card') : null;
+      if (prevCard) {
+        const amtEl = prevCard.querySelector('.spec-amount-val');
+        if (amtEl && amtEl.textContent) data.amount = data.amount || amtEl.textContent.trim();
+        const recEl = prevCard.querySelector('.recipient-val');
+        if (recEl && recEl.textContent) data.recipient = (data.recipient && data.recipient !== 'حوالة مالية') ? data.recipient : recEl.textContent.replace(/\(.*?\)/g, '').trim();
+        const balEl = prevCard.querySelector('.spec-balance-val');
+        if (balEl && balEl.textContent) data.balanceAfter = data.balanceAfter || balEl.textContent.trim();
+        const phoneEl = prevCard.querySelector('.phone-val');
+        if (phoneEl && phoneEl.textContent) data.phoneOrAccount = data.phoneOrAccount || phoneEl.textContent.trim();
+        if (!data.isBill && prevCard.querySelector('.spec-label')?.textContent?.includes('المستفيدة')) data.isBill = true;
+      }
+    }
+
+    if (!data.amount) {
+      data.amount = (typeof currentTransferAmount !== 'undefined' && currentTransferAmount ? Number(currentTransferAmount).toLocaleString() + ' د.ع' : '50,000 د.ع');
+    }
+    if (!data.recipient || data.recipient === 'حوالة مالية') {
+      data.recipient = data.recipient || (data.isBill ? 'تسديد فاتورة' : 'المستلم');
+    }
+
+    const receiptHtml = renderFintechSuccessReceipt(data);
+
+    // Conversational success message text stays fully visible!
+    let introHtml = '';
+    if (text && text.trim()) {
+      introHtml = `<div class="msg-conversational-body">${formatConversationalText(text)}</div>`;
+    }
+    return `${introHtml}${receiptHtml}`;
   }
 
   // 5. Check if this is a contacts list response (Tier-1 Interactive Contacts Card)
@@ -6297,8 +6529,10 @@ const COMPANION_RAIL_STORAGE_KEY = 'vi_companion_rail_collapsed';
 
 let cachedCompanionContacts = [
   { name: 'أحمد كمال', alias: 'صديق الجامعة', phone: '+9647801122334' },
+  { name: 'أحمد جاسم', alias: 'الفيترجي / المصلح', phone: '+9647802233445' },
   { name: 'أم مصطفى', alias: 'الوالدة', phone: '+9647803344556' },
   { name: 'سيف الدين', alias: 'زميل العمل', phone: '+9647804455667' },
+  { name: 'حسين', alias: 'حسين', phone: '+9647807778899' },
   { name: 'علاوي', alias: 'أخي', phone: '+9647709998877' },
   { name: 'مرتضى', alias: 'صديق العمل', phone: '+9647819919952' }
 ];
@@ -6450,7 +6684,7 @@ function isCompanionRailCollapsed() {
     if (typeof localStorage !== 'undefined' && localStorage.getItem) {
       return localStorage.getItem(COMPANION_RAIL_STORAGE_KEY) === 'true';
     }
-  } catch (e) {}
+  } catch (e) { }
   return false;
 }
 
@@ -6459,7 +6693,7 @@ function setCompanionRailCollapsed(collapsed) {
     if (typeof localStorage !== 'undefined' && localStorage.setItem) {
       localStorage.setItem(COMPANION_RAIL_STORAGE_KEY, collapsed ? 'true' : 'false');
     }
-  } catch (e) {}
+  } catch (e) { }
   applyCompanionRailState(collapsed);
 }
 
@@ -8107,7 +8341,7 @@ function setSoundEffectsEnabled(enabled) {
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem(SOUND_EFFECTS_STORAGE_KEY, String(soundEffectsEnabled));
     }
-  } catch (e) {}
+  } catch (e) { }
   updateSoundEffectsUI();
   return soundEffectsEnabled;
 }
@@ -8156,7 +8390,7 @@ function getHapticAudioContext() {
   }
 
   if (hapticAudioCtx && hapticAudioCtx.state === 'suspended' && typeof hapticAudioCtx.resume === 'function') {
-    hapticAudioCtx.resume().catch(() => {});
+    hapticAudioCtx.resume().catch(() => { });
   }
 
   return hapticAudioCtx;
@@ -8197,9 +8431,9 @@ function playSuccessChime() {
       osc.start(time);
       osc.stop(time + dur + 0.05);
       osc.onended = () => {
-        try { osc.disconnect(); gain.disconnect(); } catch (_) {}
+        try { osc.disconnect(); gain.disconnect(); } catch (_) { }
       };
-    } catch (_) {}
+    } catch (_) { }
   });
 
   return { played: true, sound: 'success', notes };
@@ -8233,9 +8467,9 @@ function playClickSound() {
     osc.start(now);
     osc.stop(now + dur + 0.01);
     osc.onended = () => {
-      try { osc.disconnect(); gain.disconnect(); } catch (_) {}
+      try { osc.disconnect(); gain.disconnect(); } catch (_) { }
     };
-  } catch (_) {}
+  } catch (_) { }
 
   return { played: true, sound: 'click', durationMs: 8 };
 }
@@ -8273,9 +8507,9 @@ function playErrorThud() {
       osc.start(now);
       osc.stop(now + dur + 0.02);
       osc.onended = () => {
-        try { osc.disconnect(); gain.disconnect(); } catch (_) {}
+        try { osc.disconnect(); gain.disconnect(); } catch (_) { }
       };
-    } catch (_) {}
+    } catch (_) { }
   });
 
   return { played: true, sound: 'error', tones: [150, 110], durationMs: 130 };
@@ -8331,6 +8565,7 @@ const ViHaptics = {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    escapeHtml,
     handleFormSubmit,
     sendMessageToBackend,
     setInputState,
@@ -8450,6 +8685,8 @@ if (typeof module !== 'undefined' && module.exports) {
     getFintechPulsePerspective,
     setFintechPulsePerspective,
     handlePayAllBillsAction,
+    getCurrentTransferAmount: () => (typeof currentTransferAmount !== 'undefined' ? currentTransferAmount : 50000),
+    setCurrentTransferAmount: (val) => { currentTransferAmount = val; },
     getCachedBills: () => (typeof cachedBills !== 'undefined' ? cachedBills : cachedCompanionBills),
     setCachedBills: (val) => { cachedBills = val; cachedCompanionBills = val; if (typeof renderFintechPulse === 'function') renderFintechPulse(); },
     parseDisambiguationData,
@@ -8474,7 +8711,12 @@ if (typeof module !== 'undefined' && module.exports) {
     toggleSoundEffects,
     initHaptics,
     getHapticAudioContext,
-    resetAudioContext: () => { hapticAudioCtx = null; }
+    resetAudioContext: () => { hapticAudioCtx = null; },
+    setLastActiveConfirmationData: (data) => {
+      lastActiveConfirmationData = data;
+      if (typeof globalThis !== 'undefined') globalThis.lastActiveConfirmationData = data;
+    },
+    getLastActiveConfirmationData: () => lastActiveConfirmationData
   };
 }
 

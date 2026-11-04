@@ -69,12 +69,28 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
     const match = rawReply.match(actionRegex);
 
     if (!match) {
-        // Anti-fabrication safeguard: if model falsely claims a transaction succeeded without <<<DB_ACTION>>>
+        // Anti-fabrication safeguard: if model falsely claims an unexecuted transaction succeeded without <<<DB_ACTION>>>
+        const unpaidBills = (db?.bills || []).filter(b => b.status === 'unpaid');
         const normReply = normalizeArabic(rawReply);
-        const claimsPayment = (normReply.includes('تم دفع') || normReply.includes('تم تسديد') || normReply.includes('تم تحويل')) &&
-                              (normReply.includes('بنجاح') || normReply.includes('فاتور'));
-        if (claimsPayment) {
-            console.warn('⚠️ [SECURITY INTERCEPT]: Model fabricated payment success without <<<DB_ACTION>>>. Overriding with safety prompt.');
+        const claimsPayment = /(?:تم(?:ت)?\s*(?:عملي[ةه]\s*)?(?:ال)?(?:دفع|تسديد|تحويل|سداد)|سددت|دفعت|حولت|سددناهن|دفعناهن)/i.test(normReply) &&
+                              /(?:بنجاح|فاتور|قوائم|مبلغ|رصيدك)/i.test(normReply);
+        
+        // Only intercept if there are actual unpaid bills, pending payment, or pending transfer
+        const hasUnpaidBillsOrPending = unpaidBills.length > 0 || session?.pendingBillPayment || session?.pendingTransfer;
+        if (claimsPayment && hasUnpaidBillsOrPending) {
+            console.warn('⚠️ [SECURITY INTERCEPT]: Model fabricated payment success without <<<DB_ACTION>>>. Overriding with structured confirmation prompt.');
+            if (session?.pendingBillPayment) {
+                const p = session.pendingBillPayment;
+                const balAfter = (db.user.balance - p.totalAmount).toLocaleString();
+                const introMatch = rawReply.match(/^([\s\S]*?)(?:تم(?:ت)?|جاي\s+أسدد|سددت|دفعت)/i);
+                const intro = (introMatch && introMatch[1].trim()) ? (introMatch[1].trim() + '\n\n') : '';
+                if (p.type === 'SINGLE' && p.bills?.[0]) {
+                    const b = p.bills[0];
+                    return `${intro}تفاصيل تسديد الفاتورة:\n• جهة الدفع: ${b.biller}\n• رقم الحساب: ${b.account_number || ''}\n• المبلغ المطلوب: ${b.amount.toLocaleString()} د.ع\n• الرصيد بعد الدفع: ${balAfter} د.ع\n\nمتأكد تريد أسدد فاتورة ${b.biller} هسة؟ (يرجى الرد بـ نعم أو إلغاء)`;
+                } else {
+                    return `${intro}تفاصيل تسديد الفواتير:\n• جهة الدفع: كافة الفواتير المستحقة\n• عدد الفواتير: ${p.bills?.length || unpaidBills.length}\n• المبلغ المطلوب: ${p.totalAmount.toLocaleString()} د.ع\n• الرصيد بعد الدفع: ${balAfter} د.ع\n\nمتأكد تريد أسدد كل الفواتير هسة؟ (يرجى الرد بـ نعم أو إلغاء)`;
+                }
+            }
             return '⚠️ لم يتم تنفيذ أي عملية دفع أو خصم من رصيدك حتى الآن. يرجى تأكيد العملية لتنفيذها بشكل رسمي وآمن.';
         }
         return rawReply;
@@ -170,7 +186,8 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                 }
 
                 const cleanBotText = rawReply.replace(actionRegex, '').trim();
-                if (cleanBotText) {
+                const claimsSuccess = /(?:تم(?:ت)?\s*(?:عملية\s*)?التحويل\s*بنجاح|دزيت|حولت)/i.test(normalizeArabic(cleanBotText));
+                if (cleanBotText && !claimsSuccess && cleanBotText.includes('تفاصيل التحويل') && cleanBotText.includes('متأكد تريد أحول')) {
                     return cleanBotText;
                 }
 
@@ -223,7 +240,8 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                         session.pendingBillPayment = newPendingBill;
                     }
                     const cleanBotText = rawReply.replace(actionRegex, '').trim();
-                    if (cleanBotText) {
+                    const claimsSuccess = /(?:تم(?:ت)?\s*(?:عملية\s*)?(?:الدفع|تسديد|سداد)|سددت|دفعت)/i.test(normalizeArabic(cleanBotText));
+                    if (cleanBotText && !claimsSuccess && cleanBotText.includes('تفاصيل تسديد') && cleanBotText.includes('متأكد تريد أسدد')) {
                         return cleanBotText;
                     }
                     const remainingBal = db.user.balance - totalAmount;
@@ -291,7 +309,8 @@ async function handleModelActions(rawReply, db, userMessage, providerKey = 'loca
                         session.pendingBillPayment = newPendingBill;
                     }
                     const cleanBotText = rawReply.replace(actionRegex, '').trim();
-                    if (cleanBotText) {
+                    const claimsSuccess = /(?:تم(?:ت)?\s*(?:عملية\s*)?(?:الدفع|تسديد|سداد)|سددت|دفعت)/i.test(normalizeArabic(cleanBotText));
+                    if (cleanBotText && !claimsSuccess && cleanBotText.includes('تفاصيل تسديد') && cleanBotText.includes('متأكد تريد أسدد')) {
                         return cleanBotText;
                     }
                     const remainingBal = db.user.balance - billAmount;

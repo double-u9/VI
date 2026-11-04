@@ -7021,6 +7021,74 @@ describe('VI Wallet Regression Suite - Category 29: Continuous Horizontal Chip W
         assert.ok(css.includes('opacity: 0.45'), 'Disabled submit button must have reduced opacity');
         assert.ok(css.includes('cursor: not-allowed'), 'Disabled submit button must have not-allowed cursor');
     });
+
+    test('6. Currency toggle in Quick Transfer Modal synchronizes input value and prevents false ceiling alerts', () => {
+        const mockInput = {
+            value: '50,000',
+            classList: {
+                classes: new Set(),
+                toggle(c, val) { if (val) this.classes.add(c); else this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            },
+            setAttribute() {},
+            removeAttribute() {}
+        };
+        const mockEqVal = { textContent: '' };
+        const mockUnit = { textContent: '' };
+        const mockAlert = {
+            classList: {
+                classes: new Set(['hidden']),
+                toggle(c, val) { if (val) this.classes.add(c); else this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            }
+        };
+        const mockSubmitBtn = {
+            disabled: false,
+            classList: {
+                classes: new Set(),
+                add(c) { this.classes.add(c); },
+                remove(c) { this.classes.delete(c); },
+                contains(c) { return this.classes.has(c); }
+            },
+            setAttribute() {},
+            removeAttribute() {}
+        };
+
+        global.document = {
+            getElementById: (id) => {
+                if (id === 'quick-transfer-amount-input') return mockInput;
+                if (id === 'qt-eq-val') return mockEqVal;
+                if (id === 'quick-transfer-amount-unit') return mockUnit;
+                if (id === 'quick-transfer-ceiling-alert') return mockAlert;
+                if (id === 'quick-transfer-submit-btn') return mockSubmitBtn;
+                return null;
+            },
+            querySelectorAll: () => []
+        };
+
+        // Open modal in IQD with 50,000 IQD
+        frontend.setActiveCurrency('IQD', false);
+        frontend.setCurrentTransferAmount(50000);
+        frontend.updateQuickTransferInputVal();
+
+        assert.equal(mockInput.value, '50,000');
+        assert.ok(mockEqVal.textContent.includes('32.68'));
+        assert.equal(mockAlert.classList.contains('hidden'), true);
+        assert.equal(mockSubmitBtn.disabled, false);
+
+        // Switch currency to USD
+        frontend.setActiveCurrency('USD', false);
+
+        assert.equal(mockInput.value, '32.68', 'Input must convert 50,000 IQD to 32.68 USD');
+        assert.ok(mockEqVal.textContent.includes('50,000 د.ع'), 'Secondary valuation must display 50,000 IQD (NOT 76,500,000)');
+        assert.ok(!mockEqVal.textContent.includes('76,500,000'), 'Must not display erroneous 76.5M IQD multiplication');
+        assert.equal(mockAlert.classList.contains('hidden'), true, 'Ceiling alert must stay hidden (50K <= 3M)');
+        assert.equal(mockSubmitBtn.disabled, false, 'Submit button must stay enabled');
+
+        // Reset back to IQD
+        frontend.setActiveCurrency('IQD', false);
+        delete global.document;
+    });
 });
 
 describe('VI Wallet Regression Suite - Category 30: State-of-the-Art Circular Ripple View Transition', () => {
@@ -7417,7 +7485,558 @@ describe('VI Wallet Regression Suite - Category 32: Precision Transaction Flow P
         assert.ok(prompt.includes('YOU MUST LIST ALL'), 'Prompt must instruct model to list all contacts without truncating');
         assert.ok(prompt.includes('فقط؟'), 'Prompt must instruct model on how to handle "فقط؟" follow-up queries');
     });
+
+    test('6. parseFintechTransactionData & formatFintechMessage render success ticket for "تم تحويل 3,000,000 د.ع إلى أم مصطفى بنجاح"', () => {
+        const text = 'تم تحويل 3,000,000 د.ع إلى أم مصطفى بنجاح.\n\nرصيدك الجديد بعد التحويل: 0 د.ع';
+        const formatted = frontend.formatFintechMessage(text, 'ai');
+
+        assert.ok(formatted.includes('receipt-pass'), 'Must render luxury success pass');
+        assert.ok(formatted.includes('3,000,000'), 'Must contain 3,000,000 transfer amount');
+        assert.ok(formatted.includes('أم مصطفى'), 'Must contain recipient name');
+        assert.ok(formatted.includes('animated-check-svg'), 'Must include animated checkmark');
+        assert.ok(formatted.includes('msg-conversational-body'), 'Must preserve conversational text');
+    });
 });
+
+describe('VI Wallet Regression Suite - Category 33: Multi-Turn Ground Truth Ledger & Anti-Hallucination Sanitizer', () => {
+    const { sanitizeFinancialResponse } = require('../src/controllers/chatController');
+
+    test('1. sanitizeFinancialResponse corrects hallucinated balance to real database balance', () => {
+        const mockDb = {
+            user: { balance: 2950000, currency: 'IQD' },
+            bills: []
+        };
+        const hallucinatedText = 'تدلل عيوني! رصيدك الحالي في المحفظة هو 2,725,000 د.ع.';
+        const sanitized = sanitizeFinancialResponse(hallucinatedText, mockDb);
+
+        assert.ok(sanitized.includes('2,950,000 د.ع'), 'Must correct hallucinated 2,725,000 to real 2,950,000');
+        assert.ok(!sanitized.includes('2,725,000'), 'Must not contain stale balance');
+    });
+
+    test('2. sanitizeFinancialResponse preserves balance if correctly stated', () => {
+        const mockDb = {
+            user: { balance: 2950000, currency: 'IQD' },
+            bills: []
+        };
+        const correctText = 'رصيدك الحالي في المحفظة هو 2,950,000 د.ع.';
+        const sanitized = sanitizeFinancialResponse(correctText, mockDb);
+
+        assert.strictEqual(sanitized, correctText, 'Must preserve already correct balance');
+    });
+
+    test('3. sanitizeFinancialResponse catches false denial of unpaid bills and replaces with ground truth breakdown', () => {
+        const mockDb = {
+            user: { balance: 2950000, currency: 'IQD' },
+            bills: [
+                { id: 'b1', biller: 'فاتورة خط الهاتف المحمول', amount: 25000, status: 'unpaid' },
+                { id: 'b2', biller: 'فاتورة شبكة الإنترنت المنزلي', amount: 40000, status: 'unpaid' },
+                { id: 'b3', biller: 'كهرباء الكرخ', amount: 50000, status: 'unpaid' },
+                { id: 'b4', biller: 'مياه البصرة', amount: 35000, status: 'unpaid' }
+            ]
+        };
+        const hallucinatedText = 'تدلل عيوني! رصيدك الحالي في المحفظة هو 2,950,000 د.ع.\n\nلا توجد فواتير مستحقة حالياً.';
+        const sanitized = sanitizeFinancialResponse(hallucinatedText, mockDb);
+
+        assert.ok(!sanitized.includes('لا توجد فواتير مستحقة حالياً'), 'Must strip false claim of no unpaid bills');
+        assert.ok(sanitized.includes('عندك 4 فواتير غير مدفوعة بإجمالي 150,000 د.ع'), 'Must inject true unpaid count and sum');
+        assert.ok(sanitized.includes('فاتورة خط الهاتف المحمول'), 'Must detail billers');
+    });
+
+    test('4. sanitizeFinancialResponse does NOT alter bill denial if all bills are genuinely paid', () => {
+        const mockDb = {
+            user: { balance: 2950000, currency: 'IQD' },
+            bills: [
+                { id: 'b1', biller: 'كهرباء الكرخ', amount: 50000, status: 'paid' }
+            ]
+        };
+        const truthfulText = 'تدلل عيوني! لا توجد فواتير مستحقة حالياً.';
+        const sanitized = sanitizeFinancialResponse(truthfulText, mockDb);
+
+        assert.strictEqual(sanitized, truthfulText, 'Must keep message unchanged when no unpaid bills exist');
+    });
+
+    test('5. sanitizeFinancialResponse intercepts premature bill payment claim and enforces structured confirmation card', () => {
+        const mockDb = {
+            user: { balance: 3000000, currency: 'IQD' },
+            bills: [
+                { id: 'b1', biller: 'فاتورة خط الهاتف المحمول', amount: 25000, status: 'unpaid' },
+                { id: 'b2', biller: 'فاتورة شبكة الإنترنت المنزلي', amount: 40000, status: 'unpaid' },
+                { id: 'b3', biller: 'كهرباء الكرخ', amount: 50000, status: 'unpaid' },
+                { id: 'b4', biller: 'مياه البصرة', amount: 35000, status: 'unpaid' }
+            ]
+        };
+        const mockSession = {
+            pendingBillPayment: {
+                type: 'ALL',
+                billIds: ['b1', 'b2', 'b3', 'b4'],
+                totalAmount: 150000,
+                bills: mockDb.bills
+            }
+        };
+        const prematureReply = 'يا هلا بيك! تدلل، هسة أحسبها لك وأسددها دفعة وحدة... جاي أسدد الكل هسة... تمام، تمت عملية الدفع بنجاح! صار رصيدك الحالي بالمحفظة 2,850,000 د.ع.';
+        const sanitized = sanitizeFinancialResponse(prematureReply, mockDb, mockSession);
+
+        assert.ok(sanitized.includes('تفاصيل تسديد الفواتير'), 'Must format as structured confirmation details');
+        assert.ok(sanitized.includes('المبلغ المطلوب: 150,000 د.ع'), 'Must contain 150,000 IQD as required amount');
+        assert.ok(sanitized.includes('الرصيد بعد الدفع: 2,850,000 د.ع'), 'Must calculate remaining balance correctly');
+        assert.ok(sanitized.includes('متأكد تريد أسدد كل الفواتير هسة؟'), 'Must prompt for confirmation to render slide-to-pay');
+        assert.ok(!sanitized.includes('تمت عملية الدفع بنجاح'), 'Must strip premature success claim');
+    });
+
+    test('6. sanitizeFinancialResponse expands truncated 4-contact list to all registered contacts', () => {
+        const mockDb = {
+            user: { balance: 3000000, currency: 'IQD' },
+            contacts: [
+                { name: 'أحمد كمال', alias: 'أحمد كمال (صديق الجامعة)', phone: '+9647801122334' },
+                { name: 'أحمد جاسم', alias: 'أحمد جاسم (الفيترجي)', phone: '+9647802233445' },
+                { name: 'أم مصطفى', alias: 'الوالدة', phone: '+9647803344556' },
+                { name: 'سيف الدين', alias: 'سيف الدين', phone: '+9647804455667' },
+                { name: 'حسين', alias: 'حسين', phone: '+9647807778899' },
+                { name: 'علاوي', alias: 'علاوي', phone: '+9647709998877' },
+                { name: 'مرتضى', alias: 'مرتضى', phone: '+9647819919952' }
+            ]
+        };
+        const truncatedReply = 'حالياً، لديك 4 أشخاص مسجلين في قائمة اتصالاتك:\n1 أحمد كمال\n2 أحمد جاسم\n3 أم مصطفى\n4 سيف الدين\n\nيمكنك دفع الأموال لهم بسهولة من خلال محفظتك الرقمية.';
+        const sanitized = sanitizeFinancialResponse(truncatedReply, mockDb);
+
+        assert.ok(sanitized.includes('لديك 7 أشخاص مسجلين في قائمة اتصالاتك'), 'Must correct 4 to 7');
+        assert.ok(sanitized.includes('حسين'), 'Must include Hussein');
+        assert.ok(sanitized.includes('علاوي'), 'Must include Allawi');
+        assert.ok(sanitized.includes('مرتضى'), 'Must include Murtadha');
+    });
+
+    test('7. Contact creation intent "هممم اضف شخص اسمه مهند لقائمة الاتصالات برقم 07813131313" does not match bills', () => {
+        const { isContactCreationIntent, findMatchingBill, detectBillPaymentIntent, extractUserPhoneCandidates, extractContactNameFromMessage } = require('../src/services/nlpRouter');
+        const db = require('../mock_wallet_db.json');
+        const msg = 'هممم اضف شخص اسمه مهند لقائمة الاتصالات برقم 07813131313';
+
+        assert.strictEqual(isContactCreationIntent(msg), true, 'Must identify as contact creation');
+        assert.strictEqual(findMatchingBill(msg, db.bills), null, 'Must NOT match mobile bill or internet bill');
+        assert.strictEqual(detectBillPaymentIntent(msg, db.bills), null, 'Must NOT trigger bill payment');
+        assert.deepStrictEqual(extractUserPhoneCandidates(msg), ['07813131313']);
+        assert.strictEqual(extractContactNameFromMessage(msg), 'مهند');
+    });
+});
+
+describe('VI Wallet Regression Suite - Category 34: Precision Bill Selection, Inquiry vs Payment Disambiguation, & Success Receipt Rendering', () => {
+    const { detectBillPaymentIntent, isBillInquiry, isPayAllBillsRequest, findMatchingBill } = require('../src/services/nlpRouter');
+    const { sanitizeFinancialResponse } = require('../src/controllers/chatController');
+    const frontendScript = require('../../frontend/script');
+    const mockDb = require('../mock_wallet_db.json');
+
+    test('1. detectBillPaymentIntent differentiates informational inquiries from payment requests', () => {
+        const query1 = 'شنو الفواتير غير المسددة؟';
+        const query2 = 'شكد فواتيري حالياً؟';
+        const query3 = 'الفواتير المسددة';
+
+        assert.strictEqual(isBillInquiry(query1), true);
+        assert.strictEqual(detectBillPaymentIntent(query1, mockDb.bills), null, 'Must NOT trigger payment intent on inquiry');
+        assert.strictEqual(detectBillPaymentIntent(query2, mockDb.bills), null, 'Must NOT trigger payment intent on inquiry');
+        assert.strictEqual(detectBillPaymentIntent(query3, mockDb.bills), null, 'Must NOT trigger payment intent on paid bills inquiry');
+    });
+
+    test('2. detectBillPaymentIntent matches single bill accurately without forcing bulk 150,000 IQD', () => {
+        const waterMsg = 'اريد ادفع فاتورة المياه';
+        const internetMsg = 'أريد أدفع فاتورة الإنترنت';
+        const mobileMsg = 'أريد أدفع فاتورة الخط';
+
+        const waterIntent = detectBillPaymentIntent(waterMsg, mockDb.bills);
+        assert.ok(waterIntent !== null);
+        assert.strictEqual(waterIntent.type, 'SINGLE');
+        assert.strictEqual(waterIntent.bill.biller, 'مياه البصرة');
+        assert.strictEqual(waterIntent.bill.amount, 35000);
+
+        const netIntent = detectBillPaymentIntent(internetMsg, mockDb.bills);
+        assert.ok(netIntent !== null);
+        assert.strictEqual(netIntent.type, 'SINGLE');
+        assert.strictEqual(netIntent.bill.amount, 40000);
+
+        const mobileIntent = detectBillPaymentIntent(mobileMsg, mockDb.bills);
+        assert.ok(mobileIntent !== null);
+        assert.strictEqual(mobileIntent.type, 'SINGLE');
+        assert.strictEqual(mobileIntent.bill.amount, 25000);
+    });
+
+    test('3. isPayAllBillsRequest triggers ONLY on explicit collective commands', () => {
+        assert.strictEqual(isPayAllBillsRequest('سدد كل الفواتير دفعة وحدة'), true);
+        assert.strictEqual(isPayAllBillsRequest('ادفع كافة الفواتير'), true);
+        assert.strictEqual(isPayAllBillsRequest('سدد الكل'), true);
+
+        // General requests should NOT force bulk payment
+        assert.strictEqual(isPayAllBillsRequest('أريد أدفع الفواتير'), false, 'General request leaves choice to user');
+        assert.strictEqual(isPayAllBillsRequest('شنو الفواتير غير المسددة'), false);
+    });
+
+    test('4. formatFintechMessage does NOT render checkmark receipt prematurely on confirmation prompt ("لكي يتم الدفع بنجاح")', () => {
+        const confirmPrompt = `حسناً يا هلا عيوني! تدلل...
+تفاصيل تسديد الفاتورة:
+• جهة الدفع: فاتورة شبكة الإنترنت المنزلي (Fiber/4G)
+• رقم الحساب: NET-884920
+• المبلغ المطلوب: 40,000 د.ع
+• الرصيد بعد الدفع: 2,960,000 د.ع
+
+متأكد تريد أسدد فاتورة شبكة الإنترنت المنزلي (Fiber/4G) هسة؟
+(تذكر يا غالي، أنك لا تزال بحاجة إلى تأكيد منك لكي يتم الدفع بنجاح!)`;
+
+        const html = frontendScript.formatFintechMessage(confirmPrompt, 'ai', 'اريد ادفع فاتورة الانترنت');
+        assert.ok(html.includes('confirm-card'), 'Must render Slide to Pay confirmation card');
+        assert.ok(!html.includes('receipt-pass'), 'Must NOT render premature success receipt ticket');
+    });
+
+    test('5. parseFintechTransactionData extracts 25,000 IQD for mobile bill despite intro mentioning 150,000 IQD total', () => {
+        const reply = `حسناً يا هلا عيوني! نورت محفظتك ويا فاي...
+لديك 4 فواتير غير مدفوعة حالياً بإجمالي 150,000 د.ع . تريد أسدد فاتورة الخط؟
+تفاصيل تسديد الفاتورة:
+• جهة الدفع: فاتورة خط الهاتف المحمول
+• رقم الحساب: 07801234567
+• المبلغ المطلوب: 25,000 د.ع
+• الرصيد بعد الدفع: 2,975,000 د.ع
+
+متأكد تريد أسدد فاتورة خط الهاتف المحمول هسة؟`;
+
+        const data = frontendScript.formatFintechMessage ? frontendScript : null;
+        const vm = require('vm');
+        const fs = require('fs');
+        const code = fs.readFileSync('frontend/script.js', 'utf8');
+        const sandbox = { console, setTimeout, clearTimeout, setInterval, clearInterval, Date, Math, RegExp, Array, Object, String, Number, Boolean, JSON, typeof: () => {} };
+        vm.createContext(sandbox);
+        vm.runInContext(code, sandbox);
+
+        const parsed = sandbox.parseFintechTransactionData(reply, true, false);
+        assert.strictEqual(parsed.amount, '25,000 د.ع', 'Must prioritize required single amount 25,000 over 150,000');
+        assert.strictEqual(parsed.balanceAfter, '2,975,000 د.ع');
+
+        const cardHtml = sandbox.renderFintechConfirmationCard(parsed);
+        assert.ok(!cardHtml.includes('تحويل عالي القيمة'), 'Must NOT trigger high-value transfer banner for 25,000 IQD');
+    });
+
+    test('6. formatFintechMessage renders checkmark receipt ticket and preserves text on completed transfer', () => {
+        const vm = require('vm');
+        const fs = require('fs');
+        const code = fs.readFileSync('frontend/script.js', 'utf8');
+        const sandbox = { console, setTimeout, clearTimeout, setInterval, clearInterval, Date, Math, RegExp, Array, Object, String, Number, Boolean, JSON, typeof: () => {} };
+        vm.createContext(sandbox);
+        vm.runInContext(code, sandbox);
+
+        const successText = `تم تحويل المبلغ بنجاح! الرصيد الجديد للمحفظة هو: 2,847,000 د.ع\n\n(تذكر أن لديك فواتير غير مدفوعة بإجمالي 150,000 د.ع. ويمكنك الدفع عنها في أي وقت.)`;
+        const testConfirmData = {
+            amount: '153,000 د.ع',
+            recipient: 'أحمد كمال',
+            phoneOrAccount: '+9647801122334',
+            subDetail: 'صديق الجامعة',
+            isBill: false
+        };
+        if (typeof sandbox.setLastActiveConfirmationData === 'function') {
+            sandbox.setLastActiveConfirmationData(testConfirmData);
+        } else {
+            sandbox.lastActiveConfirmationData = testConfirmData;
+        }
+
+        const html = sandbox.formatFintechMessage(successText, 'ai', 'نعم متأكد');
+        assert.ok(html.includes('receipt-pass'), 'Must render payment success receipt ticket with checkmark');
+        assert.ok(html.includes('msg-conversational-body'), 'Must preserve conversational text');
+        assert.ok(html.includes('153,000 د.ع'), 'Must display confirmed transfer amount');
+        assert.ok(html.includes('أحمد كمال'), 'Must display recipient name');
+    });
+
+    test('7. Inquiry about paid bills ("شنو الفواتير المسددة؟") does NOT render Slide to Pay or checkmark ticket', () => {
+        const vm = require('vm');
+        const fs = require('fs');
+        const code = fs.readFileSync('frontend/script.js', 'utf8');
+        const sandbox = { console, setTimeout, clearTimeout, setInterval, clearInterval, Date, Math, RegExp, Array, Object, String, Number, Boolean, JSON, typeof: () => {} };
+        vm.createContext(sandbox);
+        vm.runInContext(code, sandbox);
+
+        const inquiryReply = 'هاي الفواتير اللي تم تسديدها سابقاً بمحفظتك:\n• فاتورة كهرباء الكرخ: 50,000 د.ع بتاريخ 2026-10-20';
+        const html = sandbox.formatFintechMessage(inquiryReply, 'ai', 'شنو الفواتير المسددة؟');
+
+        assert.ok(!html.includes('confirm-card'), 'Inquiry must NOT render confirm card');
+        assert.ok(!html.includes('receipt-pass'), 'Inquiry must NOT render receipt ticket');
+    });
+});
+
+describe('VI Wallet Regression Suite - Category 35: Live Transaction Life-Cycle, Disambiguation & Single Bill Selection', () => {
+    const http = require('http');
+    const { handleChat } = require('../src/controllers/chatController');
+    const { getSession } = require('../src/services/sessionStore');
+    const { readDatabase } = require('../src/services/walletService');
+    const frontendScript = require('../../frontend/script');
+
+    function createMockRes() {
+        return {
+            statusCode: 200,
+            headers: {},
+            body: null,
+            ended: false,
+            status(code) { this.statusCode = code; return this; },
+            setHeader(k, v) { this.headers[k] = v; return this; },
+            json(data) { this.body = data; this.ended = true; return this; },
+            write(chunk) { this.body = (this.body || '') + chunk; },
+            end() { this.ended = true; }
+        };
+    }
+
+    test('1. Ambiguous Recipient without amount ("اريد ادفع لاحمد") displays numbered list and waits without auto-selecting', async () => {
+        const sessionId = 'live_user_test_disambig_1_' + Date.now();
+        const req = {
+            body: { message: 'اريد ادفع لاحمد', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        const session = getSession(sessionId);
+        assert.ok(session.pendingDisambiguation !== null, 'Must set pendingDisambiguation in session');
+        assert.strictEqual(session.pendingDisambiguation.name, 'أحمد');
+        assert.strictEqual(session.pendingTransfer, null, 'Must NOT auto-select recipient');
+        assert.ok(res.body.response.includes('1.'), 'Must display numbered choice 1');
+        assert.ok(res.body.response.includes('2.'), 'Must display numbered choice 2');
+        assert.ok(res.body.response.includes('أحمد كمال'));
+        assert.ok(res.body.response.includes('أحمد جاسم'));
+    });
+
+    test('2. Ambiguous Recipient with amount ("ادفعلي 50 الف لاحمد") retains 50,000 IQD and asks to disambiguate', async () => {
+        const sessionId = 'live_user_test_disambig_2_' + Date.now();
+        const req = {
+            body: { message: 'ادفعلي 50 الف لاحمد', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        const session = getSession(sessionId);
+        assert.ok(session.pendingDisambiguation !== null, 'Must set pendingDisambiguation in session');
+        assert.strictEqual(session.pendingDisambiguation.amount, 50000, 'Must retain 50,000 IQD amount');
+        assert.strictEqual(session.pendingTransfer, null, 'Must NOT auto-select recipient even when amount is provided');
+        assert.ok(res.body.response.includes('1.'));
+        assert.ok(res.body.response.includes('2.'));
+    });
+
+    test('3. Selecting candidate "1" after "ادفعلي 50 الف لاحمد" prepares Slide to Pay for 50,000 to Ahmed Kamal', async () => {
+        const sessionId = 'live_user_test_disambig_3_' + Date.now();
+        // Turn 1: ambiguous request
+        const req1 = {
+            body: { message: 'ادفعلي 50 الف لاحمد', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res1 = createMockRes();
+        await handleChat(req1, res1);
+
+        // Turn 2: user selects 1
+        const req2 = {
+            body: { message: '1', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res2 = createMockRes();
+        await handleChat(req2, res2);
+
+        const session = getSession(sessionId);
+        assert.strictEqual(session.pendingDisambiguation, null, 'Disambiguation must be resolved');
+        assert.ok(session.pendingTransfer !== null, 'Must set pendingTransfer');
+        assert.strictEqual(session.pendingTransfer.amount, 50000);
+        assert.ok(session.pendingTransfer.recipient.includes('أحمد كمال'));
+        assert.ok(res2.body.response.includes('تفاصيل التحويل'));
+        assert.ok(res2.body.response.includes('50,000'));
+        assert.ok(res2.body.response.includes('متأكد تريد أحول؟'));
+    });
+
+    test('4. Missing recipient ("أريد أحول خمسين ألف") asks for recipient and preserves 50,000 IQD', async () => {
+        const sessionId = 'live_user_test_missing_recip_' + Date.now();
+        const req = {
+            body: { message: 'أريد أحول خمسين ألف', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        const session = getSession(sessionId);
+        assert.strictEqual(session.pendingTransferAmount, 50000, 'Must store pendingTransferAmount');
+        assert.strictEqual(session.pendingTransfer, null, 'Must NOT create pending transfer without recipient');
+        assert.strictEqual(res.body.response, 'أكيد، لمن تريد تحويل المبلغ؟ اذكر اسم المستلم أو رقم هاتفه.');
+
+        // Turn 2: user provides recipient "لسيف"
+        const req2 = {
+            body: { message: 'لسيف', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res2 = createMockRes();
+        await handleChat(req2, res2);
+
+        assert.strictEqual(session.pendingTransferAmount, null, 'Pending amount consumed');
+        assert.ok(session.pendingTransfer !== null, 'Pending transfer created');
+        assert.strictEqual(session.pendingTransfer.amount, 50000);
+        assert.ok(session.pendingTransfer.recipient.includes('سيف'));
+        assert.ok(res2.body.response.includes('50,000'));
+    });
+
+    test('5. Single bill settlement ("أريد أدفع فاتورة الخط") displays Slide to Pay for 25,000 IQD ONLY', async () => {
+        const sessionId = 'live_user_test_single_bill_' + Date.now();
+        const req = {
+            body: { message: 'أريد أدفع فاتورة الخط', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        const session = getSession(sessionId);
+        assert.ok(session.pendingBillPayment !== null);
+        assert.strictEqual(session.pendingBillPayment.type, 'SINGLE');
+        assert.strictEqual(session.pendingBillPayment.totalAmount, 25000);
+        assert.strictEqual(session.pendingBillPayment.bills[0].biller, 'فاتورة خط الهاتف المحمول');
+        assert.ok(res.body.response.includes('25,000 د.ع'));
+        assert.ok(!res.body.response.includes('150,000 د.ع'), 'Must NOT demand bulk 150,000 IQD for single bill');
+    });
+
+    test('6. All bills collective payment ("سدد كل الفواتير دفعة وحدة") requires Slide to Pay confirmation', async () => {
+        const sessionId = 'live_user_test_bulk_bills_' + Date.now();
+        const req = {
+            body: { message: 'سدد كل الفواتير دفعة وحدة', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        const session = getSession(sessionId);
+        assert.ok(session.pendingBillPayment !== null);
+        assert.strictEqual(session.pendingBillPayment.type, 'ALL');
+        assert.strictEqual(session.pendingBillPayment.totalAmount, 150000);
+        assert.ok(res.body.response.includes('تفاصيل تسديد الفواتير'));
+        assert.ok(res.body.response.includes('150,000 د.ع'));
+        assert.ok(res.body.response.includes('متأكد تريد أسدد كل الفواتير هسة؟'));
+    });
+
+    test('7. Transfer intent does NOT trigger bill payment ("اريد ادفع لاحمد")', async () => {
+        const db = readDatabase();
+        const sessionId = 'live_user_test_no_bill_hijack_' + Date.now();
+        const req = {
+            body: { message: 'اريد ادفع لاحمد', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        const session = getSession(sessionId);
+        assert.strictEqual(session.pendingBillPayment, null, 'Must NOT trigger pending bill payment');
+        assert.ok(!res.body.response.includes('تسديد الفواتير'), 'Must NOT mention bill payment');
+    });
+
+    test('8. Quick Transfer modal converts un-converted IQD inputs when in USD mode', () => {
+        const vm = require('vm');
+        const fs = require('fs');
+        const code = fs.readFileSync('frontend/script.js', 'utf8');
+        const mockInput = { value: '50,000', classList: { toggle: () => {} }, setAttribute: () => {} };
+        const mockEqVal = { textContent: '' };
+        const mockUnit = { textContent: '' };
+        const mockAlert = { classList: { toggle: () => {} } };
+        const mockMsg = { textContent: '' };
+        const mockBtn = { disabled: false, classList: { add: () => {}, remove: () => {} }, removeAttribute: () => {} };
+
+        const sandbox = {
+            console, setTimeout, clearTimeout, setInterval, clearInterval,
+            Date, Math, RegExp, Array, Object, String, Number, Boolean, JSON,
+            activeCurrency: 'USD',
+            iqdPerUsdRate: 1530,
+            currentWalletBalance: 3000000,
+            currentTransferAmount: 50000,
+            document: {
+                getElementById: (id) => {
+                    if (id === 'quick-transfer-amount-input') return mockInput;
+                    if (id === 'qt-eq-val') return mockEqVal;
+                    if (id === 'quick-transfer-amount-unit') return mockUnit;
+                    if (id === 'quick-transfer-ceiling-alert') return mockAlert;
+                    if (id === 'quick-transfer-ceiling-msg') return mockMsg;
+                    if (id === 'quick-transfer-submit-btn') return mockBtn;
+                    return null;
+                }
+            }
+        };
+        vm.createContext(sandbox);
+        vm.runInContext(code, sandbox);
+
+        sandbox.setActiveCurrency('USD', false);
+        mockInput.value = '50,000';
+        sandbox.updateQuickTransferInputVal();
+        assert.strictEqual(mockInput.value, '32.68', 'Must sanitize 50,000 IQD to 32.68 USD');
+        assert.strictEqual(mockEqVal.textContent, '50,000 د.ع', 'Must show 50,000 IQD equivalent, NOT 76,500,000');
+    });
+});
+
+describe('VI Wallet Regression Suite - Category 36: Disambiguation Clicks, Selection Scoring & Template Stripping', () => {
+    test('1. resolveContactSelection correctly distinguishes between candidates with shared base name ("أحمد جاسم" vs "أحمد كمال")', () => {
+        const { resolveContactSelection } = require('../src/services/nlpRouter');
+        const matches = [
+            { id: 'cnt_2001', name: 'أحمد', alias: 'أحمد كمال (صديق الجامعة)', phone: '+9647801122334' },
+            { id: 'cnt_2002', name: 'أحمد', alias: 'أحمد جاسم (الفيترجي / المصلح)', phone: '+9647802233445' }
+        ];
+
+        const selectedJasim = resolveContactSelection('أحمد جاسم', matches);
+        assert.ok(selectedJasim, 'Must resolve contact selection for "أحمد جاسم"');
+        assert.strictEqual(selectedJasim.id, 'cnt_2002', 'Must select Ahmed Jasim, NOT Ahmed Kamal');
+
+        const selectedKamal = resolveContactSelection('أحمد كمال', matches);
+        assert.ok(selectedKamal, 'Must resolve contact selection for "أحمد كمال"');
+        assert.strictEqual(selectedKamal.id, 'cnt_2001', 'Must select Ahmed Kamal');
+
+        const selectedFitter = resolveContactSelection('الفيترجي', matches);
+        assert.strictEqual(selectedFitter?.id, 'cnt_2002', 'Must select Ahmed Jasim by profession alias');
+
+        const selectedUni = resolveContactSelection('صديق الجامعة', matches);
+        assert.strictEqual(selectedUni?.id, 'cnt_2001', 'Must select Ahmed Kamal by relation alias');
+
+        const ambiguousOnly = resolveContactSelection('أحمد', matches);
+        assert.strictEqual(ambiguousOnly, null, 'Just "أحمد" without distinguishing info must return null');
+    });
+
+    test('2. escapeHtml preserves integers, enabling visible number badges and data-choice attributes in cards', () => {
+        const { renderDisambiguationCard, escapeHtml } = require('../../frontend/script.js');
+
+        assert.strictEqual(escapeHtml(1), '1', 'escapeHtml(1) must return "1", not empty string');
+        assert.strictEqual(escapeHtml(2), '2', 'escapeHtml(2) must return "2", not empty string');
+
+        const disambigData = {
+            name: 'أحمد',
+            promptText: 'اختر جهة الاتصال المطلوبة:',
+            options: [
+                { number: 1, num: 1, name: 'أحمد كمال', subtitle: 'صديق الجامعة', phone: '+9647801122334' },
+                { number: 2, num: 2, name: 'أحمد جاسم', subtitle: 'الفيترجي / المصلح', phone: '+9647802233445' }
+            ]
+        };
+
+        const html = renderDisambiguationCard(disambigData);
+        assert.ok(html.includes('data-choice="1"'), 'First option must have data-choice="1"');
+        assert.ok(html.includes('data-choice="2"'), 'Second option must have data-choice="2"');
+        assert.ok(html.includes('>1</span>'), 'Badge must render number 1');
+        assert.ok(html.includes('>2</span>'), 'Badge must render number 2');
+    });
+
+    test('3. sanitizeFinancialResponse strips hallucinated transfer templates during disambiguation while preserving AI natural text', () => {
+        const { sanitizeFinancialResponse } = require('../src/controllers/chatController');
+        const db = {
+            user: { balance: 2950000, currency: 'IQD' },
+            bills: [{ id: 'b1', biller: 'كهرباء الكرخ', amount: 50000, status: 'unpaid' }]
+        };
+        const session = {
+            pendingDisambiguation: {
+                name: 'أحمد',
+                matches: [
+                    { id: 'cnt_2001', name: 'أحمد', alias: 'أحمد كمال (صديق الجامعة)', phone: '+9647801122334' },
+                    { id: 'cnt_2002', name: 'أحمد', alias: 'أحمد جاسم (الفيترجي / المصلح)', phone: '+9647802233445' }
+                ],
+                amount: 50000
+            }
+        };
+
+        const rawReply = 'حسناً عيوني! لاحمد كمال (صديق الجامعة)(+9647801122334) أو أحمد جاسم (الفيترجي / المصلح)(+9647802233445)؟ يمكنك اختيار الشخص الصحيح من خلال الضغط على أحد الأزرار التفاعلية أسفل هذا الرسالة أو كتابة الاسم.\n\nتفاصيل التحويل:\n• المستلم: لاحمد\n• رقم الهاتف: (اختيارك)\n• المبلغ المطلوب: (المبلغ الذي قمت بتحديده)\n• الرصيد بعد التحويل: 2,950,000 د.ع\n\nمتأكد تريد أحول؟ (اسحب للتأكيد أو اكتب نعم)';
+
+        const sanitized = sanitizeFinancialResponse(rawReply, db, session);
+        assert.ok(sanitized.includes('لاحمد كمال (صديق الجامعة)'), 'Natural conversational prompt must be preserved');
+        assert.ok(sanitized.includes('أحمد جاسم (الفيترجي / المصلح)'), 'Both candidates must remain mentioned');
+        assert.ok(!sanitized.includes('تفاصيل التحويل:'), 'Hallucinated transfer details must be stripped');
+        assert.ok(!sanitized.includes('متأكد تريد أحول؟'), 'Hallucinated confirmation prompt must be stripped');
+        assert.ok(!sanitized.includes('(المبلغ الذي قمت بتحديده)'), 'Hallucinated placeholder must be stripped');
+    });
+});
+
 
 
 

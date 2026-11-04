@@ -11,7 +11,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-v18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express.js](https://img.shields.io/badge/Express.js-5.x_Modular-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![SQLite Database](https://img.shields.io/badge/SQLite-WAL_%26_ACID_Engine-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](#5-embedded-sqlite-persistence-layer--acid-transaction-engine)
-[![Automated Tests](https://img.shields.io/badge/Automated_Tests-281_Passed_(100%25)-10b981?style=for-the-badge&logo=node.js&logoColor=white)](#-automated-testing--quality-assurance)
+[![Automated Tests](https://img.shields.io/badge/Automated_Tests-308_Passed_(100%25)-10b981?style=for-the-badge&logo=node.js&logoColor=white)](#-automated-testing--quality-assurance)
 [![AI Engine](https://img.shields.io/badge/AI_Engine-LM_Studio_%7C_Gemini_%7C_Groq-7c3aed?style=for-the-badge&logo=openai&logoColor=white)](#-multi-model-orchestration-engine)
 [![NLP Router](https://img.shields.io/badge/NLP_Router-Hybrid_%2B_Sub--ms_Semantic-0284c7?style=for-the-badge&logo=probot&logoColor=white)](#3-high-performance-local-semantic-vector-similarity-classifier-sub-ms-latency)
 [![Streaming](https://img.shields.io/badge/Streaming-SSE_%2B_Sliding--Window_Delimiter-f97316?style=for-the-badge)](#4-server-sent-events-sse-token-streaming--sliding-window-delimiter-interception)
@@ -41,7 +41,7 @@
 | [📡 API Specifications & Route Reference](#-api-specifications--route-reference) | Endpoints, headers, SSE event protocols, request/response JSON schemas, and status codes |
 | [📂 Project Directory Layout](#-project-directory-layout) | Annotated file tree structure reflecting the new modular architecture |
 | [⚡ Quick Start & Installation Guide](#-quick-start--installation-guide) | Prerequisites, environment configuration, LM Studio setup, and launch |
-| [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance) | 281-test regression coverage across 60 suites with 100% pass rate |
+| [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance) | 308-test regression coverage across 64 suites with 100% pass rate |
 | [💬 Colloquial Iraqi Dialect Showcase](#-colloquial-iraqi-dialect-showcase) | Real-world linguistic scenarios, slang verbs, and deterministic execution examples |
 | [🛠️ Troubleshooting & Extended FAQs](#️-troubleshooting--extended-faqs) | Solutions for common setup issues, audio permissions, and technical Q&A |
 | [🗺️ Future Roadmap & License](#️-future-roadmap--license) | Milestones, open-source license, and project credits |
@@ -858,7 +858,7 @@ VI/
 │   │       └── 📄 ttsEngine.js         # Text sanitization and neural audio chunking
 │   │
 │   └── 📁 tests/
-│       └── 📄 regression_suite.test.js  # 281-test automated regression and security suite (60 suites)
+│       └── 📄 regression_suite.test.js  # 308-test automated regression and security suite (64 suites)
 │
 ├── 📁 frontend/
 │   ├── 📁 assets/                      # Mirrored UI assets (brand marks and bot icons)
@@ -985,7 +985,7 @@ Run the complete test suite:
 npm test
 ```
 
-### Test Coverage Summary: 281 Tests Across 60 Suites (100% Pass Rate)
+### Test Coverage Summary: 308 Tests Across 64 Suites (100% Pass Rate)
 
 | Task Suite / Category | Tested Capabilities & System Invariants | Suite Count | Test Count | Status |
 | :--- | :--- | :---: | :---: | :---: |
@@ -1021,7 +1021,11 @@ npm test
 | **Category 30: State-of-the-Art Circular Ripple View Transition** | Coordinate-anchored circular clip-path transition (`--ripple-x`, `--ripple-y`, `--ripple-r`), 380ms `cubic-bezier(0.16, 1, 0.3, 1)`, pseudo-elements styling, and reduced-motion compliance. | 1 Suite | 4 Tests | ✅ **Passed** |
 | **Category 31: Interactive Quick Transfer Contact Picker & Streamlined Actions** | In-modal recipient switching via dropdown chevron picker, dynamic initial monogram update, clean modal header with X button removed, and clean submit button (*"إرسال عبر فاي"*). | 1 Suite | 4 Tests | ✅ **Passed** |
 | **Category 32: Precision Transaction Flow Parser & Disambiguation (Transfer vs Bills & Amount Extraction)** | Precision parsing in `parseFintechTransactionData` (distinguishing transfer amounts from bulk bill totals and stripping current wallet balances), single vs bulk bill disambiguation, space-separated contacts list parsing into interactive cards, and system prompt directory grounding with full registered count. | 1 Suite | 5 Tests | ✅ **Passed** |
-| **Total Test Suite** | **Comprehensive End-to-End System, Security, Persistence, and UI Verification** | **60 Suites** | **281 Tests** | **✅ 100% Pass** |
+| **Category 33: Multi-Turn Ground Truth Ledger & Anti-Hallucination Sanitizer** | Corrects hallucinated balances to real database records, catches false denials of unpaid bills and injects itemized breakdown, intercepts premature bill payment claims to enforce structured confirmation, and dynamically expands truncated contact lists. | 1 Suite | 7 Tests | ✅ **Passed** |
+| **Category 34: Precision Bill Selection, Inquiry vs Payment Disambiguation, & Success Receipt Rendering** | Differentiates informational inquiries (*"شنو الفواتير المسددة؟"*, *"شنو القوائم؟"*) from payment commands, matches single bills accurately without forcing bulk 150k IQD totals, prevents premature receipts on confirmation text, and verifies checkmark receipts on completed transfers. | 1 Suite | 7 Tests | ✅ **Passed** |
+| **Category 35: Live Transaction Life-Cycle, Disambiguation & Single Bill Selection** | Ambiguous recipient without amount (*"اريد ادفع لاحمد"*) displays numbered list without auto-selecting, ambiguous recipient with amount (*"ادفعلي 50 الف لاحمد"*) retains 50,000 IQD and requests clarification, candidate selection prepares Slide to Pay for 50k to Ahmed Kamal, missing recipient (*"أريد أحول خمسين ألف"*) asks for recipient while saving 50k, single bill settlement (*"أريد أدفع فاتورة الخط"*) stages 25k IQD only, bulk bills require Slide to Pay, transfer intent never triggers bills, and Quick Transfer converts un-converted IQD inputs in USD mode. | 1 Suite | 8 Tests | ✅ **Passed** |
+| **Category 36: Disambiguation Clicks, Selection Scoring & Template Stripping** | Distinguishes candidates sharing identical base names (*"أحمد جاسم"* vs *"أحمد كمال"*) via distinguishing alias scoring (e.g. *الفيترجي*, *المصلح*, *صديق الجامعة*), preserves integer values in `escapeHtml` for clickable number badges and `data-choice` attributes, and strips hallucinated transfer templates during contact disambiguation while preserving AI natural Iraqi persona. | 1 Suite | 3 Tests | ✅ **Passed** |
+| **Total Test Suite** | **Comprehensive End-to-End System, Security, Persistence, and UI Verification** | **64 Suites** | **308 Tests** | **✅ 100% Pass** |
 
 [▲ Back to Top](#-table-of-contents)
 
@@ -1037,10 +1041,15 @@ npm test
 | **Slang Transfer** | *"طيرلي 50 ألف لسيف"* / *"شمرلي كاش لأحمد"* | Semantic classifier maps *"طيرلي"* / *"شمرلي"* to `TRANSFER`; extracts amount and stages confirmation card. |
 | **High-Value Transfer** | *"دز 250 ألف لأحمد كمال"* | Detects transfer $> 100,000\text{ IQD}$, activates luxury security badge and glowing track pulse. |
 | **Contact Disambiguation** | *"دز 100 ألف لأحمد"* | Detects multiple contacts named *أحمد*, renders interactive 1-tap candidate cards with aliases, and awaits selection. |
+| **Ambiguous Recipient without Amount** | *"أريد أدفع لأحمد"* / *"أريد أحول لأحمد"* | Presents numbered selection (1. أحمد كمال - صديق الجامعة, 2. أحمد جاسم - الفيترجي / المصلح) with interactive clickable buttons; waits for choice without auto-selecting. |
+| **Ambiguous Recipient with Amount** | *"ادفعلي 50 الف لاحمد"* | Preserves 50,000 IQD, displays numbered candidate selection, and waits for choice before staging Slide-to-Confirm. |
+| **Missing Recipient with Amount** | *"أريد أحول خمسين ألف"* | Retains 50,000 IQD and responds warmly: *"أكيد، لمن تريد تحويل المبلغ؟ اذكر اسم المستلم أو رقم هاتفه."* |
+| **Candidate Selection via Alias** | *"أحمد جاسم"* / *"الفيترجي"* | Scored disambiguation resolves contact with distinguishing alias words; stages exact Slide-to-Confirm card. |
 | **Intent Abandonment** | *"ما أعرفه، عوف الموضوع"* | Identifies abandonment intent via `isDisambiguationAbandonment()`, purges pending states, and confirms cancellation. |
 | **Slide Confirmation** | *Dragging slider > 88%* | Executes friction-based slide, triggers haptic pulse, plays ViHaptics success chime, commits SQLite transaction, and logs receipt. |
 | **Verbal Confirmation** | *"نعم توكل"* / *"أكد التحويل"* | Confirms consent via `isUserConfirmation()`, deducts balance atomically, and returns receipt. |
 | **Explicit Cancellation** | *"بطلت، الغي العملية"* | Cancels transaction via `isUserCancellation()`; guarantees zero balance deduction. |
+| **Single Bill Payment Isolation** | *"أريد أدفع فاتورة الخط"* | Identifies mobile bill, focuses strictly on 25,000 IQD without overriding with total unpaid bills (150,000 IQD), and displays Slide-to-Confirm. |
 | **Single Bill Payment** | *"ادفع فاتورة الإنترنت"* | Identifies unpaid Fiber/4G bill, stages payment confirmation, and settles on approval or slide. |
 | **Slang Bill Debt Inquiry** | *"شنو القوائم اللي مكسورة علية؟"* | Semantic classifier maps to `BILL_INQUIRY`; lists all pending unpaid utility bills. |
 | **Bulk Bill Payment** | *"سدد كل الفواتير دفعة وحدة"* | Aggregates all unpaid utilities, validates combined sum against balance, and executes atomically in SQLite with unique transaction IDs. |

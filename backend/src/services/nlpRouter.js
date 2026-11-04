@@ -203,17 +203,33 @@ function resolveContactSelection(userMessage, matches) {
     }
 
     // Distinguishing alias words (e.g. "كمال", "جاسم", "الفيترجي", "المصلح", "صديق الجامعة"):
+    let bestMatch = null;
+    let highestScore = 0;
+
     for (const c of matches) {
         const normAlias = normalizeArabic(c.alias || '');
         const normName = normalizeArabic(c.name || '');
-        const words = normAlias.split(/[\s()\/]+/).filter(w => w.length >= 3 && w !== normName);
+        let score = 0;
+
+        if (normAlias && normalized.includes(normAlias)) {
+            score += 10;
+        }
+
+        const words = normAlias.split(/[\s()\/]+/).filter(w => w.length >= 2 && w !== normName);
         for (const w of words) {
             if (normalized.includes(w)) {
-                return c;
+                score += 5;
             }
         }
-        if (normAlias && normalized.includes(normAlias)) return c;
-        if (normName && normalized.includes(normName)) return c;
+
+        if (score > highestScore) {
+            highestScore = score;
+            bestMatch = c;
+        }
+    }
+
+    if (highestScore > 0 && bestMatch) {
+        return bestMatch;
     }
 
     return null;
@@ -566,17 +582,41 @@ function classifyRecipient(text, contacts = []) {
         }
 
         if (matched.length > 1) {
+            // Check if user specified identifying parts of one contact (e.g. "أحمد كمال" vs "أحمد جاسم")
+            const specificMatches = matched.filter(c => {
+                const normAlias = normalizeArabic(c.alias || '');
+                const aliasWords = normAlias.split(/[\s()\/]+/).filter(w => w.length >= 3 && w !== normalizeArabic(c.name || ''));
+                const hasAliasWord = aliasWords.some(w => clean.includes(w));
+                const phoneDigits = (c.phone || '').replace(/\D/g, '');
+                const hasPhone = phoneDigits.length >= 4 && clean.replace(/\D/g, '').includes(phoneDigits.slice(-6));
+                return hasAliasWord || hasPhone;
+            });
+
+            if (specificMatches.length === 1) {
+                const winner = specificMatches[0];
+                return {
+                    type: 'EXACT',
+                    contactType: 'CONTACT',
+                    valid: true,
+                    recipient: winner.alias || winner.name,
+                    phone: winner.phone,
+                    contact: winner
+                };
+            }
+
             return {
                 type: 'CONTACT_AMBIGUOUS',
                 valid: false,
                 matches: matched,
+                candidates: matched,
                 baseName: matched[0].name
             };
         }
 
         if (matched.length === 1) {
             return {
-                type: 'CONTACT',
+                type: 'EXACT',
+                contactType: 'CONTACT',
                 valid: true,
                 recipient: matched[0].alias || matched[0].name,
                 phone: matched[0].phone,
@@ -723,7 +763,7 @@ function handleDirectTransferIntent(userMessage, db, session = null) {
             if (session) {
                 session.pendingTransferAmount = amount;
             }
-            return `شكد حلو! تريد تحول مبلغ ${amount.toLocaleString()} د.ع، بس لمنو تريد تدزه؟ يرجى كتابة اسم الشخص من جهات اتصالك أو رقم هاتف زين (078...) أو رقم حساب/بطاقة مصرفية.`;
+            return 'أكيد، لمن تريد تحويل المبلغ؟ اذكر اسم المستلم أو رقم هاتفه.';
         }
         return `تدلل عيوني، لمنو تريد تحول وشكد المبلغ اللي تريد تدزه؟ تكدر تدزلي اسم الشخص أو رقم هاتف زين (078...) أو رقم الحساب/البطاقة.`;
     }
@@ -736,6 +776,11 @@ const CANCELLATION_WORDS = ['لا', 'إلغاء', 'الغاء', 'بطلت', 'ه�
 function isUserCancellation(text) {
     if (!text) return false;
     const clean = normalizeArabic(text).trim();
+
+    // Inquiries about bills (e.g. "شنو الفواتير غير مسددة", "شنو الفواتير الغير مستحقة") must never match cancellation
+    if (clean.includes('غير مسدد') || clean.includes('غير مدفوع') || clean.includes('غير مستحق') || clean.includes('شنو الفواتير') || clean.includes('فواتير غير') || clean.includes('الفواتير الغير')) {
+        return false;
+    }
 
     const topicWords = ['قائم', 'جهات', 'اتصال', 'اتصالي', 'اتصالاتي', 'جهاز', 'اسماء', 'اشخاص', 'رصيد', 'فلوس', 'فواتير', 'فاتور', 'كهرباء', 'مياه', 'ماء', 'انترنت', 'حول', 'دز', 'ارسل', 'ادفع', 'سدد'];
     const hasTopicWord = topicWords.some(tw => clean.includes(tw));
@@ -757,8 +802,8 @@ function isUserCancellation(text) {
 }
 
 const EXPLICIT_AFFIRMATIONS = [
-    'نعم', 'أكد', 'اكد', 'موافق', 'أي', 'اي', 'تمام', 'توكل', 'أكيد', 'اكيد',
-    'يلا', 'yes', 'ok', 'confirm'
+    'نعم', 'أكد', 'اكد', 'تأكيد', 'تاكيد', 'متأكد', 'متاكد', 'موافق', 'أي', 'اي', 'تمام', 'توكل', 'أكيد', 'اكيد',
+    'صحيح', 'يلا', 'yes', 'ok', 'confirm'
 ];
 
 const ACTION_CONFIRMATIONS = [
@@ -896,14 +941,30 @@ function isPayAllBillsRequest(text) {
     const clean = normalizeArabic(text);
     const hasPayment = clean.includes('ادفع') || clean.includes('دفع') || clean.includes('سدد') || clean.includes('تسديد') || clean.includes('سدلي') || clean.includes('ادفعلي') || clean.includes('سداد');
     const hasAll = clean.includes('كل الفواتير') || clean.includes('جميع الفواتير') || clean.includes('الفواتير كلها') || clean.includes('كل فواتيري') || clean.includes('كل القوائم') || clean.includes('كلها') ||
-                    clean.includes('المستحق') || clean.includes('المعلق') || clean.includes('فواتيري');
+                    clean.includes('كافه الفواتير') || clean.includes('كافة الفواتير') || clean.includes('دفعه وحده') || clean.includes('دفعة وحدة') || clean.includes('سدد الكل') || clean.includes('ادفع الكل') || clean.includes('سدد الجميع') || clean.includes('ادفع الجميع') ||
+                    clean.includes('الفواتير المستحقة') || clean.includes('فواتيري المستحقة') || clean.includes('الفواتير المطلوبة') || clean.includes('الفواتير غير المدفوعة') || clean.includes('الفواتير غير المسددة');
     return hasPayment && hasAll;
 }
 
-function findMatchingBill(text, bills) {
+function findMatchingBill(text, bills, contacts = []) {
     if (!text || !Array.isArray(bills)) return null;
+    if (contacts && Array.isArray(contacts) && contacts.length > 0) {
+        if (findAmbiguousContacts(text, contacts) || classifyRecipient(text, contacts)?.valid) {
+            return null;
+        }
+    }
     const clean = normalizeArabic(text);
     const unpaid = bills.filter(b => b.status === 'unpaid');
+
+    // Amount-based matching: only if user message has explicit bill context (e.g. "فاتورة الـ 35 الف", "فاتورة 50 الف")
+    // Never hijack direct money transfers like "حول 50 الف لحساب رقم 123456789012" or "ادفعلي 50 الف لاحمد"
+    const hasTransferVerb = /(?:^|[\s،,])(حول|تحول|احول|دز|تدز|ادز|ارسل|ترسل|ادفع|ادفعلي)(?:[\s،,]|$)/i.test(clean);
+    const hasBillContext = clean.includes('فاتور') || clean.includes('قائم');
+    const specifiedAmt = extractAmount(text);
+    if (!hasTransferVerb && hasBillContext && specifiedAmt && unpaid.length > 0) {
+        const amtMatched = unpaid.find(b => Number(b.amount) === specifiedAmt);
+        if (amtMatched) return amtMatched;
+    }
 
     const singleNumMatch = clean.match(/(?:رقم|فاتوره|قائمه)?\s*([1-9])\b/);
     if (singleNumMatch && (clean.length <= 15 || clean.startsWith('نعم') || clean.startsWith('اي'))) {
@@ -930,20 +991,20 @@ function findMatchingBill(text, bills) {
         if (clean.includes(normBiller)) return b;
         if (b.account_number && clean.includes(b.account_number.toLowerCase())) return b;
 
-        if ((clean.includes('كهرباء') || clean.includes('الكرخ')) && normBiller.includes('كهرباء')) {
+        if ((clean.includes('كهرباء') || clean.includes('الكرخ') || clean.includes('وطنيه') || clean.includes('وطنية')) && normBiller.includes('كهرباء')) {
             return b;
         }
 
         const isContactContext = clean.includes('جهات الاتصال') || clean.includes('قائمه الاتصال') || clean.includes('قائمة الاتصال') || clean.includes('قائمه الاتصالات') || clean.includes('قائمة الاتصالات') || clean.includes('جهات اتصالي');
-        if (!isContactContext && (clean.includes('خط') || clean.includes('موبايل') || clean.includes('هاتف') || clean.includes('فاتورة اتصال') || clean.includes('فاتوره اتصال')) && (normBiller.includes('خط') || normBiller.includes('هاتف') || normBiller.includes('موبايل'))) {
+        if (!isContactContext && (clean.includes('خط') || clean.includes('موبايل') || clean.includes('هاتف') || clean.includes('تلفون') || clean.includes('فاتورة اتصال') || clean.includes('فاتوره اتصال')) && (normBiller.includes('خط') || normBiller.includes('هاتف') || normBiller.includes('موبايل'))) {
             return b;
         }
 
-        if ((clean.includes('مياه') || clean.includes('ماء') || clean.includes('ماي') || clean.includes('البصره')) && normBiller.includes('مياه')) {
+        if ((clean.includes('مياه') || clean.includes('ماء') || clean.includes('ماي') || clean.includes('مي') || clean.includes('البصره') || clean.includes('البصرة')) && normBiller.includes('مياه')) {
             return b;
         }
 
-        if ((clean.includes('انترنت') || clean.includes('نت') || clean.includes('فايبر') || clean.includes('واي فاي') || clean.includes('شبكه')) && normBiller.includes('انترنت')) {
+        if ((clean.includes('انترنت') || clean.includes('إنترنت') || clean.includes('نت') || clean.includes('فايبر') || clean.includes('واي فاي') || clean.includes('شبكه') || clean.includes('شبكة')) && normBiller.includes('انترنت')) {
             return b;
         }
     }
@@ -951,24 +1012,31 @@ function findMatchingBill(text, bills) {
     return null;
 }
 
-function detectBillPaymentIntent(userMessage, bills) {
+function detectBillPaymentIntent(userMessage, bills, contacts = []) {
     if (!userMessage || !Array.isArray(bills)) return null;
-    if (isContactCreationIntent(userMessage) || isContactsListInquiry(userMessage)) return null;
+    if (contacts && Array.isArray(contacts) && contacts.length > 0) {
+        if (findAmbiguousContacts(userMessage, contacts) || classifyRecipient(userMessage, contacts)?.valid) {
+            return null;
+        }
+    }
+    if (isContactCreationIntent(userMessage) || isContactsListInquiry(userMessage) || isTransactionsInquiry(userMessage) || isBalanceInquiry(userMessage)) return null;
+    if (isBillInquiry(userMessage)) return null;
     const clean = normalizeArabic(userMessage);
     const unpaid = bills.filter(b => b.status === 'unpaid');
 
-    if (isPayAllBillsRequest(userMessage)) {
-        return { type: 'ALL', bills: unpaid };
-    }
-
-    const matched = findMatchingBill(userMessage, bills);
+    // 1. Single bill payment priority: If a specific bill matches, and user requested payment
+    const matched = findMatchingBill(userMessage, bills, contacts);
     if (matched) {
-        const isPaymentVerb = clean.includes('ادفع') || clean.includes('دفع') || clean.includes('سدد') || clean.includes('تسديد') || clean.includes('سدلي') || clean.includes('ادفعلي');
-        const isBillKeyword = clean.includes('فاتوره') || clean.includes('قائمه') || clean.includes('حساب');
-
-        if (isPaymentVerb || isBillKeyword) {
+        const isPaymentVerb = clean.includes('ادفع') || clean.includes('دفع') || clean.includes('سدد') || clean.includes('تسديد') || clean.includes('سدلي') || clean.includes('ادفعلي') || clean.includes('سداد');
+        if (isPaymentVerb) {
             return { type: 'SINGLE', bill: matched };
         }
+        return null;
+    }
+
+    // 2. All bills payment: Only if explicit collective request (e.g. سدد كل الفواتير دفعة وحدة)
+    if (isPayAllBillsRequest(userMessage)) {
+        return { type: 'ALL', bills: unpaid };
     }
 
     return null;
