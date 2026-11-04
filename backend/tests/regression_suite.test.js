@@ -8176,6 +8176,100 @@ describe('VI Wallet Regression Suite - Category 37: Production Transaction Safet
     });
 });
 
+describe('VI Wallet Regression Suite - Category 38: Companion Rail 1-Click Bill Payments & AI Model Switcher Strict Modal Safety', () => {
+    const { handleChat } = require('../src/controllers/chatController');
+    const { getSession } = require('../src/services/sessionStore');
+    const fs = require('fs');
+    const path = require('path');
+
+    function createMockRes() {
+        return {
+            statusCode: 200,
+            headers: {},
+            body: null,
+            ended: false,
+            status(code) { this.statusCode = code; return this; },
+            setHeader(k, v) { this.headers[k] = v; return this; },
+            json(data) { this.body = data; this.ended = true; return this; },
+            write(chunk) { this.body = (this.body || '') + chunk; },
+            end() { this.ended = true; }
+        };
+    }
+
+    test('1. Companion rail quick bill payment ("أريد أسدد فاتورة خط الهاتف المحمول") executes without reference error and stages 25,000 IQD', async () => {
+        const sessionId = 'live_user_test_quick_bill_phone_' + Date.now();
+        const req = {
+            body: { message: 'أريد أسدد فاتورة خط الهاتف المحمول', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        assert.strictEqual(res.statusCode, 200);
+        assert.ok(res.body, 'Must return response body');
+        assert.ok(!res.body.error, 'Must not throw runtime error');
+
+        const session = getSession(sessionId);
+        assert.ok(session.pendingBillPayment !== null, 'Must stage pendingBillPayment');
+        assert.strictEqual(session.pendingBillPayment.type, 'SINGLE');
+        assert.strictEqual(session.pendingBillPayment.totalAmount, 25000);
+        assert.ok(res.body.action && res.body.action.type === 'PROPOSAL', 'Must emit PROPOSAL action');
+        assert.strictEqual(res.body.action.proposalType, 'BILL_PAYMENT');
+        assert.strictEqual(res.body.action.data.amount, '25,000 د.ع');
+    });
+
+    test('2. Companion rail quick bill payment for internet ("أريد أسدد فاتورة شبكة الإنترنت المنزلي") stages 40,000 IQD single bill', async () => {
+        const sessionId = 'live_user_test_quick_bill_internet_' + Date.now();
+        const req = {
+            body: { message: 'أريد أسدد فاتورة شبكة الإنترنت المنزلي', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        assert.strictEqual(res.statusCode, 200);
+        assert.ok(!res.body.error, 'Must not throw runtime error');
+
+        const session = getSession(sessionId);
+        assert.ok(session.pendingBillPayment !== null, 'Must stage pendingBillPayment');
+        assert.strictEqual(session.pendingBillPayment.type, 'SINGLE');
+        assert.strictEqual(session.pendingBillPayment.totalAmount, 40000);
+        assert.ok(res.body.action && res.body.action.type === 'PROPOSAL');
+        assert.strictEqual(res.body.action.data.amount, '40,000 د.ع');
+    });
+
+    test('3. Model Switcher CSS ensures .model-dropdown-card has visibility: hidden when closed and items cannot capture clicks', () => {
+        const cssPath = path.resolve(__dirname, '../../frontend/style.css');
+        const cssContent = fs.readFileSync(cssPath, 'utf8');
+
+        // Check closed dropdown card styling
+        assert.ok(cssContent.includes('.model-dropdown-card {'), 'Must declare .model-dropdown-card');
+        const cardMatch = cssContent.match(/\.model-dropdown-card\s*\{([^}]+)\}/);
+        assert.ok(cardMatch, 'Must find .model-dropdown-card block');
+        assert.ok(cardMatch[1].includes('visibility: hidden;'), 'Card must have visibility: hidden when closed');
+        assert.ok(cardMatch[1].includes('pointer-events: none;'), 'Card must have pointer-events: none when closed');
+
+        // Check open dropdown card styling
+        const openMatch = cssContent.match(/\.model-menu-container\.open\s+\.model-dropdown-card\s*\{([^}]+)\}/);
+        assert.ok(openMatch, 'Must find open block');
+        assert.ok(openMatch[1].includes('visibility: visible;'), 'Card must have visibility: visible when open');
+        assert.ok(openMatch[1].includes('pointer-events: auto;'), 'Card must have pointer-events: auto when open');
+
+        // Check model dropdown item styling
+        assert.ok(cssContent.includes('.model-menu-container.open .model-dropdown-item'), 'Items must only have pointer-events: auto when menu container is open');
+    });
+
+    test('4. Model Switcher JS enforces strict open guard before switching providers', () => {
+        const jsPath = path.resolve(__dirname, '../../frontend/script.js');
+        const jsContent = fs.readFileSync(jsPath, 'utf8');
+
+        assert.ok(jsContent.includes('initModelSwitcher'), 'Must declare initModelSwitcher');
+        assert.ok(jsContent.includes("if (!container.classList.contains('open')) return;"), 'Click handler must strictly check container.classList.contains("open")');
+        assert.ok(jsContent.includes("dropdownCard.setAttribute('aria-hidden'"), 'Must update aria-hidden state');
+    });
+});
+
+
 
 
 

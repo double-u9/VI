@@ -6,6 +6,7 @@ const {
     isUserCancellation,
     isUserConfirmation,
     isBillInquiry,
+    isPayAllBillsRequest,
     detectBillPaymentIntent,
     classifyRecipient,
     isContactCreationIntent,
@@ -801,7 +802,22 @@ async function handleChat(req, res) {
                 console.log(`   Remaining Balance After Payment: ${remainingBal.toLocaleString()} IQD\n`);
 
                 recordSessionTurn(session, userMessage, reply);
-                return sendChatResponse(res, isStreamRequest, { response: reply });
+                return sendChatResponse(res, isStreamRequest, {
+                    response: reply,
+                    action: {
+                        type: 'PROPOSAL',
+                        proposalType: 'BILL_PAYMENT',
+                        data: {
+                            isBill: true,
+                            isAllBills: true,
+                            recipient: 'تسديد كافة الفواتير المستحقة',
+                            amount: `${totalAmount.toLocaleString()} د.ع`,
+                            balanceAfter: `${remainingBal.toLocaleString()} د.ع`,
+                            phoneOrAccount: '',
+                            subDetail: `${unpaid.length} فواتير مسجلة`
+                        }
+                    }
+                });
             } else if (billIntent.type === 'SINGLE') {
                 const targetBill = billIntent.bill;
                 if (targetBill.status === 'paid') {
@@ -832,7 +848,22 @@ async function handleChat(req, res) {
                 console.log(`   Remaining Balance After Payment: ${remainingBal.toLocaleString()} IQD\n`);
 
                 recordSessionTurn(session, userMessage, reply);
-                return sendChatResponse(res, isStreamRequest, { response: reply });
+                return sendChatResponse(res, isStreamRequest, {
+                    response: reply,
+                    action: {
+                        type: 'PROPOSAL',
+                        proposalType: 'BILL_PAYMENT',
+                        data: {
+                            isBill: true,
+                            isAllBills: false,
+                            recipient: targetBill.biller,
+                            amount: `${targetBill.amount.toLocaleString()} د.ع`,
+                            balanceAfter: `${remainingBal.toLocaleString()} د.ع`,
+                            phoneOrAccount: targetBill.account_number || '',
+                            subDetail: targetBill.account_number ? `حساب: ${targetBill.account_number}` : ''
+                        }
+                    }
+                });
             }
         }
 

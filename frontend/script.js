@@ -3884,6 +3884,7 @@ function initModelSwitcher() {
   const container = document.getElementById('model-menu-container');
   const trigger = document.getElementById('model-menu-trigger');
   const triggerName = document.getElementById('model-trigger-name');
+  const dropdownCard = document.getElementById('model-dropdown-card');
   const menuItems = document.querySelectorAll('.model-dropdown-item');
 
   if (!container || !trigger) return;
@@ -3891,24 +3892,34 @@ function initModelSwitcher() {
   const currentProvider = getSelectedModelProvider();
   updateModelMenuUI(currentProvider);
 
+  const setDropdownOpen = (isOpen) => {
+    container.classList.toggle('open', isOpen);
+    trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    if (dropdownCard) {
+      dropdownCard.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    }
+  };
+
   // Toggle dropdown on trigger click
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
-    const isOpen = container.classList.toggle('open');
-    trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    const willOpen = !container.classList.contains('open');
+    setDropdownOpen(willOpen);
   });
 
   // Handle item selection
   menuItems.forEach((item) => {
     item.addEventListener('click', (e) => {
       e.stopPropagation();
+      // Guard: strictly ignore clicks if dropdown is closed
+      if (!container.classList.contains('open')) return;
+
       const modelKey = item.getAttribute('data-model');
       if (!modelKey) return;
 
       localStorage.setItem('selected_model_provider', modelKey);
       updateModelMenuUI(modelKey);
-      container.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
+      setDropdownOpen(false);
 
       console.log(`[Model Switcher] Switched to AI provider: "${modelKey}" (${MODEL_DISPLAY_NAMES[modelKey] || modelKey})`);
     });
@@ -3916,17 +3927,15 @@ function initModelSwitcher() {
 
   // Close dropdown on outside click
   document.addEventListener('click', (e) => {
-    if (!container.contains(e.target)) {
-      container.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
+    if (!container.contains(e.target) && container.classList.contains('open')) {
+      setDropdownOpen(false);
     }
   });
 
   // Close on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && container.classList.contains('open')) {
-      container.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
+      setDropdownOpen(false);
     }
   });
 }
