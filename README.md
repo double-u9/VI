@@ -34,7 +34,7 @@
 | [🌟 Executive Summary & Vision](#-executive-summary--vision) | Architectural philosophy, problem space, and the 7 zero-trust financial pillars |
 | [🎥 Interactive Demo Walkthrough](#-interactive-demo-walkthrough) | Visual walkthrough of multi-model switching, confirmation cards, slide-to-confirm, and voice flow |
 | [🏗️ System Architecture & Data Flow](#️-system-architecture--data-flow) | High-level Mermaid diagram, tier-by-tier deep dive, and request lifecycle |
-| [✨ Core Feature Modules](#-core-feature-modules) | Detailed breakdown of the 22 core operational, fintech, and UX capabilities |
+| [✨ Core Feature Modules](#-core-feature-modules) | Detailed breakdown of the 24 core operational, fintech, and UX capabilities |
 | [🧠 Multi-Model Orchestration Engine](#-multi-model-orchestration-engine) | Provider matrix, local offline execution, and automated failover routing |
 | [🛡️ Deterministic Security & Guardrails](#️-deterministic-security--guardrails) | Financial integrity rules, contact provenance, and anti-fabrication gates |
 | [🩺 Failure Handling & Self-Healing Architecture](#-failure-handling--self-healing-architecture) | The 7 resilience pillars: rate limits, JSON repair, corruption, isolation, faults |
@@ -390,7 +390,7 @@ flowchart TD
 * **Animated Waveform Visualizer**: Smooth oscillating canvas bars reflecting user voice frequency in real-time.
 
 ### 15. Dual-Currency Financial Converter & Live Micro-Calculator Popover (IQD ⇄ USD)
-* **Real-Time Exchange Rate Integration**: Fetches dynamic market exchange rate ($1,310\text{ IQD} = \$1.00\text{ USD}$) via `/api/exchange-rate`.
+* **Real-Time Exchange Rate Integration**: Fetches dynamic market exchange rate ($1,530\text{ IQD} = \$1.00\text{ USD}$, formatted as $100\$ = 153,000\text{ د.ع}$) via `/api/exchange-rate`.
 * **Sleek Minimalist Symbol-Only Ticker Button**: The header FX trigger has been refined into an ultra-clean, circular glassmorphic transfer symbol button (SVG dual exchange arrows) with an interactive 180° rotation on hover, telemetry tooltip, and zero visual clutter.
 * **Live Micro-Calculator Popover**:
   * Header currency icon button opens an interactive glassmorphic FX calculator popover.
@@ -425,13 +425,18 @@ flowchart TD
   * Replaces currency abbreviations (`IQD`, `د.ع`) with natural spoken Arabic (*"دينار عراقي"*).
 
 ### 18. Smart Contact Disambiguation & Interactive Candidate Selection Cards
-* **Duplicate Name Resolution**: When transferring to a common name (e.g., *"أحمد"*), the engine detects multiple matches and dynamically renders interactive 1-tap candidate selection cards displaying verified aliases, avatars, and phone numbers.
-* **Multi-Format Selection**: Users can resolve candidates by single-tap, numeric index (`1`, `2`), Arabic-Indic numbers (`١`, `٢`), ordinal text (*"الأول"*, *"الثاني"*), phone suffix, or alias keyword.
+* **Duplicate Name Resolution**: When transferring to a common name (e.g., *"أحمد"*), the engine detects multiple matches and dynamically presents a clear numbered choice (e.g., `1. أحمد كمال – صديق الجامعة`, `2. أحمد جاسم – الفيترجي / المصلح`), waiting for user selection without auto-selecting.
+* **Interactive Clickable Candidate Cards**: Renders interactive cards with visible number badges (`<span class="disambig-choice-badge">1</span>`) and `data-choice="1"` attributes. Integer preservation in `escapeHtml` ensures number badges and click targets are directly interactive in the browser UI.
+* **Distinguishing Alias Scoring (`resolveContactSelection`)**: Disambiguates candidates with shared base names through scored token evaluation of profession and relationship aliases (*الفيترجي*, *المصلح*, *صديق الجامعة*).
+* **Multi-Format Selection**: Users can resolve candidates by single-tap click, numeric index (`1`, `2`), Arabic-Indic numbers (`١`, `٢`), ordinal text (*"الأول"*, *"الثاني"*), phone suffix, or alias keyword.
+* **Template Stripping During Disambiguation**: `sanitizeFinancialResponse` intercepts and strips hallucinated transfer templates or premature confirmation prompts during active disambiguation, maintaining natural conversational Iraqi persona.
 * **Intent Abandonment Parsing**: If the user abandons the intent (*"عوفه وبطلت"*, *"مو ذولي"*, *"ما أعرفه"*), `isDisambiguationAbandonment()` purges all pending states immediately.
 
 ### 19. Complete Utility & Telecom Bill Payment System
 * **Pre-Integrated Biller Categories**: National Electricity Grid (*الكهرباء الوطنية*), Municipal Water (*الماء والخدمات البلدية*), Mobile Telecommunications (*فواتير خط الهاتف والاتصالات*), and Fiber/4G Internet (*فواتير الإنترنت والألياف الضوئية*).
-* **Single, Bulk, or Companion Settlement**: Settle an individual service (*"ادفع فاتورة الإنترنت"*), pay all outstanding bills in one atomic transaction (*"ادفع كل الفواتير اللي عليه"*), or click the **1-Click Pay** button directly in the desktop companion rail.
+* **Single Bill Payment Isolation**: When paying an individual bill (*"أريد أدفع فاتورة الخط"* or *"فاتورة شبكة الإنترنت"*), the system strictly isolates the individual bill amount (e.g. 25,000 IQD or 40,000 IQD) and never forces bulk 150,000 IQD settlement.
+* **Bulk Settlement Safeguard**: Bulk payment (*"سدد كل الفواتير دفعة وحدة"*) requires explicit user confirmation via Slide-to-Confirm before execution, settling all bills atomically in SQLite with guaranteed unique transaction UUIDs.
+* **Companion Rail 1-Click Payments**: 1-click quick bill settlement from the desktop companion rail dispatches direct proposals into chat without reference errors.
 
 ### 20. Tamper-Evident Security Audit Logging & Cryptographic Session Isolation
 * Every financial operation (successful or blocked) is appended atomically to `audit_trail.json` and inserted into the `audit_logs` SQLite table.
@@ -454,6 +459,17 @@ flowchart TD
 * **REST API Endpoint (`POST /api/contacts`)**: Exposes programmatic contact addition with phone normalization, duplicate checks, and atomic SQLite WAL mutations.
 * **Interactive Contacts Card**: Formats directory listings into interactive contact cards with monograms and 1-click transfer buttons from standard or space-separated list formats.
 * **System Prompt Grounding**: Injects exact registered contact counts (`CURRENT REGISTERED CONTACTS (7 CONTACTS TOTAL)`) to prevent hallucinated 4-contact truncation.
+
+### 23. Ground Truth Multi-Turn Ledger & Anti-Hallucination Sanitizer
+* **Deterministic Safety Interceptor (`sanitizeFinancialResponse`)**: Intercepts AI responses before they reach the user or client stream, cross-referencing all numeric assertions directly with SQLite `wallet.db` ground truth.
+* **Balance Synchronization**: Corrects any hallucinated balance to the verified database balance without disrupting conversational phrasing.
+* **Itemized Unpaid Obligations Safeguard**: Automatically catches false claims of zero unpaid bills and injects the verified itemized breakdown of pending obligations.
+* **Premature Payment Claim Interception**: Intercepts claims of successful payments when no programmatic mutation was executed, enforcing structured confirmation cards and Apple Pay Slide-to-Confirm before any funds can be deducted.
+
+### 24. AI Model Switcher Strict Modal Safety & Focus Isolation
+* **Hardware-Accelerated Click Isolation**: CSS enforces `visibility: hidden` and `pointer-events: none` on `.model-dropdown-card` whenever the menu is closed, completely preventing accidental background clicks or ghost model switches.
+* **Strict Open Guard**: `initModelSwitcher` in `frontend/script.js` enforces a strict open check (`if (!container.classList.contains('open')) return;`) and manages `aria-hidden` attributes for complete accessibility.
+* **Visual Status Synchronization**: Toggling providers updates both the header badge and the active indicator checkmark synchronously.
 
 [▲ Back to Top](#-table-of-contents)
 
@@ -582,7 +598,7 @@ The system is engineered with an active self-healing architecture structured acr
 | `POST` | `/api/contacts` | Programmatically creates and saves a new verified contact to SQLite WAL and disk JSON. | — |
 | `GET` | `/api/bills` | Retrieves all pending and paid utility and telecom bills. | — |
 | `GET` | `/api/transactions` | Retrieves recent transaction ledger with totals and metrics. | — |
-| `GET` | `/api/exchange-rate` | Retrieves dynamic exchange rate config for dual-currency widget (1,310 IQD/USD). | — |
+| `GET` | `/api/exchange-rate` | Retrieves dynamic exchange rate config for dual-currency widget (1,530 IQD/USD). | — |
 | `POST` | `/api/tts` | Synthesizes Arabic speech via Google Cloud Neural TTS or ElevenLabs with streaming audio buffer. | — |
 | `POST` | `/api/reset` | Resets session memory and restores wallet database to defaults. | `X-Session-Id` |
 | `GET` | `/api/audit` | Retrieves tamper-evident security audit logs. | — |
@@ -1183,7 +1199,7 @@ The LLM prompt never asks the AI to guess or calculate balances. When balance qu
 The slider enforces strict physical thresholds: dragging below the **88% threshold** triggers an elastic spring-back animation with zero financial mutation. Crossing 88% completes the transaction atomically in SQLite, generating an immutable audit record, playing a tactile procedural Web Audio chime, and launching a micro-confetti celebration. For transfers over $100,000\text{ IQD}$, a high-value security badge is activated.
 
 #### Q4: How does the Dual-Currency (IQD ⇄ USD) converter work?
-The backend provides real-time conversion rates ($1,310\text{ IQD} = \$1.00\text{ USD}$) via `/api/exchange-rate`. Toggling the header currency pill displays secondary equivalent amounts while strictly preserving integer IQD precision in the financial ledger. The interactive FX popover calculator allows live bidirectional typing without decimal rounding artifacts.
+The backend provides real-time conversion rates ($1,530\text{ IQD} = \$1.00\text{ USD}$, formatted as $100\$ = 153,000\text{ د.ع}$) via `/api/exchange-rate`. Toggling the header currency pill displays secondary equivalent amounts while strictly preserving integer IQD precision in the financial ledger. The interactive FX popover calculator allows live bidirectional typing without decimal rounding artifacts.
 
 #### Q5: How does the Desktop Companion Rail synchronize with the database?
 The companion rail utilizes a real-time reactive sync architecture. It automatically re-fetches contacts, bills, and balances immediately upon chat mutations, when the transaction drawer is refreshed, when the user refocuses the browser window after modifying database files externally, and via a 15-second background auto-polling cycle.
