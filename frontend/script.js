@@ -3227,7 +3227,7 @@ function initFintechActionButtons() {
       event.preventDefault();
       const choice = disambigBtn.getAttribute('data-choice') || disambigBtn.getAttribute('data-choice-number');
       const name = disambigBtn.getAttribute('data-name');
-      const textToSend = choice || name;
+      const textToSend = name || choice;
       if (textToSend && typeof handleFormSubmit === 'function') {
         handleFormSubmit(textToSend);
       }
@@ -6394,7 +6394,7 @@ function formatFintechMessage(text, sender, relatedUserQuery = '', actionData = 
   const isConfirm = !isPureInquiry && (isProposalAction || (hasStructuredConfirmHeader && hasExplicitConfirmPrompt));
 
   // Strict isSuccess regex with word boundary on 'تم' so 'يتم' (e.g. 'لكي يتم الدفع بنجاح') can never match!
-  const isExecutionAction = Boolean(actionData && (actionData.type === 'TRANSFER' || actionData.type === 'BILL_PAYMENT'));
+  const isExecutionAction = Boolean(actionData && (actionData.type === 'TRANSFER' || actionData.type === 'BILL_PAYMENT' || actionData.action === 'TRANSFER' || actionData.action === 'BILL_PAYMENT'));
   const isSuccess = !isPureInquiry && !isConfirm && (
     isExecutionAction ||
     /(?:(?:^|[\s،,.:!؟?])تم(?:ت)?\s*(?:عملي[ةه]\s*)?(?:ال)?(?:تحويل|دفع|تسديد|سداد|ارسال)[\s\S]*?بنجاح|(?:^|[\s،,.:!؟?])تم\s*ت[أا]كيد\s*(?:ال)?(?:تحويل|دفع|تسديد|سداد)[\s\S]*?بنجاح|(?:^|[\s،,.:!؟?])تم\s*(?:تسديد|سداد|دفع)[\s\S]*?بنجاح|(?:^|[\s،,.:!؟?])تم\s*(?:تسديد|سداد|دفع)|(?:^|[\s،,.:!؟?])دزيت[\s\S]*?بنجاح)/i.test(norm) ||
@@ -6428,6 +6428,10 @@ function formatFintechMessage(text, sender, relatedUserQuery = '', actionData = 
 
   if (isConfirm) {
     const data = isProposalAction ? { ...actionData.data } : parseFintechTransactionData(text, true, false);
+    // If recipient is unknown or placeholder (contains '<' or '>' or is 'غير محدد' or empty), DO NOT render confirmation card!
+    if (!isProposalAction && (!data.recipient || data.recipient.includes('<') || data.recipient.includes('>') || data.recipient.includes('غير محدد') || data.recipient.includes('لا يوجد'))) {
+      return `<div class="msg-conversational-body">${formatConversationalText(text)}</div>`;
+    }
     if (data && typeof data === 'object') {
       lastActiveConfirmationData = { ...data };
       try {

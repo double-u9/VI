@@ -966,7 +966,7 @@ function findMatchingBill(text, bills, contacts = []) {
         if (amtMatched) return amtMatched;
     }
 
-    const singleNumMatch = clean.match(/(?:رقم|فاتوره|قائمه)?\s*([1-9])\b/);
+    const singleNumMatch = clean.match(/(?:رقم|فاتور[ةه]|قائم[ةه]|ادفع|سدد)\s*(?:رقم\s*)?([1-9])\b/);
     if (singleNumMatch && (clean.length <= 15 || clean.startsWith('نعم') || clean.startsWith('اي'))) {
         const idx = parseInt(singleNumMatch[1], 10) - 1;
         if (unpaid[idx]) return unpaid[idx];
@@ -1024,14 +1024,10 @@ function detectBillPaymentIntent(userMessage, bills, contacts = []) {
     const clean = normalizeArabic(userMessage);
     const unpaid = bills.filter(b => b.status === 'unpaid');
 
-    // 1. Single bill payment priority: If a specific bill matches, and user requested payment
+    // 1. Single bill payment priority: If a specific bill matches, and user requested payment or selected the bill
     const matched = findMatchingBill(userMessage, bills, contacts);
     if (matched) {
-        const isPaymentVerb = clean.includes('ادفع') || clean.includes('دفع') || clean.includes('سدد') || clean.includes('تسديد') || clean.includes('سدلي') || clean.includes('ادفعلي') || clean.includes('سداد');
-        if (isPaymentVerb) {
-            return { type: 'SINGLE', bill: matched };
-        }
-        return null;
+        return { type: 'SINGLE', bill: matched };
     }
 
     // 2. All bills payment: Only if explicit collective request (e.g. سدد كل الفواتير دفعة وحدة)

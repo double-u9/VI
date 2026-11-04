@@ -11,7 +11,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-v18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express.js](https://img.shields.io/badge/Express.js-5.x_Modular-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![SQLite Database](https://img.shields.io/badge/SQLite-WAL_%26_ACID_Engine-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](#5-embedded-sqlite-persistence-layer--acid-transaction-engine)
-[![Automated Tests](https://img.shields.io/badge/Automated_Tests-308_Passed_(100%25)-10b981?style=for-the-badge&logo=node.js&logoColor=white)](#-automated-testing--quality-assurance)
+[![Automated Tests](https://img.shields.io/badge/Automated_Tests-313_Passed_(100%25)-10b981?style=for-the-badge&logo=node.js&logoColor=white)](#-automated-testing--quality-assurance)
 [![AI Engine](https://img.shields.io/badge/AI_Engine-LM_Studio_%7C_Gemini_%7C_Groq-7c3aed?style=for-the-badge&logo=openai&logoColor=white)](#-multi-model-orchestration-engine)
 [![NLP Router](https://img.shields.io/badge/NLP_Router-Hybrid_%2B_Sub--ms_Semantic-0284c7?style=for-the-badge&logo=probot&logoColor=white)](#3-high-performance-local-semantic-vector-similarity-classifier-sub-ms-latency)
 [![Streaming](https://img.shields.io/badge/Streaming-SSE_%2B_Sliding--Window_Delimiter-f97316?style=for-the-badge)](#4-server-sent-events-sse-token-streaming--sliding-window-delimiter-interception)
@@ -41,7 +41,7 @@
 | [📡 API Specifications & Route Reference](#-api-specifications--route-reference) | Endpoints, headers, SSE event protocols, request/response JSON schemas, and status codes |
 | [📂 Project Directory Layout](#-project-directory-layout) | Annotated file tree structure reflecting the new modular architecture |
 | [⚡ Quick Start & Installation Guide](#-quick-start--installation-guide) | Prerequisites, environment configuration, LM Studio setup, and launch |
-| [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance) | 308-test regression coverage across 64 suites with 100% pass rate |
+| [🧪 Automated Testing & Quality Assurance](#-automated-testing--quality-assurance) | 313-test regression coverage across 65 suites with 100% pass rate |
 | [💬 Colloquial Iraqi Dialect Showcase](#-colloquial-iraqi-dialect-showcase) | Real-world linguistic scenarios, slang verbs, and deterministic execution examples |
 | [🛠️ Troubleshooting & Extended FAQs](#️-troubleshooting--extended-faqs) | Solutions for common setup issues, audio permissions, and technical Q&A |
 | [🗺️ Future Roadmap & License](#️-future-roadmap--license) | Milestones, open-source license, and project credits |
@@ -858,7 +858,7 @@ VI/
 │   │       └── 📄 ttsEngine.js         # Text sanitization and neural audio chunking
 │   │
 │   └── 📁 tests/
-│       └── 📄 regression_suite.test.js  # 308-test automated regression and security suite (64 suites)
+│       └── 📄 regression_suite.test.js  # 313-test automated regression and security suite (65 suites)
 │
 ├── 📁 frontend/
 │   ├── 📁 assets/                      # Mirrored UI assets (brand marks and bot icons)
@@ -985,7 +985,7 @@ Run the complete test suite:
 npm test
 ```
 
-### Test Coverage Summary: 308 Tests Across 64 Suites (100% Pass Rate)
+### Test Coverage Summary: 313 Tests Across 65 Suites (100% Pass Rate)
 
 | Task Suite / Category | Tested Capabilities & System Invariants | Suite Count | Test Count | Status |
 | :--- | :--- | :---: | :---: | :---: |
@@ -1025,7 +1025,8 @@ npm test
 | **Category 34: Precision Bill Selection, Inquiry vs Payment Disambiguation, & Success Receipt Rendering** | Differentiates informational inquiries (*"شنو الفواتير المسددة؟"*, *"شنو القوائم؟"*) from payment commands, matches single bills accurately without forcing bulk 150k IQD totals, prevents premature receipts on confirmation text, and verifies checkmark receipts on completed transfers. | 1 Suite | 7 Tests | ✅ **Passed** |
 | **Category 35: Live Transaction Life-Cycle, Disambiguation & Single Bill Selection** | Ambiguous recipient without amount (*"اريد ادفع لاحمد"*) displays numbered list without auto-selecting, ambiguous recipient with amount (*"ادفعلي 50 الف لاحمد"*) retains 50,000 IQD and requests clarification, candidate selection prepares Slide to Pay for 50k to Ahmed Kamal, missing recipient (*"أريد أحول خمسين ألف"*) asks for recipient while saving 50k, single bill settlement (*"أريد أدفع فاتورة الخط"*) stages 25k IQD only, bulk bills require Slide to Pay, transfer intent never triggers bills, and Quick Transfer converts un-converted IQD inputs in USD mode. | 1 Suite | 8 Tests | ✅ **Passed** |
 | **Category 36: Disambiguation Clicks, Selection Scoring & Template Stripping** | Distinguishes candidates sharing identical base names (*"أحمد جاسم"* vs *"أحمد كمال"*) via distinguishing alias scoring (e.g. *الفيترجي*, *المصلح*, *صديق الجامعة*), preserves integer values in `escapeHtml` for clickable number badges and `data-choice` attributes, and strips hallucinated transfer templates during contact disambiguation while preserving AI natural Iraqi persona. | 1 Suite | 3 Tests | ✅ **Passed** |
-| **Total Test Suite** | **Comprehensive End-to-End System, Security, Persistence, and UI Verification** | **64 Suites** | **308 Tests** | **✅ 100% Pass** |
+| **Category 37: Production Transaction Safety, Autonomous Disambiguation & Single Bill Isolation** | Colloquial transfer verbs (*"اريدك تحولي 30 الف"*) save pending amounts without placeholder cards; contact name submission (*"علاوي"*) stages Slide to Pay without premature claims; candidate selection (*"2"*) after ambiguous requests (*"اريدك تحولي 70 الف لاحمد"*) stages Slide to Pay for Ahmed Jasim; singular unspecified bill requests (*"اريد اسدد فاتورة"*) list unpaid bills without forcing 150k bulk payment; suppresses confirmation cards for placeholder `<...>` recipients; and executes single bill Slide to Pay with luxury receipt rendering. | 1 Suite | 5 Tests | ✅ **Passed** |
+| **Total Test Suite** | **Comprehensive End-to-End System, Security, Persistence, and UI Verification** | **65 Suites** | **313 Tests** | **✅ 100% Pass** |
 
 [▲ Back to Top](#-table-of-contents)
 

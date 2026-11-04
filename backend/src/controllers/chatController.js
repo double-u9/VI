@@ -115,7 +115,6 @@ function sanitizeFinancialResponse(reply, db, session = null) {
             const subtitle = m.alias ? (m.alias.match(/\(([^)]+)\)/)?.[1] || '') : '';
             return sanitized.includes(cleanAlias) || (subtitle && sanitized.includes(subtitle)) || (m.phone && sanitized.includes(m.phone));
         });
-
         if (!sanitized || !allOptionsMentioned) {
             const listText = d.matches.map((c, i) => {
                 const displayName = c.alias ? c.alias.replace(/\s*\([^)]*\)/, '').trim() : c.name;
@@ -125,6 +124,10 @@ function sanitizeFinancialResponse(reply, db, session = null) {
             }).join('\n');
             sanitized = `يا هلا عيوني، عندك أكثر من جهة اتصال باسم "${d.name}" بمحفظتك:\n${listText}\n\nيا واحد منهم تقصد؟ تكدر تختار من الأزرار أدناه أو تكتب الرقم حتى أجهّزلك التحويل.${d.amount ? ` (المبلغ: ${d.amount.toLocaleString()} د.ع)` : ''}`;
         }
+    } else if (session?.pendingTransferAmount) {
+        // Recipient is not yet known! Strip any hallucinated transfer confirmation template or placeholder recipient
+        sanitized = sanitized.replace(/(?:تفاصيل\s+التحويل[\s\S]*?(?:متأكد\s+تريد\s+أحول[\s\S]*?(?:\.|\)|$)|اسحب[\s\S]*?(?:\.|\)|$)|$))/i, '').trim();
+        sanitized = sanitized.replace(/<[^>]+>/g, '').trim();
     } else if (session?.pendingBillPayment) {
         const prematureClaimRegex = /(?:تم(?:ت)?\s*(?:عملي[ةه]\s*)?(?:ال)?(?:دفع|تسديد|سداد|دفع\s+الفواتير|تسديد\s+الفواتير)\s*بنجاح|جاي\s+أسدد[\s\S]*?تمت?\s*(?:عملي[ةه]\s*)?(?:ال)?دفع|سددت\s+(?:كل\s+)?الفواتير|دفعت\s+(?:كل\s+)?الفواتير|تم\s+سداد\s+الفواتير)/i;
         const p = session.pendingBillPayment;
@@ -144,7 +147,7 @@ function sanitizeFinancialResponse(reply, db, session = null) {
             }
         }
     } else if (session?.pendingTransfer) {
-        const prematureTransferRegex = /(?:تم(?:ت)?\s*(?:عملي[ةه]\s*)?(?:ال)?تحويل\s*بنجاح|دزيت[\s\S]*?رصيدك\s*الحالي)/i;
+        const prematureTransferRegex = /(?:تم(?:ت)?\s*(?:عملي[ةه]\s*)?(?:ال)?تحويل\s*بنجاح|لقد\s+قمت\s+ب(?:ال)?تحويل|دزيت[\s\S]*?رصيدك\s*الحالي)/i;
         if (prematureTransferRegex.test(sanitized) && !sanitized.includes('متأكد') && !sanitized.includes('اسحب') && !sanitized.includes('تأكيد')) {
             const tr = session.pendingTransfer;
             sanitized = sanitized.replace(prematureTransferRegex, `سأنتظر تأكيدك وسحب شريط التحويل أدناه لإرسال المبلغ إلى ${tr.recipient}`);
@@ -664,6 +667,89 @@ async function handleChat(req, res) {
             }
         }
 
+        // 3.5. Check if user is resolving an ambiguous contact (pendingDisambiguation)
+        if (session.pendingDisambiguation) {
+            const matches = session.pendingDisambiguation.matches || [];
+            const selected = resolveContactSelection(userMessage, matches);
+            if (selected) {
+                const amount = extractAmount(userMessage) || session.pendingDisambiguation.amount;
+                session.pendingDisambiguation = null;
+
+                if (amount) {
+                    if (db.user.balance < amount) {
+                        const reply = `رصيدك الحالي (${db.user.balance.toLocaleString()} د.ع) غير كافي لتحويل مبلغ ${amount.toLocaleString()} د.ع.`;
+                        recordSessionTurn(session, userMessage, reply);
+                        return sendChatResponse(res, isStreamRequest, { response: reply });
+                    }
+
+                    session.pendingTransfer = {
+                        recipient: selected.alias || selected.name,
+                        phone: selected.phone,
+                        amount: amount
+                    };
+
+                    const remainingBal = db.user.balance - amount;
+
+                    console.log(`\n⏳ [Transfer Step 1 - Awaiting User Confirmation]:`);
+                    console.log(`   Recipient: ${session.pendingTransfer.recipient} (${session.pendingTransfer.phone})`);
+                    console.log(`   Amount: ${session.pendingTransfer.amount.toLocaleString()} IQD`);
+                    console.log(`   Remaining Balance After Transfer: ${remainingBal.toLocaleString()} IQD\n`);
+
+                    const targetDisplay = (selected.name.includes(selected.phone) || !selected.phone)
+                        ? (selected.alias || selected.name)
+                        : `${selected.alias || selected.name} (${selected.phone})`;
+                    const reply = `تمام عيوني، اخترت ${selected.alias || selected.name}.\n\nتفاصيل التحويل:\n• المستلم: ${targetDisplay}\n• المبلغ: ${amount.toLocaleString()} د.ع\n• الرصيد بعد التحويل: ${remainingBal.toLocaleString()} د.ع\n\nمتأكد تريد أحول؟ (يرجى الرد بـ "نعم" للتأكيد أو "إلغاء" للتراجع).`;
+                    recordSessionTurn(session, userMessage, reply);
+                    return sendChatResponse(res, isStreamRequest, {
+                        response: reply,
+                        action: {
+                            type: 'PROPOSAL',
+                            proposalType: 'TRANSFER',
+                            data: {
+                                isBill: false,
+                                recipient: targetDisplay,
+                                amount: `${amount.toLocaleString()} د.ع`,
+                                balanceAfter: `${remainingBal.toLocaleString()} د.ع`,
+                                phoneOrAccount: selected.phone || '',
+                                subDetail: ''
+                            }
+                        }
+                    });
+                } else {
+                    session.pendingTransferRecipient = {
+                        name: selected.alias || selected.name,
+                        phone: selected.phone
+                    };
+                    const reply = `صار عيوني، اخترت ${selected.alias || selected.name} (${selected.phone}).\nشكد المبلغ اللي تريد تحوله له؟`;
+                    recordSessionTurn(session, userMessage, reply);
+                    return sendChatResponse(res, isStreamRequest, { response: reply });
+                }
+            } else {
+                session.pendingDisambiguation = null;
+                session.pendingTransfer = null;
+                session.pendingTransferRecipient = null;
+
+                if (isDisambiguationAbandonment(userMessage)) {
+                    const reply = 'صار عيوني، تم إلغاء اختيار جهة الاتصال وما تم تجهيز أو تنفيذ أي تحويل وما انخصم أي مبلغ من رصيدك.';
+                    recordSessionTurn(session, userMessage, reply);
+                    return sendChatResponse(res, isStreamRequest, { response: reply });
+                }
+
+                const isOtherIntent = isBalanceInquiry(userMessage) ||
+                                      isTransactionsInquiry(userMessage) ||
+                                      isBillInquiry(userMessage) ||
+                                      detectBillPaymentIntent(userMessage, db.bills, db.contacts) ||
+                                      handleContactInquiry(userMessage, db.contacts) ||
+                                      findAmbiguousContacts(userMessage, db.contacts);
+
+                if (!isOtherIntent) {
+                    const reply = 'لم يتم اختيار أي من الأسماء المعروضة، وتم إلغاء عملية التحديد وما تم تنفيذ أي تحويل.';
+                    recordSessionTurn(session, userMessage, reply);
+                    return sendChatResponse(res, isStreamRequest, { response: reply });
+                }
+            }
+        }
+
         // 4. Check if user is inquiring about bills
         if (isBillInquiry(userMessage)) {
             const unpaid = (db.bills || []).filter(b => b.status === 'unpaid');
@@ -840,71 +926,6 @@ async function handleChat(req, res) {
             return sendChatResponse(res, isStreamRequest, { response: reply });
         }
 
-        // 7. Check if user is resolving an ambiguous contact (pendingDisambiguation)
-        if (session.pendingDisambiguation) {
-            const matches = session.pendingDisambiguation.matches || [];
-            const selected = resolveContactSelection(userMessage, matches);
-            if (selected) {
-                const amount = extractAmount(userMessage) || session.pendingDisambiguation.amount;
-                session.pendingDisambiguation = null;
-
-                if (amount) {
-                    if (db.user.balance < amount) {
-                        const reply = `رصيدك الحالي (${db.user.balance.toLocaleString()} د.ع) غير كافي لتحويل مبلغ ${amount.toLocaleString()} د.ع.`;
-                        recordSessionTurn(session, userMessage, reply);
-                        return sendChatResponse(res, isStreamRequest, { response: reply });
-                    }
-
-                    session.pendingTransfer = {
-                        recipient: selected.alias || selected.name,
-                        phone: selected.phone,
-                        amount: amount
-                    };
-
-                    const remainingBal = db.user.balance - amount;
-
-                    console.log(`\n⏳ [Transfer Step 1 - Awaiting User Confirmation]:`);
-                    console.log(`   Recipient: ${session.pendingTransfer.recipient} (${session.pendingTransfer.phone})`);
-                    console.log(`   Amount: ${session.pendingTransfer.amount.toLocaleString()} IQD`);
-                    console.log(`   Remaining Balance After Transfer: ${remainingBal.toLocaleString()} IQD\n`);
-
-                    const reply = `تمام عيوني، اخترت ${selected.alias || selected.name}.\n\nتفاصيل التحويل:\n• المستلم: ${selected.alias || selected.name} (${selected.phone})\n• المبلغ: ${amount.toLocaleString()} د.ع\n• الرصيد بعد التحويل: ${remainingBal.toLocaleString()} د.ع\n\nمتأكد تريد أحول؟ (يرجى الرد بـ "نعم" للتأكيد أو "إلغاء" للتراجع).`;
-                    recordSessionTurn(session, userMessage, reply);
-                    return sendChatResponse(res, isStreamRequest, { response: reply });
-                } else {
-                    session.pendingTransferRecipient = {
-                        name: selected.alias || selected.name,
-                        phone: selected.phone
-                    };
-                    const reply = `صار عيوني، اخترت ${selected.alias || selected.name} (${selected.phone}).\nشكد المبلغ اللي تريد تحوله له؟`;
-                    recordSessionTurn(session, userMessage, reply);
-                    return sendChatResponse(res, isStreamRequest, { response: reply });
-                }
-            } else {
-                session.pendingDisambiguation = null;
-                session.pendingTransfer = null;
-                session.pendingTransferRecipient = null;
-
-                if (isDisambiguationAbandonment(userMessage)) {
-                    const reply = 'صار عيوني، تم إلغاء اختيار جهة الاتصال وما تم تجهيز أو تنفيذ أي تحويل وما انخصم أي مبلغ من رصيدك.';
-                    recordSessionTurn(session, userMessage, reply);
-                    return sendChatResponse(res, isStreamRequest, { response: reply });
-                }
-
-                const isOtherIntent = isBalanceInquiry(userMessage) ||
-                                      isTransactionsInquiry(userMessage) ||
-                                      isBillInquiry(userMessage) ||
-                                      detectBillPaymentIntent(userMessage, db.bills, db.contacts) ||
-                                      handleContactInquiry(userMessage, db.contacts) ||
-                                      findAmbiguousContacts(userMessage, db.contacts);
-
-                if (!isOtherIntent) {
-                    const reply = 'لم يتم اختيار أي من الأسماء المعروضة، وتم إلغاء عملية التحديد وما تم تنفيذ أي تحويل.';
-                    recordSessionTurn(session, userMessage, reply);
-                    return sendChatResponse(res, isStreamRequest, { response: reply });
-                }
-            }
-        }
 
         // 8. Check if the user message mentions a name matching multiple contacts
         const ambiguous = findAmbiguousContacts(userMessage, db.contacts);
@@ -946,7 +967,21 @@ async function handleChat(req, res) {
                     : `${target.alias || target.name} (${target.phone})`;
                 const reply = `تفاصيل التحويل:\n• المستلم: ${targetDisplay}\n• المبلغ: ${amt.toLocaleString()} د.ع\n• الرصيد بعد التحويل: ${remainingBal.toLocaleString()} د.ع\n\nمتأكد تريد أحول؟ (يرجى الرد بـ "نعم" للتأكيد أو "إلغاء" للتراجع).`;
                 recordSessionTurn(session, userMessage, reply);
-                return sendChatResponse(res, isStreamRequest, { response: reply });
+                return sendChatResponse(res, isStreamRequest, {
+                    response: reply,
+                    action: {
+                        type: 'PROPOSAL',
+                        proposalType: 'TRANSFER',
+                        data: {
+                            isBill: false,
+                            recipient: targetDisplay,
+                            amount: `${amt.toLocaleString()} د.ع`,
+                            balanceAfter: `${remainingBal.toLocaleString()} د.ع`,
+                            phoneOrAccount: target.phone || '',
+                            subDetail: target.alias || ''
+                        }
+                    }
+                });
             }
         }
 
@@ -1282,11 +1317,23 @@ async function handleChat(req, res) {
                         ? (target.alias || target.name)
                         : `${target.alias || target.name} (${target.phone})`;
                     liveTurnContext = `المستخدم حدد المستلم: ${targetDisplay} للمبلغ السابق (${amt.toLocaleString()} د.ع). الرصيد المتبقي بعد التحويل سيكون ${remainingBal.toLocaleString()} د.ع. واجهة المحفظة ستعرض بطاقة السحب للتأكيد (Slide to Pay) تلقائياً أسفل ردك. رحب بطلبه بأسلوبك العراقي الطبيعي والذكي كـ "فاي"، واذكر له تفاصيل التحويل والمبلغ ورصيده المتبقي، واطلب منه مراجعة التفاصيل وسحب شريط التأكيد لتنفيذ العملية بأمان.`;
+                    capturedAction = {
+                        type: 'PROPOSAL',
+                        proposalType: 'TRANSFER',
+                        data: {
+                            isBill: false,
+                            recipient: targetDisplay,
+                            amount: `${amt.toLocaleString()} د.ع`,
+                            balanceAfter: `${remainingBal.toLocaleString()} د.ع`,
+                            phoneOrAccount: target.phone || '',
+                            subDetail: target.alias || ''
+                        }
+                    };
                 }
             }
 
             // 5. Transfer amount without recipient ("أريد أحول خمسين ألف")
-            const isTransferVerbOnly = /(?:^|[\s،,])(?:حول|تحول|احول|دز|تدز|ادز|ارسل|ترسل|اريد\s+احول|اريد\s+ادز|أريد\s+أحول|أريد\s+أدز)(?:[\s،,]|$)/i.test(userMessage);
+            const isTransferVerbOnly = /(?:^|[\s،,])(?:اريد(?:ك)?\s+|أريد(?:ك)?\s+)?(?:تحول(?:لي|ي)?|احول|أحول|حول(?:لي|ي)?|تدز(?:لي|ي)?|ادز|أدز|دز(?:لي|ي)?|ترسل(?:لي|ي)?|ارسل|أرسل)(?:[\s،,]|$)/i.test(userMessage);
             if (transferAmt && isTransferVerbOnly && (!recipientMatch || !recipientMatch.contact) && !ambiguous) {
                 session.pendingTransferAmount = transferAmt;
                 session.pendingTransfer = null;
@@ -1340,6 +1387,15 @@ async function handleChat(req, res) {
                     ? (targetContact.alias || targetContact.name)
                     : `${targetContact.alias || targetContact.name} (${targetContact.phone})`;
                 liveTurnContext = `المستخدم اختار التحويل إلى ${targetDisplay}. اسأله بأسلوبك العراقي اللطيف عن المبلغ الذي يريد تحويله له.`;
+            }
+
+            // 7.5. Singular unspecified bill request (e.g. "اريد اسدد فاتورة")
+            const isSingularBillRequest = /(?:^|[\s،,])(?:اريد|أريد|ابغي|ودّي)?\s*(?:اسدد|أسدد|ادفع|أدفع|دفع|تسديد|سداد)\s*(?:فد\s*)?فاتور[ةه](?:\s*وحد[ةه]|\s*مفرد[ةه])?(?:[\s،,]|$)/i.test(userMessage) &&
+                !isPayAllBillsRequest(userMessage) && !detectBillPaymentIntent(userMessage, db.bills, db.contacts);
+            if (isSingularBillRequest) {
+                const unpaid = (db.bills || []).filter(b => b.status === 'unpaid');
+                const listText = unpaid.map((b, i) => `${i + 1}. ${b.biller}: ${Number(b.amount).toLocaleString()} د.ع`).join('\n');
+                liveTurnContext = `المستخدم يطلب سداد "فاتورة" بصيغة المفرد لكنه لم يحدد أي فاتورة. يُمنع منعاً باتاً طلب سداد كافة الفواتير أو إظهار مبلغ 150,000 د.ع أو إظهار شريط السحب للتأكيد (Slide to Pay)! اعرض له الفواتير غير المسددة ومبالغها بأسلوبك الودود:\n${listText}\nواسأله أي فاتورة يريد تسديدها أولاً.`;
             }
 
             // 8. Bill Payment Intent Registration (Single vs All vs Inquiry)
@@ -1568,8 +1624,10 @@ ${session.justAddedContact ? `- تنبيه حفظ جهة الاتصال: الم�
                 writeSseEvent(res, 'token', { token });
             },
             onAction: (actionData) => {
-                capturedAction = actionData;
-                writeSseEvent(res, 'action', actionData);
+                if (capturedAction?.type !== 'PROPOSAL') {
+                    capturedAction = actionData;
+                }
+                writeSseEvent(res, 'action', capturedAction || actionData);
             },
             onDone: async (doneData) => {
                 if (streamFinished) return;
@@ -1577,7 +1635,9 @@ ${session.justAddedContact ? `- تنبيه حفظ جهة الاتصال: الم�
 
                 let finalCleanReply = doneData.fullResponse;
                 try {
-                    if (doneData.rawResponse && (doneData.rawResponse.includes('<<<DB_ACTION>>>') || capturedAction)) {
+                    if (capturedAction?.type === 'PROPOSAL') {
+                        // Proposal is staged; do not allow premature DB execution to overwrite it
+                    } else if (doneData.rawResponse && (doneData.rawResponse.includes('<<<DB_ACTION>>>') || capturedAction)) {
                         const processed = await handleModelActions(doneData.rawResponse, db, userMessage, selectedProvider, session);
                         if (!finalCleanReply || processed.includes('⚠️')) {
                             finalCleanReply = processed;

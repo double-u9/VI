@@ -8037,6 +8037,145 @@ describe('VI Wallet Regression Suite - Category 36: Disambiguation Clicks, Selec
     });
 });
 
+describe('VI Wallet Regression Suite - Category 37: Production Transaction Safety, Autonomous Disambiguation & Single Bill Isolation', () => {
+    const { handleChat, sanitizeFinancialResponse } = require('../src/controllers/chatController');
+    const { getSession } = require('../src/services/sessionStore');
+    const { isPayAllBillsRequest, detectBillPaymentIntent } = require('../src/services/nlpRouter');
+    const { readDatabase, executeBillPaymentMutation } = require('../src/services/walletService');
+    const frontend = require('../../frontend/script.js');
+
+    function createMockRes() {
+        return {
+            statusCode: 200,
+            headers: {},
+            body: null,
+            ended: false,
+            status(code) { this.statusCode = code; return this; },
+            setHeader(k, v) { this.headers[k] = v; return this; },
+            json(data) { this.body = data; this.ended = true; return this; },
+            write(chunk) { this.body = (this.body || '') + chunk; },
+            end() { this.ended = true; }
+        };
+    }
+
+    test('1. Colloquial transfer amount ("اريدك تحولي 30 الف") saves pendingTransferAmount without placeholder card, and "علاوي" stages Slide to Pay', async () => {
+        const sessionId = 'live_user_test_colloquial_30k_' + Date.now();
+        // Turn 1: user provides amount with colloquial verb
+        const req1 = {
+            body: { message: 'اريدك تحولي 30 الف', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res1 = createMockRes();
+        await handleChat(req1, res1);
+
+        const session1 = getSession(sessionId);
+        assert.strictEqual(session1.pendingTransferAmount, 30000, 'Must preserve 30,000 IQD pending amount');
+        assert.strictEqual(session1.pendingTransfer, null, 'Must NOT create transfer without recipient');
+        assert.ok(!res1.body.response.includes('<اسم المستلم>'), 'Must not hallucinate placeholder tag in response');
+
+        // Turn 2: user provides recipient
+        const req2 = {
+            body: { message: 'علاوي', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res2 = createMockRes();
+        await handleChat(req2, res2);
+
+        const session2 = getSession(sessionId);
+        assert.strictEqual(session2.pendingTransferAmount, null, 'Pending amount resolved');
+        assert.ok(session2.pendingTransfer !== null, 'Must stage pendingTransfer');
+        assert.strictEqual(session2.pendingTransfer.amount, 30000);
+        assert.ok(session2.pendingTransfer.recipient.includes('علاوي'));
+        assert.ok(res2.body.action && res2.body.action.type === 'PROPOSAL', 'Must emit PROPOSAL action for Slide to Pay');
+        assert.strictEqual(res2.body.action.proposalType, 'TRANSFER');
+        assert.ok(res2.body.response.includes('علاوي'));
+        assert.ok(res2.body.response.includes('30,000'));
+        assert.ok(!res2.body.response.includes('تم تحويل 30,000 د.ع إلى علاوي بنجاح'), 'Must NOT claim premature success');
+    });
+
+    test('2. Disambiguation selection ("2") after "اريدك تحولي 70 الف لاحمد" stages Slide to Pay for Ahmed Jasim', async () => {
+        const sessionId = 'live_user_test_disambig_70k_' + Date.now();
+        // Turn 1: ambiguous request with 70,000 IQD
+        const req1 = {
+            body: { message: 'اريدك تحولي 70 الف لاحمد', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res1 = createMockRes();
+        await handleChat(req1, res1);
+
+        const session1 = getSession(sessionId);
+        assert.ok(session1.pendingDisambiguation !== null, 'Disambiguation must be active');
+        assert.strictEqual(session1.pendingDisambiguation.amount, 70000);
+
+        // Turn 2: user selects option 2
+        const req2 = {
+            body: { message: '2', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res2 = createMockRes();
+        await handleChat(req2, res2);
+
+        const session2 = getSession(sessionId);
+        assert.strictEqual(session2.pendingDisambiguation, null, 'Disambiguation must be resolved');
+        assert.ok(session2.pendingTransfer !== null, 'Must stage pendingTransfer');
+        assert.strictEqual(session2.pendingTransfer.amount, 70000);
+        assert.ok(session2.pendingTransfer.recipient.includes('أحمد جاسم'));
+        assert.ok(res2.body.action && res2.body.action.type === 'PROPOSAL', 'Must emit PROPOSAL action');
+        assert.ok(res2.body.response.includes('أحمد جاسم'));
+        assert.ok(res2.body.response.includes('70,000'));
+    });
+
+    test('3. Singular unspecified bill request ("اريد اسدد فاتورة") does NOT force bulk 150,000 IQD payment', () => {
+        const db = readDatabase();
+        assert.strictEqual(isPayAllBillsRequest('اريد اسدد فاتورة'), false, 'Must NOT classify as all bills');
+        assert.strictEqual(isPayAllBillsRequest('اريد ادفع فاتورة'), false, 'Must NOT classify as all bills');
+        assert.strictEqual(detectBillPaymentIntent('اريد اسدد فاتورة', db.bills), null, 'Must NOT match specific bill or bulk payment');
+    });
+
+    test('4. formatFintechMessage suppresses confirmation card when recipient contains placeholder tags', () => {
+        const placeholderText = 'تفاصيل التحويل:\n• المستلم: <اسم المستلم>\n• المبلغ المطلوب: 30,000 د.ع\n• الرصيد بعد العملية: 2,970,000 د.ع\n\nمتأكد تريد أحول؟ (اسحب للتأكيد أو اكتب نعم)';
+        const formatted = frontend.formatFintechMessage(placeholderText, 'ai', 'اريدك تحولي 30 الف', null);
+        assert.ok(!formatted.includes('confirm-card'), 'Must NOT render confirmation card with placeholder recipient');
+    });
+
+    test('5. Single bill Slide to Pay confirmation executes transaction and renders luxury receipt ticket', async () => {
+        const sessionId = 'live_user_test_single_bill_confirm_' + Date.now();
+        const db = readDatabase();
+        const targetBill = db.bills.find(b => b.status === 'unpaid' && b.id === 'bill_elec_01') || db.bills.find(b => b.status === 'unpaid');
+        const initialBal = db.user.balance;
+
+        // Stage single bill payment in session
+        const session = getSession(sessionId);
+        session.pendingBillPayment = {
+            type: 'SINGLE',
+            billIds: [targetBill.id],
+            totalAmount: targetBill.amount,
+            bills: [targetBill]
+        };
+
+        // User confirms payment via slider
+        const req = {
+            body: { message: 'نعم متأكد', sessionId, stream: false },
+            headers: { 'x-test-suite': 'regression' }
+        };
+        const res = createMockRes();
+        await handleChat(req, res);
+
+        assert.strictEqual(session.pendingBillPayment, null, 'Pending bill payment must be cleared');
+        assert.ok(res.body.action && res.body.action.type === 'BILL_PAYMENT', 'Action type must be BILL_PAYMENT');
+        assert.strictEqual(res.body.action.transactionData.isBill, true);
+        assert.strictEqual(res.body.action.transactionData.isAllBills, false);
+        assert.strictEqual(res.body.action.transactionData.recipient, targetBill.biller);
+
+        // Verify frontend formatFintechMessage renders the receipt pass
+        const formatted = frontend.formatFintechMessage(res.body.response, 'ai', 'نعم متأكد', res.body.action);
+        assert.ok(formatted.includes('receipt-pass'), 'Must render success receipt ticket');
+        assert.ok(formatted.includes(targetBill.biller), 'Receipt must contain biller name');
+        assert.ok(formatted.includes(targetBill.amount.toLocaleString()), 'Receipt must contain bill amount');
+        assert.ok(formatted.includes('المحفظة الذكية (VI Wallet)'), 'Receipt must contain payment method');
+    });
+});
+
 
 
 
